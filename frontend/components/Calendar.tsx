@@ -1,0 +1,298 @@
+'use client';
+
+import { useState } from 'react';
+import { format, startOfWeek, endOfWeek, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, addDays, startOfDay, endOfDay } from 'date-fns';
+import { fr } from 'date-fns/locale';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { Task, ViewMode } from '@/lib/types';
+
+interface CalendarProps {
+  tasks: Task[];
+  viewMode: ViewMode;
+  currentDate: Date;
+  onDateChange: (date: Date) => void;
+  onTaskClick: (task: Task) => void;
+  onAddTask: (date: Date, hour?: number) => void;
+}
+
+export default function Calendar({ tasks, viewMode, currentDate, onDateChange, onTaskClick, onAddTask }: CalendarProps) {
+  const [hours] = useState(Array.from({ length: 24 }, (_, i) => i));
+
+  const getTasksForDate = (date: Date, hour?: number) => {
+    return tasks.filter(task => {
+      const taskStart = new Date(task.start_date);
+      const taskEnd = new Date(task.end_date);
+
+      if (hour !== undefined) {
+        const hourStart = new Date(date);
+        hourStart.setHours(hour, 0, 0, 0);
+        const hourEnd = new Date(date);
+        hourEnd.setHours(hour, 59, 59, 999);
+
+        return taskStart <= hourEnd && taskEnd >= hourStart;
+      }
+
+      return taskStart <= endOfDay(date) && taskEnd >= startOfDay(date);
+    });
+  };
+
+  const isTaskSpanning = (task: Task, date: Date) => {
+    const taskStart = new Date(task.start_date);
+    const taskEnd = new Date(task.end_date);
+    const dayStart = startOfDay(date);
+    const dayEnd = endOfDay(date);
+
+    return taskStart < dayStart && taskEnd > dayEnd;
+  };
+
+  const navigatePrevious = () => {
+    const newDate = new Date(currentDate);
+    if (viewMode === 'day') {
+      newDate.setDate(newDate.getDate() - 1);
+    } else if (viewMode === 'week') {
+      newDate.setDate(newDate.getDate() - 7);
+    } else {
+      newDate.setMonth(newDate.getMonth() - 1);
+    }
+    onDateChange(newDate);
+  };
+
+  const navigateNext = () => {
+    const newDate = new Date(currentDate);
+    if (viewMode === 'day') {
+      newDate.setDate(newDate.getDate() + 1);
+    } else if (viewMode === 'week') {
+      newDate.setDate(newDate.getDate() + 7);
+    } else {
+      newDate.setMonth(newDate.getMonth() + 1);
+    }
+    onDateChange(newDate);
+  };
+
+  const getDateRange = () => {
+    if (viewMode === 'day') {
+      return format(currentDate, 'EEEE d MMMM yyyy', { locale: fr });
+    } else if (viewMode === 'week') {
+      const start = startOfWeek(currentDate, { weekStartsOn: 1 });
+      const end = endOfWeek(currentDate, { weekStartsOn: 1 });
+      return `${format(start, 'd MMM', { locale: fr })} - ${format(end, 'd MMM yyyy', { locale: fr })}`;
+    } else {
+      return format(currentDate, 'MMMM yyyy', { locale: fr });
+    }
+  };
+
+  const renderDayView = () => {
+    return (
+      <div className="flex-1 overflow-y-auto bg-white">
+        <div className="min-h-full">
+          {hours.map(hour => {
+            const hourTasks = getTasksForDate(currentDate, hour);
+            return (
+              <div key={hour} className="flex border-b border-slate-200" style={{ minHeight: '80px' }}>
+                <div className="w-20 flex-shrink-0 bg-gradient-to-r from-slate-50 to-blue-50 p-2 text-sm font-semibold text-slate-700 border-r border-slate-200">
+                  {`${hour.toString().padStart(2, '0')}:00`}
+                </div>
+                <div
+                  className="flex-1 p-2 hover:bg-blue-50/50 cursor-pointer transition-colors relative"
+                  onClick={() => onAddTask(currentDate, hour)}
+                >
+                  {hourTasks.map(task => (
+                    <div
+                      key={task.id}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onTaskClick(task);
+                      }}
+                      className="mb-2 p-3 rounded-xl bg-gradient-to-r from-[#005f82] to-[#007ba8] hover:shadow-lg cursor-pointer transition-all border border-blue-200"
+                    >
+                      <div className="font-semibold text-white text-sm">{task.title}</div>
+                      {task.description && (
+                        <div className="text-xs text-blue-100 mt-1 line-clamp-1">{task.description}</div>
+                      )}
+                      <div className="text-xs text-blue-100 mt-1 font-medium">
+                        {format(new Date(task.start_date), 'HH:mm')} - {format(new Date(task.end_date), 'HH:mm')}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    );
+  };
+
+  const renderWeekView = () => {
+    const weekStart = startOfWeek(currentDate, { weekStartsOn: 1 });
+    const weekDays = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
+
+    return (
+      <div className="flex-1 overflow-auto bg-white">
+        <div className="flex border-b border-slate-200 sticky top-0 z-10 bg-gradient-to-r from-slate-50 to-blue-50">
+          <div className="w-20 flex-shrink-0 border-r border-slate-200"></div>
+          {weekDays.map(day => (
+            <div key={day.toString()} className="flex-1 min-w-[140px] p-3 text-center border-r border-slate-200">
+              <div className={`font-semibold text-sm ${isSameDay(day, new Date()) ? 'text-[#005f82]' : 'text-slate-600'}`}>
+                {format(day, 'EEE', { locale: fr })}
+              </div>
+              <div className={`text-2xl font-bold mt-1 ${
+                isSameDay(day, new Date()) 
+                  ? 'bg-gradient-to-r from-[#005f82] to-[#007ba8] text-white w-10 h-10 rounded-xl flex items-center justify-center mx-auto shadow-md' 
+                  : 'text-slate-800'
+              }`}>
+                {format(day, 'd')}
+              </div>
+            </div>
+          ))}
+        </div>
+        <div className="min-h-full">
+          {hours.map(hour => (
+            <div key={hour} className="flex border-b border-slate-200" style={{ minHeight: '80px' }}>
+              <div className="w-20 flex-shrink-0 bg-gradient-to-r from-slate-50 to-blue-50 p-2 text-sm font-semibold text-slate-700 border-r border-slate-200">
+                {`${hour.toString().padStart(2, '0')}:00`}
+              </div>
+              {weekDays.map(day => {
+                const dayTasks = getTasksForDate(day, hour);
+                return (
+                  <div
+                    key={day.toString()}
+                    className="flex-1 min-w-[140px] p-1 border-r border-slate-200 hover:bg-blue-50/50 cursor-pointer transition-colors"
+                    onClick={() => onAddTask(day, hour)}
+                  >
+                    {dayTasks.map(task => (
+                      <div
+                        key={task.id}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onTaskClick(task);
+                        }}
+                        className="mb-1 p-2 rounded-lg bg-gradient-to-r from-[#005f82] to-[#007ba8] hover:shadow-md cursor-pointer transition-all text-xs"
+                      >
+                        <div className="font-semibold text-white truncate">{task.title}</div>
+                        <div className="text-blue-100 font-medium mt-0.5">
+                          {format(new Date(task.start_date), 'HH:mm')}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                );
+              })}
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  };
+
+  const renderMonthView = () => {
+    const monthStart = startOfMonth(currentDate);
+    const monthEnd = endOfMonth(currentDate);
+    const calendarStart = startOfWeek(monthStart, { weekStartsOn: 1 });
+    const calendarEnd = endOfWeek(monthEnd, { weekStartsOn: 1 });
+    const calendarDays = eachDayOfInterval({ start: calendarStart, end: calendarEnd });
+
+    const weekDays = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'];
+
+    return (
+      <div className="flex-1 flex flex-col bg-white">
+        <div className="grid grid-cols-7 border-b border-slate-200 bg-gradient-to-r from-slate-50 to-blue-50">
+          {weekDays.map(day => (
+            <div key={day} className="p-3 text-center font-semibold text-slate-700 border-r border-slate-200 last:border-r-0">
+              {day}
+            </div>
+          ))}
+        </div>
+        <div className="flex-1 grid grid-cols-7 auto-rows-fr">
+          {calendarDays.map(day => {
+            const dayTasks = getTasksForDate(day);
+            const isCurrentMonth = day.getMonth() === currentDate.getMonth();
+            const isToday = isSameDay(day, new Date());
+
+            return (
+              <div
+                key={day.toString()}
+                className={`border-r border-b border-slate-200 p-2 min-h-[120px] hover:bg-blue-50/50 cursor-pointer transition-colors ${
+                  !isCurrentMonth ? 'bg-slate-50/50' : ''
+                }`}
+                onClick={() => onAddTask(day)}
+              >
+                <div className={`text-sm font-semibold mb-2 ${
+                  isToday 
+                    ? 'bg-gradient-to-r from-[#005f82] to-[#007ba8] text-white rounded-xl w-8 h-8 flex items-center justify-center shadow-md' 
+                    : isCurrentMonth 
+                      ? 'text-slate-800' 
+                      : 'text-slate-400'
+                }`}>
+                  {format(day, 'd')}
+                </div>
+                <div className="space-y-1">
+                  {dayTasks.slice(0, 3).map(task => {
+                    const isSpanning = isTaskSpanning(task, day);
+                    const taskStart = new Date(task.start_date);
+                    const taskEnd = new Date(task.end_date);
+                    const isStart = isSameDay(taskStart, day);
+                    const isEnd = isSameDay(taskEnd, day);
+
+                    return (
+                      <div
+                        key={task.id}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onTaskClick(task);
+                        }}
+                        className={`text-xs p-1.5 bg-gradient-to-r from-[#005f82] to-[#007ba8] hover:shadow-md text-white cursor-pointer transition-all ${
+                          isSpanning ? 'rounded-none' : 'rounded-lg'
+                        } ${
+                          isStart && !isEnd ? 'rounded-r-none' : ''
+                        } ${
+                          isEnd && !isStart ? 'rounded-l-none' : ''
+                        }`}
+                      >
+                        <div className="font-semibold truncate">{task.title}</div>
+                      </div>
+                    );
+                  })}
+                  {dayTasks.length > 3 && (
+                    <div className="text-xs text-slate-500 pl-1 font-medium">
+                      +{dayTasks.length - 3} autres
+                    </div>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    );
+  };
+
+  return (
+    <div className="flex flex-col h-full bg-white rounded-2xl overflow-hidden shadow-lg border border-slate-200">
+      <div className="flex items-center justify-between p-4 border-b border-slate-200 bg-gradient-to-r from-slate-50 to-blue-50">
+        <div className="flex items-center gap-4">
+          <button
+            onClick={navigatePrevious}
+            className="p-2 hover:bg-white rounded-xl transition-all text-slate-700 hover:shadow-md"
+          >
+            <ChevronLeft className="w-5 h-5" />
+          </button>
+          <h2 className="text-lg font-bold text-slate-800 capitalize min-w-[250px] text-center">
+            {getDateRange()}
+          </h2>
+          <button
+            onClick={navigateNext}
+            className="p-2 hover:bg-white rounded-xl transition-all text-slate-700 hover:shadow-md"
+          >
+            <ChevronRight className="w-5 h-5" />
+          </button>
+        </div>
+      </div>
+
+      {viewMode === 'day' && renderDayView()}
+      {viewMode === 'week' && renderWeekView()}
+      {viewMode === 'month' && renderMonthView()}
+    </div>
+  );
+}
+

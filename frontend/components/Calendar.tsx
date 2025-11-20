@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { format, startOfWeek, endOfWeek, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, addDays, startOfDay, endOfDay } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
@@ -17,21 +17,36 @@ interface CalendarProps {
 
 export default function Calendar({ tasks, viewMode, currentDate, onDateChange, onTaskClick, onAddTask }: CalendarProps) {
   const [hours] = useState(Array.from({ length: 24 }, (_, i) => i));
+  const currentHourRef = useRef<HTMLDivElement>(null);
+  const dayViewRef = useRef<HTMLDivElement>(null);
+
+  // Scroll vers l'heure actuelle dans la vue jour
+  useEffect(() => {
+    if (viewMode === 'day' && isSameDay(currentDate, new Date()) && currentHourRef.current && dayViewRef.current) {
+      setTimeout(() => {
+        if (currentHourRef.current && dayViewRef.current) {
+          const containerHeight = dayViewRef.current.clientHeight;
+          const hourPosition = currentHourRef.current.offsetTop;
+          dayViewRef.current.scrollTop = hourPosition - (containerHeight / 3);
+        }
+      }, 100);
+    }
+  }, [viewMode, currentDate]);
 
   const getTasksForDate = (date: Date, hour?: number) => {
     return tasks.filter(task => {
       const taskStart = new Date(task.start_date);
       const taskEnd = new Date(task.end_date);
-
+      
       if (hour !== undefined) {
         const hourStart = new Date(date);
         hourStart.setHours(hour, 0, 0, 0);
         const hourEnd = new Date(date);
         hourEnd.setHours(hour, 59, 59, 999);
-
+        
         return taskStart <= hourEnd && taskEnd >= hourStart;
       }
-
+      
       return taskStart <= endOfDay(date) && taskEnd >= startOfDay(date);
     });
   };
@@ -41,7 +56,7 @@ export default function Calendar({ tasks, viewMode, currentDate, onDateChange, o
     const taskEnd = new Date(task.end_date);
     const dayStart = startOfDay(date);
     const dayEnd = endOfDay(date);
-
+    
     return taskStart < dayStart && taskEnd > dayEnd;
   };
 
@@ -82,17 +97,30 @@ export default function Calendar({ tasks, viewMode, currentDate, onDateChange, o
   };
 
   const renderDayView = () => {
+    const currentHour = new Date().getHours();
+    const isToday = isSameDay(currentDate, new Date());
+
     return (
-      <div className="flex-1 overflow-y-auto bg-white">
+      <div ref={dayViewRef} className="flex-1 overflow-y-auto bg-white">
         <div className="min-h-full">
           {hours.map(hour => {
             const hourTasks = getTasksForDate(currentDate, hour);
+            const isCurrentHour = isToday && hour === currentHour;
+            
             return (
-              <div key={hour} className="flex border-b border-slate-200" style={{ minHeight: '50px' }}>
-                <div className="w-16 flex-shrink-0 bg-gradient-to-r from-slate-50 to-blue-50 px-2 py-1 text-xs font-semibold text-slate-700 border-r border-slate-200">
+              <div 
+                key={hour} 
+                ref={isCurrentHour ? currentHourRef : null}
+                className={`flex border-b border-slate-200 ${isCurrentHour ? 'bg-blue-50/50' : ''}`} 
+                style={{ minHeight: '50px' }}
+              >
+                <div className={`w-16 flex-shrink-0 bg-gradient-to-r from-slate-50 to-blue-50 px-2 py-1 text-xs font-semibold border-r border-slate-200 ${
+                  isCurrentHour ? 'text-[#005f82]' : 'text-slate-700'
+                }`}>
                   {`${hour.toString().padStart(2, '0')}:00`}
+                  {isCurrentHour && <div className="w-1 h-1 bg-[#005f82] rounded-full mx-auto mt-0.5"></div>}
                 </div>
-                <div
+                <div 
                   className="flex-1 p-1.5 hover:bg-blue-50/50 cursor-pointer transition-colors relative"
                   onClick={() => onAddTask(currentDate, hour)}
                 >
@@ -126,9 +154,11 @@ export default function Calendar({ tasks, viewMode, currentDate, onDateChange, o
   const renderWeekView = () => {
     const weekStart = startOfWeek(currentDate, { weekStartsOn: 1 });
     const weekDays = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
+    const currentHour = new Date().getHours();
+    const today = new Date();
 
     return (
-      <div className="flex-1 overflow-auto bg-white">
+      <div ref={dayViewRef} className="flex-1 overflow-auto bg-white">
         <div className="flex border-b border-slate-200 sticky top-0 z-10 bg-gradient-to-r from-slate-50 to-blue-50">
           <div className="w-16 flex-shrink-0 border-r border-slate-200"></div>
           {weekDays.map(day => (
@@ -147,39 +177,55 @@ export default function Calendar({ tasks, viewMode, currentDate, onDateChange, o
           ))}
         </div>
         <div className="min-h-full">
-          {hours.map(hour => (
-            <div key={hour} className="flex border-b border-slate-200" style={{ minHeight: '50px' }}>
-              <div className="w-16 flex-shrink-0 bg-gradient-to-r from-slate-50 to-blue-50 px-2 py-1 text-xs font-semibold text-slate-700 border-r border-slate-200">
-                {`${hour.toString().padStart(2, '0')}:00`}
-              </div>
-              {weekDays.map(day => {
-                const dayTasks = getTasksForDate(day, hour);
-                return (
-                  <div
-                    key={day.toString()}
-                    className="flex-1 min-w-[100px] p-1 border-r border-slate-200 hover:bg-blue-50/50 cursor-pointer transition-colors"
-                    onClick={() => onAddTask(day, hour)}
-                  >
-                    {dayTasks.map(task => (
-                      <div
-                        key={task.id}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          onTaskClick(task);
-                        }}
-                        className="mb-0.5 p-1.5 rounded-lg bg-gradient-to-r from-[#005f82] to-[#007ba8] hover:shadow-md cursor-pointer transition-all text-[10px]"
-                      >
-                        <div className="font-semibold text-white truncate">{task.title}</div>
-                        <div className="text-blue-100 font-medium mt-0.5">
-                          {format(new Date(task.start_date), 'HH:mm')}
+          {hours.map(hour => {
+            const isCurrentHour = hour === currentHour;
+            
+            return (
+              <div 
+                key={hour} 
+                ref={isCurrentHour ? currentHourRef : null}
+                className={`flex border-b border-slate-200 ${isCurrentHour ? 'bg-blue-50/30' : ''}`} 
+                style={{ minHeight: '50px' }}
+              >
+                <div className={`w-16 flex-shrink-0 bg-gradient-to-r from-slate-50 to-blue-50 px-2 py-1 text-xs font-semibold border-r border-slate-200 ${
+                  isCurrentHour ? 'text-[#005f82]' : 'text-slate-700'
+                }`}>
+                  {`${hour.toString().padStart(2, '0')}:00`}
+                  {isCurrentHour && <div className="w-1 h-1 bg-[#005f82] rounded-full mx-auto mt-0.5"></div>}
+                </div>
+                {weekDays.map(day => {
+                  const dayTasks = getTasksForDate(day, hour);
+                  const isCurrentDayAndHour = isSameDay(day, today) && hour === currentHour;
+                  
+                  return (
+                    <div
+                      key={day.toString()}
+                      className={`flex-1 min-w-[100px] p-1 border-r border-slate-200 hover:bg-blue-50/50 cursor-pointer transition-colors ${
+                        isCurrentDayAndHour ? 'bg-blue-100/30' : ''
+                      }`}
+                      onClick={() => onAddTask(day, hour)}
+                    >
+                      {dayTasks.map(task => (
+                        <div
+                          key={task.id}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onTaskClick(task);
+                          }}
+                          className="mb-0.5 p-1.5 rounded-lg bg-gradient-to-r from-[#005f82] to-[#007ba8] hover:shadow-md cursor-pointer transition-all text-[10px]"
+                        >
+                          <div className="font-semibold text-white truncate">{task.title}</div>
+                          <div className="text-blue-100 font-medium mt-0.5">
+                            {format(new Date(task.start_date), 'HH:mm')}
+                          </div>
                         </div>
-                      </div>
-                    ))}
-                  </div>
-                );
-              })}
-            </div>
-          ))}
+                      ))}
+                    </div>
+                  );
+                })}
+              </div>
+            );
+          })}
         </div>
       </div>
     );
@@ -233,7 +279,7 @@ export default function Calendar({ tasks, viewMode, currentDate, onDateChange, o
                     const taskEnd = new Date(task.end_date);
                     const isStart = isSameDay(taskStart, day);
                     const isEnd = isSameDay(taskEnd, day);
-
+                    
                     return (
                       <div
                         key={task.id}

@@ -20,9 +20,9 @@ export default function Calendar({ tasks, viewMode, currentDate, onDateChange, o
   const currentHourRef = useRef<HTMLDivElement>(null);
   const dayViewRef = useRef<HTMLDivElement>(null);
 
-  // Scroll vers l'heure actuelle dans la vue jour
+  // Scroll vers l'heure actuelle dans la vue jour et semaine
   useEffect(() => {
-    if (viewMode === 'day' && isSameDay(currentDate, new Date()) && currentHourRef.current && dayViewRef.current) {
+    if ((viewMode === 'day' || viewMode === 'week') && currentHourRef.current && dayViewRef.current) {
       setTimeout(() => {
         if (currentHourRef.current && dayViewRef.current) {
           const containerHeight = dayViewRef.current.clientHeight;

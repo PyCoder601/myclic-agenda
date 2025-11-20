@@ -88,12 +88,12 @@ export default function Calendar({ tasks, viewMode, currentDate, onDateChange, o
           {hours.map(hour => {
             const hourTasks = getTasksForDate(currentDate, hour);
             return (
-              <div key={hour} className="flex border-b border-slate-200" style={{ minHeight: '80px' }}>
-                <div className="w-20 flex-shrink-0 bg-gradient-to-r from-slate-50 to-blue-50 p-2 text-sm font-semibold text-slate-700 border-r border-slate-200">
+              <div key={hour} className="flex border-b border-slate-200" style={{ minHeight: '50px' }}>
+                <div className="w-16 flex-shrink-0 bg-gradient-to-r from-slate-50 to-blue-50 px-2 py-1 text-xs font-semibold text-slate-700 border-r border-slate-200">
                   {`${hour.toString().padStart(2, '0')}:00`}
                 </div>
                 <div
-                  className="flex-1 p-2 hover:bg-blue-50/50 cursor-pointer transition-colors relative"
+                  className="flex-1 p-1.5 hover:bg-blue-50/50 cursor-pointer transition-colors relative"
                   onClick={() => onAddTask(currentDate, hour)}
                 >
                   {hourTasks.map(task => (
@@ -103,13 +103,13 @@ export default function Calendar({ tasks, viewMode, currentDate, onDateChange, o
                         e.stopPropagation();
                         onTaskClick(task);
                       }}
-                      className="mb-2 p-3 rounded-xl bg-gradient-to-r from-[#005f82] to-[#007ba8] hover:shadow-lg cursor-pointer transition-all border border-blue-200"
+                      className="mb-1 p-2 rounded-lg bg-gradient-to-r from-[#005f82] to-[#007ba8] hover:shadow-lg cursor-pointer transition-all"
                     >
-                      <div className="font-semibold text-white text-sm">{task.title}</div>
+                      <div className="font-semibold text-white text-xs">{task.title}</div>
                       {task.description && (
-                        <div className="text-xs text-blue-100 mt-1 line-clamp-1">{task.description}</div>
+                        <div className="text-[10px] text-blue-100 mt-0.5 line-clamp-1">{task.description}</div>
                       )}
-                      <div className="text-xs text-blue-100 mt-1 font-medium">
+                      <div className="text-[10px] text-blue-100 mt-0.5 font-medium">
                         {format(new Date(task.start_date), 'HH:mm')} - {format(new Date(task.end_date), 'HH:mm')}
                       </div>
                     </div>
@@ -130,15 +130,15 @@ export default function Calendar({ tasks, viewMode, currentDate, onDateChange, o
     return (
       <div className="flex-1 overflow-auto bg-white">
         <div className="flex border-b border-slate-200 sticky top-0 z-10 bg-gradient-to-r from-slate-50 to-blue-50">
-          <div className="w-20 flex-shrink-0 border-r border-slate-200"></div>
+          <div className="w-16 flex-shrink-0 border-r border-slate-200"></div>
           {weekDays.map(day => (
-            <div key={day.toString()} className="flex-1 min-w-[140px] p-3 text-center border-r border-slate-200">
-              <div className={`font-semibold text-sm ${isSameDay(day, new Date()) ? 'text-[#005f82]' : 'text-slate-600'}`}>
+            <div key={day.toString()} className="flex-1 min-w-[100px] p-2 text-center border-r border-slate-200">
+              <div className={`font-semibold text-xs ${isSameDay(day, new Date()) ? 'text-[#005f82]' : 'text-slate-600'}`}>
                 {format(day, 'EEE', { locale: fr })}
               </div>
-              <div className={`text-2xl font-bold mt-1 ${
+              <div className={`text-lg font-bold mt-0.5 ${
                 isSameDay(day, new Date()) 
-                  ? 'bg-gradient-to-r from-[#005f82] to-[#007ba8] text-white w-10 h-10 rounded-xl flex items-center justify-center mx-auto shadow-md' 
+                  ? 'bg-gradient-to-r from-[#005f82] to-[#007ba8] text-white w-8 h-8 rounded-xl flex items-center justify-center mx-auto shadow-md text-sm' 
                   : 'text-slate-800'
               }`}>
                 {format(day, 'd')}
@@ -148,8 +148,8 @@ export default function Calendar({ tasks, viewMode, currentDate, onDateChange, o
         </div>
         <div className="min-h-full">
           {hours.map(hour => (
-            <div key={hour} className="flex border-b border-slate-200" style={{ minHeight: '80px' }}>
-              <div className="w-20 flex-shrink-0 bg-gradient-to-r from-slate-50 to-blue-50 p-2 text-sm font-semibold text-slate-700 border-r border-slate-200">
+            <div key={hour} className="flex border-b border-slate-200" style={{ minHeight: '50px' }}>
+              <div className="w-16 flex-shrink-0 bg-gradient-to-r from-slate-50 to-blue-50 px-2 py-1 text-xs font-semibold text-slate-700 border-r border-slate-200">
                 {`${hour.toString().padStart(2, '0')}:00`}
               </div>
               {weekDays.map(day => {
@@ -157,7 +157,7 @@ export default function Calendar({ tasks, viewMode, currentDate, onDateChange, o
                 return (
                   <div
                     key={day.toString()}
-                    className="flex-1 min-w-[140px] p-1 border-r border-slate-200 hover:bg-blue-50/50 cursor-pointer transition-colors"
+                    className="flex-1 min-w-[100px] p-1 border-r border-slate-200 hover:bg-blue-50/50 cursor-pointer transition-colors"
                     onClick={() => onAddTask(day, hour)}
                   >
                     {dayTasks.map(task => (
@@ -167,7 +167,7 @@ export default function Calendar({ tasks, viewMode, currentDate, onDateChange, o
                           e.stopPropagation();
                           onTaskClick(task);
                         }}
-                        className="mb-1 p-2 rounded-lg bg-gradient-to-r from-[#005f82] to-[#007ba8] hover:shadow-md cursor-pointer transition-all text-xs"
+                        className="mb-0.5 p-1.5 rounded-lg bg-gradient-to-r from-[#005f82] to-[#007ba8] hover:shadow-md cursor-pointer transition-all text-[10px]"
                       >
                         <div className="font-semibold text-white truncate">{task.title}</div>
                         <div className="text-blue-100 font-medium mt-0.5">

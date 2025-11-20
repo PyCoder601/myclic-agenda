@@ -62,5 +62,21 @@ body {
   -webkit-backdrop-filter: blur(10px);
 }
 
+/* Sidebar slide animation */
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateX(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.animate-slideIn {
+  animation: slideIn 0.3s ease-out;
+}
+
 
 

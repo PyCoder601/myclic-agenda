@@ -3,10 +3,10 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
-import { Calendar as CalendarIcon, LogOut, Plus, CheckCircle2, Clock, TrendingUp, User, ChevronRight, ChevronLeft } from 'lucide-react';
+import { Calendar as CalendarIcon, LogOut, Plus, CheckCircle2, Clock, TrendingUp, User, ChevronRight, ChevronLeft, RefreshCw, Settings } from 'lucide-react';
 import Calendar from '@/components/Calendar';
 import TaskModal from '@/components/TaskModal';
-import api from '@/lib/api';
+import api, { caldavAPI } from '@/lib/api';
 import { Task, ViewMode } from '@/lib/types';
 
 export default function DashboardPage() {
@@ -21,6 +21,8 @@ export default function DashboardPage() {
   const [modalInitialDate, setModalInitialDate] = useState<Date>();
   const [modalInitialHour, setModalInitialHour] = useState<number>();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [syncMessage, setSyncMessage] = useState<string | null>(null);
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -83,6 +85,27 @@ export default function DashboardPage() {
     setIsModalOpen(true);
   };
 
+  const handleSync = async () => {
+    setIsSyncing(true);
+    setSyncMessage(null);
+
+    try {
+      const response = await caldavAPI.sync();
+      setSyncMessage(`✓ ${response.data.stats.pushed} envoyées, ${response.data.stats.pulled} reçues`);
+      await fetchTasks();
+      setTimeout(() => setSyncMessage(null), 5000);
+    } catch (error) {
+      if ((error as {response?: {status?: number}}).response?.status === 404) {
+        setSyncMessage('⚠ CalDAV non configuré');
+      } else {
+        setSyncMessage('✗ Erreur de synchronisation');
+      }
+      setTimeout(() => setSyncMessage(null), 5000);
+    } finally {
+      setIsSyncing(false);
+    }
+  };
+
   const getStats = () => {
     const total = tasks.length;
     const completed = tasks.filter(t => t.is_completed).length;
@@ -136,6 +159,26 @@ export default function DashboardPage() {
             </div>
 
             <div className="flex items-center gap-2">
+              {syncMessage && (
+                <div className="text-xs bg-white px-3 py-1.5 rounded-lg border border-slate-200 text-slate-700 animate-fadeIn">
+                  {syncMessage}
+                </div>
+              )}
+              <button
+                onClick={handleSync}
+                disabled={isSyncing}
+                className="flex items-center gap-2 bg-white hover:bg-slate-50 text-slate-700 px-3 py-2 rounded-lg transition-all border border-slate-200 hover:border-slate-300 disabled:opacity-50 disabled:cursor-not-allowed"
+                title="Synchroniser avec Baikal"
+              >
+                <RefreshCw className={`w-4 h-4 ${isSyncing ? 'animate-spin' : ''}`} />
+              </button>
+              <button
+                onClick={() => router.push('/settings')}
+                className="flex items-center gap-2 bg-white hover:bg-slate-50 text-slate-700 px-3 py-2 rounded-lg transition-all border border-slate-200 hover:border-slate-300"
+                title="Paramètres"
+              >
+                <Settings className="w-4 h-4" />
+              </button>
               <button
                 onClick={() => setIsModalOpen(true)}
                 className="flex items-center gap-2 bg-gradient-to-r from-[#005f82] to-[#007ba8] hover:shadow-lg text-white px-4 py-2 rounded-lg transition-all font-medium text-sm shadow-md hover:scale-105 active:scale-95"

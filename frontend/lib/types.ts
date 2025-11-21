@@ -15,6 +15,20 @@ export interface Task {
   end_date: string;
   created_at: string;
   updated_at: string;
+  caldav_uid?: string;
+  caldav_etag?: string;
+  last_synced?: string;
+}
+
+export interface CalDAVConfig {
+  id: number;
+  caldav_url: string;
+  username: string;
+  calendar_name: string;
+  sync_enabled: boolean;
+  last_sync: string | null;
+  created_at: string;
+  updated_at: string;
 }
 
 export interface AuthResponse {
@@ -24,4 +38,6 @@ export interface AuthResponse {
 }
 
 export type ViewMode = 'day' | 'week' | 'month';
+
+
 

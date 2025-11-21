@@ -55,5 +55,43 @@ api.interceptors.response.use(
   }
 );
 
+// API CalDAV
+export const caldavAPI = {
+  // Récupérer la configuration CalDAV
+  getConfig: () => api.get('/caldav/config/'),
+
+  // Créer ou mettre à jour la configuration CalDAV
+  saveConfig: (data: {
+    caldav_url: string;
+    username: string;
+    password: string;
+    calendar_name?: string;
+    sync_enabled?: boolean;
+  }) => api.post('/caldav/config/', data),
+
+  // Mettre à jour la configuration CalDAV
+  updateConfig: (data: Partial<{
+    caldav_url: string;
+    username: string;
+    password: string;
+    calendar_name: string;
+    sync_enabled: boolean;
+  }>) => api.put('/caldav/config/', data),
+
+  // Supprimer la configuration CalDAV
+  deleteConfig: () => api.delete('/caldav/config/'),
+
+  // Tester la connexion CalDAV
+  testConnection: () => api.post('/caldav/test/'),
+
+  // Synchroniser les tâches
+  sync: () => api.post('/caldav/sync/'),
+
+  // Synchroniser via le viewset des tâches
+  syncTasks: () => api.post('/tasks/sync/'),
+};
+
 export default api;
+
+
 

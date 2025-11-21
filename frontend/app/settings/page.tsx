@@ -3,13 +3,13 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { useAuth } from '@/contexts/AuthContext';
+import { useAppSelector } from '@/store/hooks';
 import { caldavAPI } from '@/lib/api';
 import { CalDAVConfig } from '@/lib/types';
 
 export default function SettingsPage() {
   const router = useRouter();
-  const { user } = useAuth();
+  const { user } = useAppSelector((state) => state.auth);
   const [loading, setLoading] = useState(false);
   const [testing, setTesting] = useState(false);
   const [syncing, setSyncing] = useState(false);

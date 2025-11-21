@@ -298,39 +298,43 @@ class CalDAVService:
         Supprimer une tâche du serveur CalDAV
 
         Args:
-            task: Instance de Task
+            task: Instance de Task ou objet avec caldav_uid
 
         Returns:
             bool: Succès de l'opération
         """
-        if not task.caldav_uid:
-            return True  # Pas sur CalDAV, rien à supprimer
-
-        if not self.calendar:
-            if not self.connect():
-                return False
-
         try:
-            events = self.calendar.events()
-            for event in events:
-                try:
-                    # Utiliser icalendar au lieu de vobject
-                    event_cal = Calendar.from_ical(event.data)
-                    for component in event_cal.walk():
-                        if component.name == "VEVENT":
-                            event_uid = str(component.get('uid'))
-                            if event_uid == task.caldav_uid:
-                                event.delete()
-                                print(f"Tâche supprimée du serveur CalDAV: {task.caldav_uid}")
-                                return True
-                except Exception as e:
-                    print(f"Erreur lors de la lecture de l'événement pour suppression: {e}")
-                    continue
+            if not hasattr(task, 'caldav_uid') or not task.caldav_uid:
+                return True  # Pas sur CalDAV, rien à supprimer
 
-            print(f"Tâche non trouvée sur le serveur CalDAV: {task.caldav_uid}")
-            return True  # Considéré comme succès si non trouvé
+            if not self.calendar:
+                if not self.connect():
+                    return False
+
+            try:
+                events = self.calendar.events()
+                for event in events:
+                    try:
+                        # Utiliser icalendar au lieu de vobject
+                        event_cal = Calendar.from_ical(event.data)
+                        for component in event_cal.walk():
+                            if component.name == "VEVENT":
+                                event_uid = str(component.get('uid'))
+                                if event_uid == task.caldav_uid:
+                                    event.delete()
+                                    print(f"Tâche supprimée du serveur CalDAV: {task.caldav_uid}")
+                                    return True
+                    except Exception as e:
+                        print(f"Erreur lors de la lecture de l'événement pour suppression: {e}")
+                        continue
+
+                print(f"Tâche non trouvée sur le serveur CalDAV: {task.caldav_uid}")
+                return True  # Considéré comme succès si non trouvé
+            except Exception as e:
+                print(f"Erreur lors de la récupération des événements: {e}")
+                return False
         except Exception as e:
-            print(f"Erreur lors de la suppression: {e}")
+            print(f"Erreur générale lors de la suppression: {e}")
             return False
 
 

@@ -1,32 +1,31 @@
 'use client';
 
-import { useState } from 'react';
-import { useAuth } from '@/contexts/AuthContext';
+import { useState, useEffect } from 'react';
+import { useAppDispatch, useAppSelector } from '@/store/hooks';
+import { login } from '@/store/authSlice';
 import { Calendar as CalendarIcon, Lock, User } from 'lucide-react';
 import Link from 'next/link';
+import {useRouter} from "next/navigation";
 
 export default function LoginPage() {
-  const { login } = useAuth();
+  const dispatch = useAppDispatch();
+  const { loading, error: authError, user } = useAppSelector((state) => state.auth);
+  const router = useRouter();
+  
   const [formData, setFormData] = useState({
     username: '',
     password: '',
   });
-  const [error, setError] = useState('');
-  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (user) {
+      router.push('/dashboard');
+    }
+  }, [user, router]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError('');
-    setLoading(true);
-
-    try {
-      await login(formData.username, formData.password);
-    } catch (err: unknown) {
-      const error = err as { response?: { data?: { error?: string } } };
-      setError(error.response?.data?.error || 'Erreur de connexion');
-    } finally {
-      setLoading(false);
-    }
+    dispatch(login({ username: formData.username, password: formData.password }));
   };
 
   return (
@@ -42,9 +41,9 @@ export default function LoginPage() {
 
         <div className="bg-[#002633] rounded-2xl shadow-xl p-8 border border-[#005f82]">
           <form onSubmit={handleSubmit} className="space-y-6">
-            {error && (
+            {authError && (
               <div className="bg-red-900/50 border border-red-500 text-red-200 px-4 py-3 rounded-lg">
-                {error}
+                {authError}
               </div>
             )}
 

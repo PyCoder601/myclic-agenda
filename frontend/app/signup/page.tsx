@@ -1,12 +1,17 @@
 'use client';
 
-import { useState } from 'react';
-import { useAuth } from '@/contexts/AuthContext';
+import { useState, useEffect } from 'react';
+import { useAppDispatch, useAppSelector } from '@/store/hooks';
+import { signup } from '@/store/authSlice';
 import { Calendar as CalendarIcon, Lock, Mail, User } from 'lucide-react';
 import Link from 'next/link';
+import {useRouter} from "next/navigation";
 
 export default function SignupPage() {
-  const { signup } = useAuth();
+  const dispatch = useAppDispatch();
+  const { loading, error: authError, user } = useAppSelector((state) => state.auth);
+  const router = useRouter();
+
   const [formData, setFormData] = useState({
     username: '',
     email: '',
@@ -15,39 +20,36 @@ export default function SignupPage() {
     firstName: '',
     lastName: '',
   });
-  const [error, setError] = useState('');
-  const [loading, setLoading] = useState(false);
+  const [passwordError, setPasswordError] = useState('');
+
+
+  useEffect(() => {
+    if (user) {
+      router.push('/dashboard');
+    }
+  }, [user, router]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError('');
+    setPasswordError('');
 
     if (formData.password !== formData.confirmPassword) {
-      setError('Les mots de passe ne correspondent pas');
+      setPasswordError('Les mots de passe ne correspondent pas');
       return;
     }
 
     if (formData.password.length < 8) {
-      setError('Le mot de passe doit contenir au moins 8 caractères');
+      setPasswordError('Le mot de passe doit contenir au moins 8 caractères');
       return;
     }
 
-    setLoading(true);
-
-    try {
-      await signup(
-        formData.username,
-        formData.email,
-        formData.password,
-        formData.firstName,
-        formData.lastName
-      );
-    } catch (err: unknown) {
-      const error = err as { response?: { data?: { username?: string[]; email?: string[] } } };
-      setError(error.response?.data?.username?.[0] || error.response?.data?.email?.[0] || "Erreur lors de l'inscription");
-    } finally {
-      setLoading(false);
-    }
+    dispatch(signup({
+        username: formData.username,
+        email: formData.email,
+        password: formData.password,
+        firstName: formData.firstName,
+        lastName: formData.lastName
+    }));
   };
 
   return (
@@ -63,9 +65,9 @@ export default function SignupPage() {
 
         <div className="bg-[#002633] rounded-2xl shadow-xl p-8 border border-[#005f82]">
           <form onSubmit={handleSubmit} className="space-y-6">
-            {error && (
+            {(authError || passwordError) && (
               <div className="bg-red-900/50 border border-red-500 text-red-200 px-4 py-3 rounded-lg">
-                {error}
+                {authError || passwordError}
               </div>
             )}
 

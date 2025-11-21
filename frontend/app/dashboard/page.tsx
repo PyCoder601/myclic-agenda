@@ -2,7 +2,8 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { useAuth } from '@/contexts/AuthContext';
+import { useAppDispatch, useAppSelector } from '@/store/hooks';
+import { logout } from '@/store/authSlice';
 import { Calendar as CalendarIcon, LogOut, Plus, CheckCircle2, Clock, TrendingUp, User, ChevronRight, ChevronLeft, RefreshCw, Settings } from 'lucide-react';
 import Calendar from '@/components/Calendar';
 import TaskModal from '@/components/TaskModal';
@@ -10,8 +11,10 @@ import api, { caldavAPI } from '@/lib/api';
 import { Task, ViewMode } from '@/lib/types';
 
 export default function DashboardPage() {
-  const { user, logout, loading: authLoading } = useAuth();
+  const { user, loading: authLoading } = useAppSelector((state) => state.auth);
+  const dispatch = useAppDispatch();
   const router = useRouter();
+  
   const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
   const [viewMode, setViewMode] = useState<ViewMode>('week');
@@ -45,6 +48,11 @@ export default function DashboardPage() {
     } finally {
       setLoading(false);
     }
+  };
+  
+  const handleLogout = () => {
+    dispatch(logout());
+    router.push('/login');
   };
 
   const handleSaveTask = async (taskData: Omit<Task, 'id' | 'created_at' | 'updated_at'>) => {
@@ -180,7 +188,12 @@ export default function DashboardPage() {
                 <Settings className="w-4 h-4" />
               </button>
               <button
-                onClick={() => setIsModalOpen(true)}
+                onClick={() => {
+                  setSelectedTask(null);
+                  setModalInitialDate(undefined);
+                  setModalInitialHour(undefined);
+                  setIsModalOpen(true);
+                }}
                 className="flex items-center gap-2 bg-gradient-to-r from-[#005f82] to-[#007ba8] hover:shadow-lg text-white px-4 py-2 rounded-lg transition-all font-medium text-sm shadow-md hover:scale-105 active:scale-95"
               >
                 <Plus className="w-4 h-4" />
@@ -188,7 +201,7 @@ export default function DashboardPage() {
               </button>
               <div className="h-6 w-px bg-slate-300"></div>
               <button
-                onClick={logout}
+                onClick={handleLogout}
                 className="flex items-center gap-2 bg-white hover:bg-slate-50 text-slate-700 px-3 py-2 rounded-lg transition-all border border-slate-200 hover:border-slate-300"
               >
                 <LogOut className="w-4 h-4" />

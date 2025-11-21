@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { X } from 'lucide-react';
 import { Task } from '@/lib/types';
 
@@ -14,6 +14,16 @@ interface TaskModalProps {
   initialHour?: number;
 }
 
+// Fonction helper pour formater la date en heure locale pour datetime-local input
+const formatDateTimeLocal = (date: Date): string => {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  const hours = String(date.getHours()).padStart(2, '0');
+  const minutes = String(date.getMinutes()).padStart(2, '0');
+  return `${year}-${month}-${day}T${hours}:${minutes}`;
+};
+
 export default function TaskModal({ isOpen, onClose, onSave, onDelete, task, initialDate, initialHour }: TaskModalProps) {
   const [formData, setFormData] = useState(() => {
     if (task) {
@@ -26,21 +36,57 @@ export default function TaskModal({ isOpen, onClose, onSave, onDelete, task, ini
       };
     }
     
-    const now = initialDate || new Date();
-    const hour = initialHour !== undefined ? initialHour : now.getHours();
-    const start = new Date(now);
+    const baseDate = initialDate ? new Date(initialDate) : new Date();
+    const currentTime = new Date();
+    const hour = initialHour !== undefined ? initialHour : currentTime.getHours();
+
+    const start = new Date(baseDate);
     start.setHours(hour, 0, 0, 0);
+
     const end = new Date(start);
     end.setHours(hour + 1, 0, 0, 0);
     
     return {
       title: '',
       description: '',
-      start_date: start.toISOString().slice(0, 16),
-      end_date: end.toISOString().slice(0, 16),
+      start_date: formatDateTimeLocal(start),
+      end_date: formatDateTimeLocal(end),
       is_completed: false,
     };
   });
+
+  // Réinitialiser le formulaire quand le modal s'ouvre ou que les props changent
+  useEffect(() => {
+    if (isOpen) {
+      if (task) {
+        setFormData({
+          title: task.title,
+          description: task.description,
+          start_date: task.start_date.slice(0, 16),
+          end_date: task.end_date.slice(0, 16),
+          is_completed: task.is_completed,
+        });
+      } else {
+        const baseDate = initialDate ? new Date(initialDate) : new Date();
+        const currentTime = new Date();
+        const hour = initialHour !== undefined ? initialHour : currentTime.getHours();
+
+        const start = new Date(baseDate);
+        start.setHours(hour, 0, 0, 0);
+
+        const end = new Date(start);
+        end.setHours(hour + 1, 0, 0, 0);
+
+        setFormData({
+          title: '',
+          description: '',
+          start_date: formatDateTimeLocal(start),
+          end_date: formatDateTimeLocal(end),
+          is_completed: false,
+        });
+      }
+    }
+  }, [isOpen, task, initialDate, initialHour]);
 
   if (!isOpen) return null;
 

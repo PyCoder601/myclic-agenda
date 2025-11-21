@@ -4,6 +4,7 @@ from rest_framework.decorators import api_view, permission_classes, action
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.response import Response
 from rest_framework_simplejwt.tokens import RefreshToken
+import threading
 
 from .models import Task, CalDAVConfig
 from .serializers import TaskSerializer, UserSerializer, CalDAVConfigSerializer
@@ -68,7 +69,6 @@ def update_profile(request):
     user = request.user
     serializer = UserSerializer(user, data=request.data, partial=True)
     if serializer.is_valid():
-        # Ne pas permettre la modification du mot de passe via cette route
         if 'password' in request.data:
             return Response({
                 'error': 'Utilisez une route dédiée pour changer le mot de passe'
@@ -185,43 +185,76 @@ class TaskViewSet(viewsets.ModelViewSet):
         return Task.objects.filter(user=self.request.user)
 
     def perform_create(self, serializer):
-        """Associer la tâche à l'utilisateur connecté et synchroniser avec CalDAV"""
+        """Associer la tâche à l'utilisateur connecté et synchroniser avec CalDAV en arrière-plan"""
         task = serializer.save(user=self.request.user)
 
-        # Synchroniser avec CalDAV si configuré
-        try:
-            config = CalDAVConfig.objects.get(user=self.request.user)
-            if config.sync_enabled:
-                service = CalDAVService(config)
-                service.push_task(task)
-        except CalDAVConfig.DoesNotExist:
-            pass  # Pas de configuration CalDAV, continuer normalement
+        # Synchroniser avec CalDAV en arrière-plan si configuré (non bloquant)
+        def sync_to_caldav():
+            try:
+                config = CalDAVConfig.objects.get(user=self.request.user)
+                if config.sync_enabled:
+                    service = CalDAVService(config)
+                    service.push_task(task)
+            except CalDAVConfig.DoesNotExist:
+                pass  # Pas de configuration CalDAV, continuer normalement
+            except Exception as e:
+                print(f"Erreur lors de la synchronisation CalDAV en arrière-plan: {e}")
+
+        # Lancer la synchronisation dans un thread séparé (non bloquant)
+        thread = threading.Thread(target=sync_to_caldav, daemon=True)
+        thread.start()
 
     def perform_update(self, serializer):
-        """Mettre à jour la tâche et synchroniser avec CalDAV"""
+        """Mettre à jour la tâche et synchroniser avec CalDAV en arrière-plan"""
         task = serializer.save()
 
-        # Synchroniser avec CalDAV si configuré
-        try:
-            config = CalDAVConfig.objects.get(user=self.request.user)
-            if config.sync_enabled:
-                service = CalDAVService(config)
-                service.push_task(task)
-        except CalDAVConfig.DoesNotExist:
-            pass
+        # Synchroniser avec CalDAV en arrière-plan si configuré (non bloquant)
+        def sync_to_caldav():
+            try:
+                config = CalDAVConfig.objects.get(user=self.request.user)
+                if config.sync_enabled:
+                    service = CalDAVService(config)
+                    service.push_task(task)
+            except CalDAVConfig.DoesNotExist:
+                pass
+            except Exception as e:
+                print(f"Erreur lors de la synchronisation CalDAV en arrière-plan: {e}")
+
+        # Lancer la synchronisation dans un thread séparé (non bloquant)
+        thread = threading.Thread(target=sync_to_caldav, daemon=True)
+        thread.start()
 
     def perform_destroy(self, instance):
-        """Supprimer la tâche et synchroniser avec CalDAV"""
-        # Supprimer de CalDAV d'abord
-        try:
-            config = CalDAVConfig.objects.get(user=self.request.user)
-            if config.sync_enabled:
-                service = CalDAVService(config)
-                service.delete_task(instance)
-        except CalDAVConfig.DoesNotExist:
-            pass
+        """Supprimer la tâche et synchroniser avec CalDAV en arrière-plan"""
+        # Sauvegarder les informations nécessaires avant suppression
+        caldav_uid = instance.caldav_uid
+        user = self.request.user
 
+        # Supprimer la tâche localement d'abord (retour immédiat au client)
         instance.delete()
+
+        # Supprimer de CalDAV en arrière-plan si configuré (non bloquant)
+        def delete_from_caldav():
+            try:
+                config = CalDAVConfig.objects.get(user=user)
+                if config.sync_enabled and caldav_uid:
+                    service = CalDAVService(config)
+                    # Créer un objet temporaire pour la suppression
+                    class TempTask:
+                        def __init__(self, uid):
+                            self.caldav_uid = uid
+
+                    temp_task = TempTask(caldav_uid)
+                    service.delete_task(temp_task)
+            except CalDAVConfig.DoesNotExist:
+                pass
+            except Exception as e:
+                print(f"Erreur lors de la suppression CalDAV en arrière-plan: {e}")
+
+        # Lancer la suppression dans un thread séparé (non bloquant)
+        if caldav_uid:
+            thread = threading.Thread(target=delete_from_caldav, daemon=True)
+            thread.start()
 
     @action(detail=False, methods=['post'])
     def sync(self, request):
@@ -240,3 +273,4 @@ class TaskViewSet(viewsets.ModelViewSet):
             'message': 'Synchronisation terminée',
             'stats': stats
         })
+

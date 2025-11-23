@@ -101,7 +101,7 @@ export default function Calendar({ tasks, viewMode, currentDate, onDateChange, o
     const isToday = isSameDay(currentDate, new Date());
 
     return (
-      <div ref={dayViewRef} className="flex-1 overflow-y-auto bg-white">
+      <div ref={dayViewRef} className="flex-1 overflow-y-auto bg-gradient-to-br from-slate-50/30 to-blue-50/20">
         <div className="min-h-full">
           {hours.map(hour => {
             const hourTasks = getTasksForDate(currentDate, hour);
@@ -111,17 +111,23 @@ export default function Calendar({ tasks, viewMode, currentDate, onDateChange, o
               <div 
                 key={hour} 
                 ref={isCurrentHour ? currentHourRef : null}
-                className={`flex border-b border-slate-200 ${isCurrentHour ? 'bg-blue-50/50' : ''}`} 
+                className={`group flex border-b border-slate-200/50 transition-all duration-200 ${
+                  isCurrentHour ? 'bg-blue-50/70 shadow-inner' : 'hover:bg-blue-50/30'
+                }`}
                 style={{ minHeight: '50px' }}
               >
-                <div className={`w-16 flex-shrink-0 bg-gradient-to-r from-slate-50 to-blue-50 px-2 py-1 text-xs font-semibold border-r border-slate-200 ${
-                  isCurrentHour ? 'text-[#005f82]' : 'text-slate-700'
+                <div className={`w-16 flex-shrink-0 bg-gradient-to-r from-slate-50 to-blue-50/50 px-2 py-1 text-xs font-semibold border-r border-slate-200/50 transition-all duration-200 ${
+                  isCurrentHour ? 'text-[#005f82] font-bold' : 'text-slate-700 group-hover:text-[#005f82]'
                 }`}>
                   {`${hour.toString().padStart(2, '0')}:00`}
-                  {isCurrentHour && <div className="w-1 h-1 bg-[#005f82] rounded-full mx-auto mt-0.5"></div>}
+                  {isCurrentHour && (
+                    <div className="flex items-center justify-center mt-1">
+                      <div className="w-1.5 h-1.5 bg-[#005f82] rounded-full animate-pulse-slow shadow-md"></div>
+                    </div>
+                  )}
                 </div>
                 <div 
-                  className="flex-1 p-1.5 hover:bg-blue-50/50 cursor-pointer transition-colors relative"
+                  className="flex-1 p-2 hover:bg-blue-50/40 cursor-pointer transition-all duration-200 relative"
                   onClick={() => onAddTask(currentDate, hour)}
                 >
                   {hourTasks.map(task => {
@@ -133,22 +139,30 @@ export default function Calendar({ tasks, viewMode, currentDate, onDateChange, o
                           e.stopPropagation();
                           onTaskClick(task);
                         }}
-                        className="mb-1 p-2 rounded-lg hover:shadow-lg cursor-pointer transition-all"
+                        className="group/task mb-2 p-2.5 rounded-xl hover:shadow-xl cursor-pointer transition-all duration-300 hover:scale-[1.02] hover:-translate-y-0.5"
                         style={{
-                          background: `linear-gradient(to right, ${taskColor}, ${taskColor}dd)`,
-                          borderLeft: `4px solid ${taskColor}`
+                          background: `linear-gradient(135deg, ${taskColor} 0%, ${taskColor}dd 100%)`,
+                          borderLeft: `4px solid ${taskColor}`,
+                          boxShadow: `0 2px 8px ${taskColor}30`
                         }}
                       >
-                        <div className="font-semibold text-white text-xs">{task.title}</div>
+                        <div className="font-semibold text-white text-xs group-hover/task:text-shadow">{task.title}</div>
                         {task.description && (
-                          <div className="text-[10px] text-white/90 mt-0.5 line-clamp-1">{task.description}</div>
+                          <div className="text-[10px] text-white/90 mt-1 line-clamp-1">{task.description}</div>
                         )}
-                        <div className="text-[10px] text-white/80 mt-0.5 font-medium">
-                          {format(new Date(task.start_date), 'HH:mm')} - {format(new Date(task.end_date), 'HH:mm')}
+                        <div className="flex items-center justify-between mt-1.5">
+                          <div className="text-[10px] text-white/80 font-medium flex items-center gap-1">
+                            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                            {format(new Date(task.start_date), 'HH:mm')} - {format(new Date(task.end_date), 'HH:mm')}
+                          </div>
+                          {task.calendar_source_name && (
+                            <div className="text-[9px] text-white/70 bg-white/10 px-2 py-0.5 rounded-full">
+                              {task.calendar_source_name}
+                            </div>
+                          )}
                         </div>
-                        {task.calendar_source_name && (
-                          <div className="text-[9px] text-white/70 mt-0.5">{task.calendar_source_name}</div>
-                        )}
                       </div>
                     );
                   })}
@@ -336,23 +350,35 @@ export default function Calendar({ tasks, viewMode, currentDate, onDateChange, o
   };
 
   return (
-    <div className="flex flex-col h-full bg-white rounded-2xl overflow-hidden shadow-lg border border-slate-200">
-      <div className="flex items-center justify-between p-4 border-b border-slate-200 bg-gradient-to-r from-slate-50 to-blue-50">
-        <div className="flex items-center gap-4">
+    <div className="flex flex-col h-full bg-white rounded-2xl overflow-hidden shadow-xl border border-slate-200/50 animate-fadeIn">
+      {/* Calendar Header avec gradient et animations */}
+      <div className="flex items-center justify-between p-4 border-b border-slate-200/50 bg-gradient-to-r from-white via-blue-50/40 to-white backdrop-blur-sm">
+        <div className="flex items-center gap-3">
           <button
             onClick={navigatePrevious}
-            className="p-2 hover:bg-white rounded-xl transition-all text-slate-700 hover:shadow-md"
+            className="group p-2.5 hover:bg-gradient-to-r hover:from-blue-50 hover:to-indigo-50 rounded-xl transition-all duration-300 text-slate-700 hover:shadow-lg border border-transparent hover:border-[#005f82]/20"
+            title="Période précédente"
           >
-            <ChevronLeft className="w-5 h-5" />
+            <ChevronLeft className="w-5 h-5 text-slate-600 group-hover:text-[#005f82] transition-all duration-300 group-hover:-translate-x-1" />
           </button>
-          <h2 className="text-lg font-bold text-slate-800 capitalize min-w-[250px] text-center">
-            {getDateRange()}
-          </h2>
+
+          <div className="text-center min-w-[280px]">
+            <h2 className="text-lg font-bold bg-gradient-to-r from-[#005f82] to-[#007ba8] bg-clip-text text-transparent capitalize">
+              {getDateRange()}
+            </h2>
+            <p className="text-xs text-slate-500 mt-1 flex items-center justify-center gap-2">
+              <span className="w-2 h-2 bg-gradient-to-r from-[#005f82] to-[#007ba8] rounded-full animate-pulse-slow shadow-sm"></span>
+              <span className="font-medium">{tasks.length}</span>
+              {tasks.length > 1 ? 'tâches' : 'tâche'}
+            </p>
+          </div>
+
           <button
             onClick={navigateNext}
-            className="p-2 hover:bg-white rounded-xl transition-all text-slate-700 hover:shadow-md"
+            className="group p-2.5 hover:bg-gradient-to-r hover:from-blue-50 hover:to-indigo-50 rounded-xl transition-all duration-300 text-slate-700 hover:shadow-lg border border-transparent hover:border-[#005f82]/20"
+            title="Période suivante"
           >
-            <ChevronRight className="w-5 h-5" />
+            <ChevronRight className="w-5 h-5 text-slate-600 group-hover:text-[#005f82] transition-all duration-300 group-hover:translate-x-1" />
           </button>
         </div>
       </div>

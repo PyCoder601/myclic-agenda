@@ -174,41 +174,45 @@ export default function DashboardPage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
       {/* Header */}
-      <header className="bg-white/80 backdrop-blur-lg border-b border-slate-200 shadow-sm sticky top-0 z-50">
-        <div className="max-w-[1920px] mx-auto px-6 py-2.5">
+      <header className="bg-white/90 backdrop-blur-xl border-b border-slate-200/50 shadow-sm sticky top-0 z-50 transition-all duration-300">
+        <div className="max-w-[1920px] mx-auto px-6 py-3">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="bg-gradient-to-br from-[#005f82] to-[#007ba8] p-2 rounded-lg shadow-md">
+            <div className="flex items-center gap-3 group">
+              <div className="bg-gradient-to-br from-[#005f82] to-[#007ba8] p-2.5 rounded-xl shadow-lg transform transition-all duration-300 group-hover:scale-110 group-hover:rotate-3">
                 <CalendarIcon className="w-5 h-5 text-white" />
               </div>
               <div>
                 <h1 className="text-xl font-bold bg-gradient-to-r from-[#005f82] to-[#007ba8] bg-clip-text text-transparent">
                   Mon Agenda
                 </h1>
-                <p className="text-xs text-slate-600">Bonjour, {user?.first_name || user?.username} 👋</p>
+                <p className="text-xs text-slate-600 flex items-center gap-1">
+                  <span className="inline-block animate-wave">👋</span>
+                  Bonjour, {user?.first_name || user?.username}
+                </p>
               </div>
             </div>
 
             <div className="flex items-center gap-2">
               {syncMessage && (
-                <div className="text-xs bg-white px-3 py-1.5 rounded-lg border border-slate-200 text-slate-700 animate-fadeIn">
+                <div className="text-xs bg-white px-3 py-1.5 rounded-lg border border-slate-200 text-slate-700 shadow-sm animate-slideInRight">
                   {syncMessage}
                 </div>
               )}
               <button
                 onClick={handleSync}
                 disabled={isSyncing}
-                className="flex items-center gap-2 bg-white hover:bg-slate-50 text-slate-700 px-3 py-2 rounded-lg transition-all border border-slate-200 hover:border-slate-300 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="group relative flex items-center gap-2 bg-white hover:bg-gradient-to-r hover:from-blue-50 hover:to-indigo-50 text-slate-700 px-3 py-2 rounded-xl transition-all duration-300 border border-slate-200 hover:border-[#005f82] disabled:opacity-50 disabled:cursor-not-allowed hover:shadow-md"
                 title="Synchroniser avec Baikal"
               >
-                <RefreshCw className={`w-4 h-4 ${isSyncing ? 'animate-spin' : ''}`} />
+                <RefreshCw className={`w-4 h-4 transition-transform duration-300 ${isSyncing ? 'animate-spin' : 'group-hover:rotate-180'}`} />
+                <span className="absolute -top-1 -right-1 w-2 h-2 bg-green-500 rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-300"></span>
               </button>
               <button
                 onClick={() => router.push('/settings')}
-                className="flex items-center gap-2 bg-white hover:bg-slate-50 text-slate-700 px-3 py-2 rounded-lg transition-all border border-slate-200 hover:border-slate-300"
+                className="group relative flex items-center gap-2 bg-white hover:bg-gradient-to-r hover:from-purple-50 hover:to-pink-50 text-slate-700 px-3 py-2 rounded-xl transition-all duration-300 border border-slate-200 hover:border-purple-300 hover:shadow-md"
                 title="Paramètres"
               >
-                <Settings className="w-4 h-4" />
+                <Settings className="w-4 h-4 transition-transform duration-300 group-hover:rotate-90" />
               </button>
               <button
                 onClick={() => {
@@ -217,17 +221,18 @@ export default function DashboardPage() {
                   setModalInitialHour(undefined);
                   setIsModalOpen(true);
                 }}
-                className="flex items-center gap-2 bg-gradient-to-r from-[#005f82] to-[#007ba8] hover:shadow-lg text-white px-4 py-2 rounded-lg transition-all font-medium text-sm shadow-md hover:scale-105 active:scale-95"
+                className="group flex items-center gap-2 bg-gradient-to-r from-[#005f82] to-[#007ba8] hover:from-[#007ba8] hover:to-[#005f82] text-white px-5 py-2.5 rounded-xl transition-all duration-300 font-medium text-sm shadow-lg hover:shadow-xl transform hover:scale-105 active:scale-95"
               >
-                <Plus className="w-4 h-4" />
-                Nouvelle tâche
+                <Plus className="w-4 h-4 transition-transform duration-300 group-hover:rotate-90" />
+                <span>Nouvelle tâche</span>
               </button>
-              <div className="h-6 w-px bg-slate-300"></div>
+              <div className="h-8 w-px bg-gradient-to-b from-transparent via-slate-300 to-transparent"></div>
               <button
                 onClick={handleLogout}
-                className="flex items-center gap-2 bg-white hover:bg-slate-50 text-slate-700 px-3 py-2 rounded-lg transition-all border border-slate-200 hover:border-slate-300"
+                className="group flex items-center gap-2 bg-white hover:bg-red-50 text-slate-700 hover:text-red-600 px-3 py-2 rounded-xl transition-all duration-300 border border-slate-200 hover:border-red-300 hover:shadow-md"
+                title="Déconnexion"
               >
-                <LogOut className="w-4 h-4" />
+                <LogOut className="w-4 h-4 transition-transform duration-300 group-hover:translate-x-1" />
               </button>
             </div>
           </div>
@@ -245,15 +250,15 @@ export default function DashboardPage() {
                 <div className="relative calendar-dropdown-container">
                   <button
                     onClick={() => setIsCalendarDropdownOpen(!isCalendarDropdownOpen)}
-                    className="flex items-center gap-2 bg-white hover:bg-slate-50 px-4 py-1.5 rounded-lg shadow-sm border border-slate-200 transition-all text-sm font-medium text-slate-700"
+                    className="group flex items-center gap-2 bg-white hover:bg-gradient-to-r hover:from-blue-50 hover:to-indigo-50 px-4 py-2 rounded-xl shadow-sm border border-slate-200 hover:border-[#005f82] transition-all duration-300 text-sm font-medium text-slate-700 hover:shadow-md"
                   >
-                    <CalendarIcon className="w-4 h-4" />
+                    <CalendarIcon className="w-4 h-4 transition-transform duration-300 group-hover:scale-110" />
                     <span>Agendas</span>
-                    <span className="text-xs bg-[#005f82] text-white px-1.5 py-0.5 rounded-full">
+                    <span className="text-xs bg-gradient-to-r from-[#005f82] to-[#007ba8] text-white px-2 py-0.5 rounded-full font-semibold shadow-sm">
                       {calendars.filter(c => c.is_enabled).length}
                     </span>
                     <svg
-                      className={`w-4 h-4 transition-transform ${isCalendarDropdownOpen ? 'rotate-180' : ''}`}
+                      className={`w-4 h-4 transition-transform duration-300 ${isCalendarDropdownOpen ? 'rotate-180' : ''}`}
                       fill="none"
                       stroke="currentColor"
                       viewBox="0 0 24 24"
@@ -264,13 +269,16 @@ export default function DashboardPage() {
 
                   {/* Dropdown Menu */}
                   {isCalendarDropdownOpen && (
-                    <div className="absolute top-full left-0 mt-2 w-80 bg-white rounded-lg shadow-xl border border-slate-200 z-50 max-h-96 overflow-y-auto">
-                      <div className="p-3">
-                        <div className="flex items-center justify-between mb-3">
-                          <h3 className="text-sm font-semibold text-slate-700">Mes agendas</h3>
+                    <div className="absolute top-full left-0 mt-2 w-80 bg-white rounded-xl shadow-2xl border border-slate-200 z-50 max-h-96 overflow-y-auto animate-slideInDown">
+                      <div className="p-4">
+                        <div className="flex items-center justify-between mb-4">
+                          <h3 className="text-sm font-bold text-slate-800 flex items-center gap-2">
+                            <CalendarIcon className="w-4 h-4 text-[#005f82]" />
+                            Mes agendas
+                          </h3>
                           <button
                             onClick={() => setIsCalendarDropdownOpen(false)}
-                            className="text-slate-400 hover:text-slate-600"
+                            className="text-slate-400 hover:text-slate-600 hover:bg-slate-100 p-1 rounded-lg transition-all duration-200"
                           >
                             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -279,9 +287,9 @@ export default function DashboardPage() {
                         </div>
 
                         {/* Calendriers de l'utilisateur */}
-                        <div className="mb-3">
-                          <div className="text-xs font-medium text-[#005f82] mb-2 px-2">
-                            Calendriers de {user?.username}
+                        <div className="mb-4">
+                          <div className="text-xs font-semibold text-[#005f82] mb-2 px-2 uppercase tracking-wider">
+                            Mes calendriers
                           </div>
                           <div className="space-y-1">
                             {calendars.filter(cal =>
@@ -291,20 +299,24 @@ export default function DashboardPage() {
                               <button
                                 key={calendar.id}
                                 onClick={() => handleToggleCalendar(calendar)}
-                                className="w-full flex items-center justify-between p-2 hover:bg-slate-50 rounded-lg transition-all"
+                                className="group w-full flex items-center justify-between p-3 hover:bg-gradient-to-r hover:from-blue-50 hover:to-indigo-50 rounded-xl transition-all duration-200 border border-transparent hover:border-[#005f82]/20"
                               >
-                                <div className="flex items-center gap-2 flex-1">
-                                  <input
-                                    type="checkbox"
-                                    checked={calendar.is_enabled}
-                                    onChange={() => {}}
-                                    className="h-4 w-4 text-[#005f82] focus:ring-[#005f82] border-gray-300 rounded pointer-events-none"
-                                  />
+                                <div className="flex items-center gap-3 flex-1">
+                                  <div className={`relative transition-all duration-200 ${calendar.is_enabled ? 'scale-100' : 'scale-90 opacity-50'}`}>
+                                    <input
+                                      type="checkbox"
+                                      checked={calendar.is_enabled}
+                                      onChange={() => {}}
+                                      className="h-5 w-5 text-[#005f82] focus:ring-[#005f82] border-gray-300 rounded transition-all duration-200 pointer-events-none"
+                                    />
+                                  </div>
                                   <div
-                                    className="w-3 h-3 rounded-full flex-shrink-0"
+                                    className="w-4 h-4 rounded-full flex-shrink-0 shadow-md ring-2 ring-white transition-all duration-200 group-hover:scale-110"
                                     style={{ backgroundColor: calendar.color }}
                                   />
-                                  <span className="text-sm text-slate-700 truncate">{calendar.name}</span>
+                                  <span className={`text-sm font-medium transition-all duration-200 ${calendar.is_enabled ? 'text-slate-800' : 'text-slate-400'}`}>
+                                    {calendar.name}
+                                  </span>
                                 </div>
                               </button>
                             ))}
@@ -317,7 +329,7 @@ export default function DashboardPage() {
                           !cal.name.toLowerCase().includes(user?.username?.toLowerCase() || '')
                         ).length > 0 && (
                           <div>
-                            <div className="text-xs font-medium text-[#005f82] mb-2 px-2 border-t border-slate-200 pt-3">
+                            <div className="text-xs font-semibold text-[#005f82] mb-2 px-2 border-t border-slate-200 pt-4 uppercase tracking-wider">
                               Calendriers partagés
                             </div>
                             <div className="space-y-1">
@@ -328,20 +340,24 @@ export default function DashboardPage() {
                                 <button
                                   key={calendar.id}
                                   onClick={() => handleToggleCalendar(calendar)}
-                                  className="w-full flex items-center justify-between p-2 hover:bg-slate-50 rounded-lg transition-all"
+                                  className="group w-full flex items-center justify-between p-3 hover:bg-gradient-to-r hover:from-purple-50 hover:to-pink-50 rounded-xl transition-all duration-200 border border-transparent hover:border-purple-200"
                                 >
-                                  <div className="flex items-center gap-2 flex-1">
-                                    <input
-                                      type="checkbox"
-                                      checked={calendar.is_enabled}
-                                      onChange={() => {}}
-                                      className="h-4 w-4 text-[#005f82] focus:ring-[#005f82] border-gray-300 rounded pointer-events-none"
-                                    />
+                                  <div className="flex items-center gap-3 flex-1">
+                                    <div className={`relative transition-all duration-200 ${calendar.is_enabled ? 'scale-100' : 'scale-90 opacity-50'}`}>
+                                      <input
+                                        type="checkbox"
+                                        checked={calendar.is_enabled}
+                                        onChange={() => {}}
+                                        className="h-5 w-5 text-[#005f82] focus:ring-[#005f82] border-gray-300 rounded transition-all duration-200 pointer-events-none"
+                                      />
+                                    </div>
                                     <div
-                                      className="w-3 h-3 rounded-full flex-shrink-0"
+                                      className="w-4 h-4 rounded-full flex-shrink-0 shadow-md ring-2 ring-white transition-all duration-200 group-hover:scale-110"
                                       style={{ backgroundColor: calendar.color }}
                                     />
-                                    <span className="text-sm text-slate-700 truncate">{calendar.name}</span>
+                                    <span className={`text-sm font-medium transition-all duration-200 ${calendar.is_enabled ? 'text-slate-800' : 'text-slate-400'}`}>
+                                      {calendar.name}
+                                    </span>
                                   </div>
                                 </button>
                               ))}
@@ -355,36 +371,45 @@ export default function DashboardPage() {
               )}
 
               {/* View Mode Selector */}
-              <div className="flex gap-1.5 bg-white p-1 rounded-lg shadow-sm border border-slate-200 w-fit">
+              <div className="flex gap-2 bg-white/80 backdrop-blur-sm p-1.5 rounded-xl shadow-sm border border-slate-200">
                 <button
                   onClick={() => setViewMode('day')}
-                  className={`px-4 py-1.5 rounded-md font-medium transition-all text-sm ${
+                  className={`relative px-5 py-2 rounded-lg font-semibold transition-all duration-300 text-sm overflow-hidden ${
                     viewMode === 'day'
-                      ? 'bg-gradient-to-r from-[#005f82] to-[#007ba8] text-white shadow-md'
-                      : 'text-slate-600 hover:bg-slate-50'
+                      ? 'text-white shadow-lg'
+                      : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
                   }`}
                 >
-                  Aujourd&apos;hui
+                  {viewMode === 'day' && (
+                    <span className="absolute inset-0 bg-gradient-to-r from-[#005f82] to-[#007ba8] animate-slideInFromLeft"></span>
+                  )}
+                  <span className="relative z-10">Aujourd&apos;hui</span>
                 </button>
                 <button
                   onClick={() => setViewMode('week')}
-                  className={`px-4 py-1.5 rounded-md font-medium transition-all text-sm ${
+                  className={`relative px-5 py-2 rounded-lg font-semibold transition-all duration-300 text-sm overflow-hidden ${
                     viewMode === 'week'
-                      ? 'bg-gradient-to-r from-[#005f82] to-[#007ba8] text-white shadow-md'
-                      : 'text-slate-600 hover:bg-slate-50'
+                      ? 'text-white shadow-lg'
+                      : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
                   }`}
                 >
-                  Cette semaine
+                  {viewMode === 'week' && (
+                    <span className="absolute inset-0 bg-gradient-to-r from-[#005f82] to-[#007ba8] animate-slideInFromLeft"></span>
+                  )}
+                  <span className="relative z-10">Cette semaine</span>
                 </button>
                 <button
                   onClick={() => setViewMode('month')}
-                  className={`px-4 py-1.5 rounded-md font-medium transition-all text-sm ${
+                  className={`relative px-5 py-2 rounded-lg font-semibold transition-all duration-300 text-sm overflow-hidden ${
                     viewMode === 'month'
-                      ? 'bg-gradient-to-r from-[#005f82] to-[#007ba8] text-white shadow-md'
-                      : 'text-slate-600 hover:bg-slate-50'
+                      ? 'text-white shadow-lg'
+                      : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
                   }`}
                 >
-                  Ce mois
+                  {viewMode === 'month' && (
+                    <span className="absolute inset-0 bg-gradient-to-r from-[#005f82] to-[#007ba8] animate-slideInFromLeft"></span>
+                  )}
+                  <span className="relative z-10">Ce mois</span>
                 </button>
               </div>
             </div>

@@ -3,7 +3,8 @@ from rest_framework.routers import DefaultRouter
 from rest_framework_simplejwt.views import TokenRefreshView
 from .views import (
     TaskViewSet, signup, login, user_profile, update_profile,
-    caldav_config, sync_caldav, test_caldav_connection
+    caldav_config, sync_caldav, test_caldav_connection,
+    discover_calendars, update_calendar_source
 )
 
 router = DefaultRouter()
@@ -23,6 +24,8 @@ urlpatterns = [
     path('caldav/config/', caldav_config, name='caldav_config'),
     path('caldav/sync/', sync_caldav, name='sync_caldav'),
     path('caldav/test/', test_caldav_connection, name='test_caldav'),
+    path('caldav/discover/', discover_calendars, name='discover_calendars'),
+    path('caldav/calendars/<int:calendar_id>/', update_calendar_source, name='update_calendar_source'),
 
     # Routes des tâches
     path('', include(router.urls)),

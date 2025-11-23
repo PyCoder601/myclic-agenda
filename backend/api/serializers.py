@@ -1,6 +1,6 @@
 from rest_framework import serializers
 from django.contrib.auth.models import User
-from .models import Task, CalDAVConfig
+from .models import Task, CalDAVConfig, CalendarSource
 
 
 class UserSerializer(serializers.ModelSerializer):
@@ -25,12 +25,21 @@ class UserSerializer(serializers.ModelSerializer):
         return user
 
 
+class CalendarSourceSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = CalendarSource
+        fields = ('id', 'name', 'calendar_url', 'is_enabled', 'color', 'created_at', 'updated_at')
+        read_only_fields = ('created_at', 'updated_at')
+
+
 class CalDAVConfigSerializer(serializers.ModelSerializer):
+    calendars = CalendarSourceSerializer(many=True, read_only=True)
+
     class Meta:
         model = CalDAVConfig
         fields = (
             'id', 'caldav_url', 'username', 'password', 'calendar_name',
-            'sync_enabled', 'last_sync', 'created_at', 'updated_at'
+            'sync_enabled', 'last_sync', 'created_at', 'updated_at', 'calendars'
         )
         extra_kwargs = {
             'password': {'write_only': True},
@@ -39,13 +48,18 @@ class CalDAVConfigSerializer(serializers.ModelSerializer):
 
 
 class TaskSerializer(serializers.ModelSerializer):
+    calendar_source_name = serializers.CharField(source='calendar_source.name', read_only=True)
+    calendar_source_color = serializers.CharField(source='calendar_source.color', read_only=True)
+
     class Meta:
         model = Task
         fields = (
             'id', 'title', 'description', 'is_completed', 'start_date', 'end_date',
-            'created_at', 'updated_at', 'caldav_uid', 'caldav_etag', 'last_synced'
+            'created_at', 'updated_at', 'caldav_uid', 'caldav_etag', 'last_synced',
+            'calendar_source', 'calendar_source_name', 'calendar_source_color'
         )
-        read_only_fields = ('created_at', 'updated_at', 'caldav_uid', 'caldav_etag', 'last_synced')
+        read_only_fields = ('created_at', 'updated_at', 'caldav_uid', 'caldav_etag', 'last_synced',
+                           'calendar_source_name', 'calendar_source_color')
 
     def create(self, validated_data):
         validated_data['user'] = self.context['request'].user

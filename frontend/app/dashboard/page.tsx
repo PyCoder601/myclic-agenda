@@ -8,7 +8,7 @@ import { Calendar as CalendarIcon, LogOut, Plus, CheckCircle2, Clock, TrendingUp
 import Calendar from '@/components/Calendar';
 import TaskModal from '@/components/TaskModal';
 import api, { caldavAPI } from '@/lib/api';
-import { Task, ViewMode } from '@/lib/types';
+import { Task, ViewMode, CalendarSource } from '@/lib/types';
 
 export default function DashboardPage() {
   const { user, loading: authLoading } = useAppSelector((state) => state.auth);
@@ -16,6 +16,7 @@ export default function DashboardPage() {
   const router = useRouter();
   
   const [tasks, setTasks] = useState<Task[]>([]);
+  const [calendars, setCalendars] = useState<CalendarSource[]>([]);
   const [loading, setLoading] = useState(true);
   const [viewMode, setViewMode] = useState<ViewMode>('week');
   const [currentDate, setCurrentDate] = useState(new Date());
@@ -26,6 +27,7 @@ export default function DashboardPage() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
   const [syncMessage, setSyncMessage] = useState<string | null>(null);
+  const [isCalendarDropdownOpen, setIsCalendarDropdownOpen] = useState(false);
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -36,8 +38,22 @@ export default function DashboardPage() {
   useEffect(() => {
     if (user) {
       fetchTasks();
+      fetchCalendars();
     }
   }, [user]);
+
+  // Fermer le dropdown quand on clique en dehors
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as HTMLElement;
+      if (isCalendarDropdownOpen && !target.closest('.calendar-dropdown-container')) {
+        setIsCalendarDropdownOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [isCalendarDropdownOpen]);
 
   const fetchTasks = async () => {
     try {
@@ -49,7 +65,36 @@ export default function DashboardPage() {
       setLoading(false);
     }
   };
-  
+
+  const fetchCalendars = async () => {
+    try {
+      const response = await caldavAPI.getConfig();
+      setCalendars(response.data.calendars || []);
+    } catch (error) {
+      // Pas de configuration CalDAV ou erreur
+      setCalendars([]);
+    }
+  };
+
+  const handleToggleCalendar = async (calendar: CalendarSource) => {
+    try {
+      await caldavAPI.updateCalendar(calendar.id, { is_enabled: !calendar.is_enabled });
+      setCalendars(calendars.map(cal =>
+        cal.id === calendar.id ? { ...cal, is_enabled: !cal.is_enabled } : cal
+      ));
+    } catch (error) {
+      console.error('Erreur lors de la mise à jour du calendrier:', error);
+    }
+  };
+
+  // Filtrer les tâches en fonction des calendriers activés
+  const filteredTasks = tasks.filter(task => {
+    if (calendars.length === 0) return true; // Pas de calendriers configurés, afficher toutes les tâches
+    if (!task.calendar_source) return true; // Tâches sans calendrier source
+    const calendar = calendars.find(cal => cal.id === task.calendar_source);
+    return !calendar || calendar.is_enabled; // Afficher si le calendrier est activé ou non trouvé
+  });
+
   const handleLogout = () => {
     dispatch(logout());
     router.push('/login');
@@ -115,9 +160,9 @@ export default function DashboardPage() {
   };
 
   const getStats = () => {
-    const total = tasks.length;
-    const completed = tasks.filter(t => t.is_completed).length;
-    const upcoming = tasks.filter(t => {
+    const total = filteredTasks.length;
+    const completed = filteredTasks.filter(t => t.is_completed).length;
+    const upcoming = filteredTasks.filter(t => {
       const now = new Date();
       const start = new Date(t.start_date);
       return start > now && !t.is_completed;
@@ -128,7 +173,7 @@ export default function DashboardPage() {
 
   const getUpcomingTasks = () => {
     const now = new Date();
-    return tasks
+    return filteredTasks
       .filter(t => new Date(t.start_date) > now && !t.is_completed)
       .sort((a, b) => new Date(a.start_date).getTime() - new Date(b.start_date).getTime())
       .slice(0, 5);
@@ -215,44 +260,160 @@ export default function DashboardPage() {
         <div className="flex gap-4 h-[calc(100vh-85px)]">
           {/* Main Calendar */}
           <div className="flex-1 flex flex-col min-w-0">
-            {/* View Mode Selector */}
-            <div className="mb-3 flex gap-1.5 bg-white p-1 rounded-lg shadow-sm border border-slate-200 w-fit">
-              <button
-                onClick={() => setViewMode('day')}
-                className={`px-4 py-1.5 rounded-md font-medium transition-all text-sm ${
-                  viewMode === 'day'
-                    ? 'bg-gradient-to-r from-[#005f82] to-[#007ba8] text-white shadow-md'
-                    : 'text-slate-600 hover:bg-slate-50'
-                }`}
-              >
-                Aujourd&apos;hui
-              </button>
-              <button
-                onClick={() => setViewMode('week')}
-                className={`px-4 py-1.5 rounded-md font-medium transition-all text-sm ${
-                  viewMode === 'week'
-                    ? 'bg-gradient-to-r from-[#005f82] to-[#007ba8] text-white shadow-md'
-                    : 'text-slate-600 hover:bg-slate-50'
-                }`}
-              >
-                Cette semaine
-              </button>
-              <button
-                onClick={() => setViewMode('month')}
-                className={`px-4 py-1.5 rounded-md font-medium transition-all text-sm ${
-                  viewMode === 'month'
-                    ? 'bg-gradient-to-r from-[#005f82] to-[#007ba8] text-white shadow-md'
-                    : 'text-slate-600 hover:bg-slate-50'
-                }`}
-              >
-                Ce mois
-              </button>
+            {/* View Mode Selector and Calendar Filter */}
+            <div className="mb-3 flex items-center gap-3">
+              <div className="flex gap-1.5 bg-white p-1 rounded-lg shadow-sm border border-slate-200 w-fit">
+                <button
+                  onClick={() => setViewMode('day')}
+                  className={`px-4 py-1.5 rounded-md font-medium transition-all text-sm ${
+                    viewMode === 'day'
+                      ? 'bg-gradient-to-r from-[#005f82] to-[#007ba8] text-white shadow-md'
+                      : 'text-slate-600 hover:bg-slate-50'
+                  }`}
+                >
+                  Aujourd&apos;hui
+                </button>
+                <button
+                  onClick={() => setViewMode('week')}
+                  className={`px-4 py-1.5 rounded-md font-medium transition-all text-sm ${
+                    viewMode === 'week'
+                      ? 'bg-gradient-to-r from-[#005f82] to-[#007ba8] text-white shadow-md'
+                      : 'text-slate-600 hover:bg-slate-50'
+                  }`}
+                >
+                  Cette semaine
+                </button>
+                <button
+                  onClick={() => setViewMode('month')}
+                  className={`px-4 py-1.5 rounded-md font-medium transition-all text-sm ${
+                    viewMode === 'month'
+                      ? 'bg-gradient-to-r from-[#005f82] to-[#007ba8] text-white shadow-md'
+                      : 'text-slate-600 hover:bg-slate-50'
+                  }`}
+                >
+                  Ce mois
+                </button>
+              </div>
+
+              {/* Calendar Dropdown Selector */}
+              {calendars.length > 0 && (
+                <div className="relative calendar-dropdown-container">
+                  <button
+                    onClick={() => setIsCalendarDropdownOpen(!isCalendarDropdownOpen)}
+                    className="flex items-center gap-2 bg-white hover:bg-slate-50 px-4 py-1.5 rounded-lg shadow-sm border border-slate-200 transition-all text-sm font-medium text-slate-700"
+                  >
+                    <CalendarIcon className="w-4 h-4" />
+                    <span>Agendas</span>
+                    <span className="text-xs bg-[#005f82] text-white px-1.5 py-0.5 rounded-full">
+                      {calendars.filter(c => c.is_enabled).length}
+                    </span>
+                    <svg
+                      className={`w-4 h-4 transition-transform ${isCalendarDropdownOpen ? 'rotate-180' : ''}`}
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                    </svg>
+                  </button>
+
+                  {/* Dropdown Menu */}
+                  {isCalendarDropdownOpen && (
+                    <div className="absolute top-full left-0 mt-2 w-80 bg-white rounded-lg shadow-xl border border-slate-200 z-50 max-h-96 overflow-y-auto">
+                      <div className="p-3">
+                        <div className="flex items-center justify-between mb-3">
+                          <h3 className="text-sm font-semibold text-slate-700">Mes agendas</h3>
+                          <button
+                            onClick={() => setIsCalendarDropdownOpen(false)}
+                            className="text-slate-400 hover:text-slate-600"
+                          >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                          </button>
+                        </div>
+
+                        {/* Calendriers de l'utilisateur */}
+                        <div className="mb-3">
+                          <div className="text-xs font-medium text-[#005f82] mb-2 px-2">
+                            Calendriers de {user?.username}
+                          </div>
+                          <div className="space-y-1">
+                            {calendars.filter(cal =>
+                              cal.name.toLowerCase().includes('default') ||
+                              cal.name.toLowerCase().includes(user?.username?.toLowerCase() || '')
+                            ).map((calendar) => (
+                              <button
+                                key={calendar.id}
+                                onClick={() => handleToggleCalendar(calendar)}
+                                className="w-full flex items-center justify-between p-2 hover:bg-slate-50 rounded-lg transition-all"
+                              >
+                                <div className="flex items-center gap-2 flex-1">
+                                  <input
+                                    type="checkbox"
+                                    checked={calendar.is_enabled}
+                                    onChange={() => {}}
+                                    className="h-4 w-4 text-[#005f82] focus:ring-[#005f82] border-gray-300 rounded pointer-events-none"
+                                  />
+                                  <div
+                                    className="w-3 h-3 rounded-full flex-shrink-0"
+                                    style={{ backgroundColor: calendar.color }}
+                                  />
+                                  <span className="text-sm text-slate-700 truncate">{calendar.name}</span>
+                                </div>
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+
+                        {/* Calendriers partagés */}
+                        {calendars.filter(cal =>
+                          !cal.name.toLowerCase().includes('default') &&
+                          !cal.name.toLowerCase().includes(user?.username?.toLowerCase() || '')
+                        ).length > 0 && (
+                          <div>
+                            <div className="text-xs font-medium text-[#005f82] mb-2 px-2 border-t border-slate-200 pt-3">
+                              Calendriers partagés
+                            </div>
+                            <div className="space-y-1">
+                              {calendars.filter(cal =>
+                                !cal.name.toLowerCase().includes('default') &&
+                                !cal.name.toLowerCase().includes(user?.username?.toLowerCase() || '')
+                              ).map((calendar) => (
+                                <button
+                                  key={calendar.id}
+                                  onClick={() => handleToggleCalendar(calendar)}
+                                  className="w-full flex items-center justify-between p-2 hover:bg-slate-50 rounded-lg transition-all"
+                                >
+                                  <div className="flex items-center gap-2 flex-1">
+                                    <input
+                                      type="checkbox"
+                                      checked={calendar.is_enabled}
+                                      onChange={() => {}}
+                                      className="h-4 w-4 text-[#005f82] focus:ring-[#005f82] border-gray-300 rounded pointer-events-none"
+                                    />
+                                    <div
+                                      className="w-3 h-3 rounded-full flex-shrink-0"
+                                      style={{ backgroundColor: calendar.color }}
+                                    />
+                                    <span className="text-sm text-slate-700 truncate">{calendar.name}</span>
+                                  </div>
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
 
             {/* Calendar */}
             <div className="flex-1 min-h-0">
               <Calendar
-                tasks={tasks}
+                tasks={filteredTasks}
                 viewMode={viewMode}
                 currentDate={currentDate}
                 onDateChange={setCurrentDate}

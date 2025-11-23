@@ -5,9 +5,10 @@ from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.response import Response
 from rest_framework_simplejwt.tokens import RefreshToken
 import threading
+import caldav
 
-from .models import Task, CalDAVConfig
-from .serializers import TaskSerializer, UserSerializer, CalDAVConfigSerializer
+from .models import Task, CalDAVConfig, CalendarSource
+from .serializers import TaskSerializer, UserSerializer, CalDAVConfigSerializer, CalendarSourceSerializer
 from .caldav_service import CalDAVService
 
 
@@ -274,3 +275,84 @@ class TaskViewSet(viewsets.ModelViewSet):
             'stats': stats
         })
 
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def discover_calendars(request):
+    """Découvrir et lister tous les calendriers CalDAV disponibles"""
+    try:
+        config = CalDAVConfig.objects.get(user=request.user)
+    except CalDAVConfig.DoesNotExist:
+        return Response({
+            'error': 'Configuration CalDAV non trouvée. Veuillez configurer CalDAV d\'abord.'
+        }, status=status.HTTP_404_NOT_FOUND)
+
+    try:
+        # Se connecter au serveur CalDAV
+        client = caldav.DAVClient(
+            url=config.caldav_url,
+            username=config.username,
+            password=config.password
+        )
+        principal = client.principal()
+        calendars = principal.calendars()
+
+        discovered = []
+        colors = ['#005f82', '#FF6B6B', '#4ECDC4', '#45B7D1', '#FFA07A', '#98D8C8', '#F7DC6F', '#BB8FCE']
+
+        for idx, cal in enumerate(calendars):
+            calendar_name = cal.name or f"Calendrier {idx + 1}"
+            calendar_url = cal.url.canonical()
+
+            # Vérifier si ce calendrier existe déjà
+            existing = CalendarSource.objects.filter(
+                user=request.user,
+                calendar_url=calendar_url
+            ).first()
+
+            if existing:
+                discovered.append(CalendarSourceSerializer(existing).data)
+            else:
+                # Créer une nouvelle source de calendrier
+                new_calendar = CalendarSource.objects.create(
+                    user=request.user,
+                    name=calendar_name,
+                    calendar_url=calendar_url,
+                    is_enabled=True,
+                    color=colors[idx % len(colors)],
+                    caldav_config=config
+                )
+                discovered.append(CalendarSourceSerializer(new_calendar).data)
+
+        return Response({
+            'calendars': discovered,
+            'count': len(discovered)
+        })
+
+    except Exception as e:
+        return Response({
+            'error': f'Erreur lors de la découverte des calendriers: {str(e)}'
+        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+@api_view(['PUT', 'DELETE'])
+@permission_classes([IsAuthenticated])
+def update_calendar_source(request, calendar_id):
+    """Mettre à jour ou supprimer une source de calendrier"""
+    try:
+        calendar = CalendarSource.objects.get(id=calendar_id, user=request.user)
+    except CalendarSource.DoesNotExist:
+        return Response({
+            'error': 'Calendrier non trouvé'
+        }, status=status.HTTP_404_NOT_FOUND)
+
+    if request.method == 'PUT':
+        serializer = CalendarSourceSerializer(calendar, data=request.data, partial=True)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    elif request.method == 'DELETE':
+        calendar.delete()
+        return Response({'message': 'Calendrier supprimé'}, status=status.HTTP_204_NO_CONTENT)

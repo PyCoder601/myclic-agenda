@@ -89,6 +89,19 @@ export const caldavAPI = {
 
   // Synchroniser via le viewset des tâches
   syncTasks: () => api.post('/tasks/sync/'),
+
+  // Découvrir tous les calendriers disponibles
+  discoverCalendars: () => api.get('/caldav/discover/'),
+
+  // Mettre à jour un calendrier (activer/désactiver, changer couleur, etc.)
+  updateCalendar: (calendarId: number, data: Partial<{
+    name: string;
+    is_enabled: boolean;
+    color: string;
+  }>) => api.put(`/caldav/calendars/${calendarId}/`, data),
+
+  // Supprimer un calendrier
+  deleteCalendar: (calendarId: number) => api.delete(`/caldav/calendars/${calendarId}/`),
 };
 
 export default api;

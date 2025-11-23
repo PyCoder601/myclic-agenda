@@ -1,11 +1,11 @@
 from django.contrib import admin
-from .models import Task, CalDAVConfig
+from .models import Task, CalDAVConfig, CalendarSource
 
 # Register your models here.
 @admin.register(Task)
 class TaskAdmin(admin.ModelAdmin):
-    list_display = ('title', 'user', 'start_date', 'end_date', 'is_completed', 'caldav_uid', 'last_synced', 'created_at')
-    list_filter = ('is_completed', 'start_date', 'user')
+    list_display = ('title', 'user', 'calendar_source', 'start_date', 'end_date', 'is_completed', 'caldav_uid', 'last_synced', 'created_at')
+    list_filter = ('is_completed', 'start_date', 'user', 'calendar_source')
     search_fields = ('title', 'description', 'user__username', 'caldav_uid')
     date_hierarchy = 'start_date'
     ordering = ('-start_date',)
@@ -18,3 +18,13 @@ class CalDAVConfigAdmin(admin.ModelAdmin):
     list_filter = ('sync_enabled', 'last_sync')
     search_fields = ('user__username', 'caldav_url', 'username')
     readonly_fields = ('last_sync', 'created_at', 'updated_at')
+
+
+@admin.register(CalendarSource)
+class CalendarSourceAdmin(admin.ModelAdmin):
+    list_display = ('name', 'user', 'is_enabled', 'color', 'caldav_config', 'created_at')
+    list_filter = ('is_enabled', 'user', 'caldav_config')
+    search_fields = ('name', 'user__username', 'calendar_url')
+    readonly_fields = ('created_at', 'updated_at')
+    list_editable = ('is_enabled', 'color')
+

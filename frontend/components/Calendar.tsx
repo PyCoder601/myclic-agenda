@@ -124,24 +124,34 @@ export default function Calendar({ tasks, viewMode, currentDate, onDateChange, o
                   className="flex-1 p-1.5 hover:bg-blue-50/50 cursor-pointer transition-colors relative"
                   onClick={() => onAddTask(currentDate, hour)}
                 >
-                  {hourTasks.map(task => (
-                    <div
-                      key={task.id}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onTaskClick(task);
-                      }}
-                      className="mb-1 p-2 rounded-lg bg-gradient-to-r from-[#005f82] to-[#007ba8] hover:shadow-lg cursor-pointer transition-all"
-                    >
-                      <div className="font-semibold text-white text-xs">{task.title}</div>
-                      {task.description && (
-                        <div className="text-[10px] text-blue-100 mt-0.5 line-clamp-1">{task.description}</div>
-                      )}
-                      <div className="text-[10px] text-blue-100 mt-0.5 font-medium">
-                        {format(new Date(task.start_date), 'HH:mm')} - {format(new Date(task.end_date), 'HH:mm')}
+                  {hourTasks.map(task => {
+                    const taskColor = task.calendar_source_color || '#005f82';
+                    return (
+                      <div
+                        key={task.id}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onTaskClick(task);
+                        }}
+                        className="mb-1 p-2 rounded-lg hover:shadow-lg cursor-pointer transition-all"
+                        style={{
+                          background: `linear-gradient(to right, ${taskColor}, ${taskColor}dd)`,
+                          borderLeft: `4px solid ${taskColor}`
+                        }}
+                      >
+                        <div className="font-semibold text-white text-xs">{task.title}</div>
+                        {task.description && (
+                          <div className="text-[10px] text-white/90 mt-0.5 line-clamp-1">{task.description}</div>
+                        )}
+                        <div className="text-[10px] text-white/80 mt-0.5 font-medium">
+                          {format(new Date(task.start_date), 'HH:mm')} - {format(new Date(task.end_date), 'HH:mm')}
+                        </div>
+                        {task.calendar_source_name && (
+                          <div className="text-[9px] text-white/70 mt-0.5">{task.calendar_source_name}</div>
+                        )}
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
             );
@@ -205,21 +215,28 @@ export default function Calendar({ tasks, viewMode, currentDate, onDateChange, o
                       }`}
                       onClick={() => onAddTask(day, hour)}
                     >
-                      {dayTasks.map(task => (
-                        <div
-                          key={task.id}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            onTaskClick(task);
-                          }}
-                          className="mb-0.5 p-1.5 rounded-lg bg-gradient-to-r from-[#005f82] to-[#007ba8] hover:shadow-md cursor-pointer transition-all text-[10px]"
-                        >
-                          <div className="font-semibold text-white truncate">{task.title}</div>
-                          <div className="text-blue-100 font-medium mt-0.5">
-                            {format(new Date(task.start_date), 'HH:mm')}
+                      {dayTasks.map(task => {
+                        const taskColor = task.calendar_source_color || '#005f82';
+                        return (
+                          <div
+                            key={task.id}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onTaskClick(task);
+                            }}
+                            className="mb-0.5 p-1.5 rounded-lg hover:shadow-md cursor-pointer transition-all text-[10px]"
+                            style={{
+                              background: `linear-gradient(to right, ${taskColor}, ${taskColor}dd)`,
+                              borderLeft: `3px solid ${taskColor}`
+                            }}
+                          >
+                            <div className="font-semibold text-white truncate">{task.title}</div>
+                            <div className="text-white/80 font-medium mt-0.5">
+                              {format(new Date(task.start_date), 'HH:mm')}
+                            </div>
                           </div>
-                        </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   );
                 })}
@@ -279,7 +296,8 @@ export default function Calendar({ tasks, viewMode, currentDate, onDateChange, o
                     const taskEnd = new Date(task.end_date);
                     const isStart = isSameDay(taskStart, day);
                     const isEnd = isSameDay(taskEnd, day);
-                    
+                    const taskColor = task.calendar_source_color || '#005f82';
+
                     return (
                       <div
                         key={task.id}
@@ -287,13 +305,17 @@ export default function Calendar({ tasks, viewMode, currentDate, onDateChange, o
                           e.stopPropagation();
                           onTaskClick(task);
                         }}
-                        className={`text-xs p-1.5 bg-gradient-to-r from-[#005f82] to-[#007ba8] hover:shadow-md text-white cursor-pointer transition-all ${
+                        className={`text-xs p-1.5 hover:shadow-md text-white cursor-pointer transition-all ${
                           isSpanning ? 'rounded-none' : 'rounded-lg'
                         } ${
                           isStart && !isEnd ? 'rounded-r-none' : ''
                         } ${
                           isEnd && !isStart ? 'rounded-l-none' : ''
                         }`}
+                        style={{
+                          background: `linear-gradient(to right, ${taskColor}, ${taskColor}dd)`,
+                          borderLeft: `3px solid ${taskColor}`
+                        }}
                       >
                         <div className="font-semibold truncate">{task.title}</div>
                       </div>

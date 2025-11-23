@@ -5,7 +5,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAppSelector } from '@/store/hooks';
 import { caldavAPI } from '@/lib/api';
-import { CalDAVConfig } from '@/lib/types';
+import { CalDAVConfig, CalendarSource } from '@/lib/types';
 
 export default function SettingsPage() {
   const router = useRouter();
@@ -13,9 +13,11 @@ export default function SettingsPage() {
   const [loading, setLoading] = useState(false);
   const [testing, setTesting] = useState(false);
   const [syncing, setSyncing] = useState(false);
+  const [discovering, setDiscovering] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [hasConfig, setHasConfig] = useState(false);
-  
+  const [calendars, setCalendars] = useState<CalendarSource[]>([]);
+
   const [formData, setFormData] = useState({
     caldav_url: '',
     username: '',
@@ -39,6 +41,7 @@ export default function SettingsPage() {
       const response = await caldavAPI.getConfig();
       setConfig(response.data);
       setHasConfig(true);
+      setCalendars(response.data.calendars || []);
       setFormData({
         caldav_url: response.data.caldav_url,
         username: response.data.username,
@@ -68,6 +71,8 @@ export default function SettingsPage() {
       
       if (response.data.connection_status === 'success') {
         setMessage({ type: 'success', text: 'Configuration CalDAV sauvegardée et connexion réussie !' });
+        // Découvrir automatiquement les calendriers après configuration
+        handleDiscoverCalendars();
       } else {
         setMessage({ type: 'error', text: 'Configuration sauvegardée mais connexion échouée. Vérifiez vos paramètres.' });
       }
@@ -99,6 +104,45 @@ export default function SettingsPage() {
     }
   };
 
+  const handleDiscoverCalendars = async () => {
+    setDiscovering(true);
+    setMessage(null);
+
+    try {
+      const response = await caldavAPI.discoverCalendars();
+      setCalendars(response.data.calendars || []);
+      setMessage({
+        type: 'success',
+        text: `${response.data.count} calendrier(s) découvert(s) !`
+      });
+    } catch (error: any) {
+      setMessage({ type: 'error', text: error.response?.data?.error || 'Erreur lors de la découverte des calendriers' });
+    } finally {
+      setDiscovering(false);
+    }
+  };
+
+  const handleToggleCalendar = async (calendar: CalendarSource) => {
+    try {
+      await caldavAPI.updateCalendar(calendar.id, { is_enabled: !calendar.is_enabled });
+      setCalendars(calendars.map(cal =>
+        cal.id === calendar.id ? { ...cal, is_enabled: !cal.is_enabled } : cal
+      ));
+    } catch (error: any) {
+      setMessage({ type: 'error', text: 'Erreur lors de la mise à jour du calendrier' });
+    }
+  };
+
+  const handleColorChange = async (calendar: CalendarSource, color: string) => {
+    try {
+      await caldavAPI.updateCalendar(calendar.id, { color });
+      setCalendars(calendars.map(cal =>
+        cal.id === calendar.id ? { ...cal, color } : cal
+      ));
+    } catch (error: any) {
+      setMessage({ type: 'error', text: 'Erreur lors de la mise à jour de la couleur' });
+    }
+  };
   const handleSync = async () => {
     setSyncing(true);
     setMessage(null);
@@ -126,6 +170,7 @@ export default function SettingsPage() {
       await caldavAPI.deleteConfig();
       setHasConfig(false);
       setConfig(null);
+      setCalendars([]);
       setFormData({
         caldav_url: '',
         username: '',
@@ -185,7 +230,7 @@ export default function SettingsPage() {
           </div>
         )}
 
-        <div className="bg-white border border-gray-200 rounded-xl shadow-sm p-6">
+        <div className="bg-white border border-gray-200 rounded-xl shadow-sm p-6 mb-8">
           <h2 className="text-xl font-semibold text-gray-900 mb-6">
             Configuration du serveur Baikal
           </h2>
@@ -239,23 +284,6 @@ export default function SettingsPage() {
               />
             </div>
 
-            <div>
-              <label htmlFor="calendar_name" className="block text-sm font-medium text-gray-700 mb-2">
-                Nom du calendrier
-              </label>
-              <input
-                type="text"
-                id="calendar_name"
-                value={formData.calendar_name}
-                onChange={(e) => setFormData({ ...formData, calendar_name: e.target.value })}
-                placeholder="default"
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#005f82] focus:border-transparent"
-              />
-              <p className="mt-1 text-sm text-gray-500">
-                Le nom du calendrier sur votre serveur Baikal
-              </p>
-            </div>
-
             <div className="flex items-center">
               <input
                 type="checkbox"
@@ -286,7 +314,7 @@ export default function SettingsPage() {
                     disabled={testing}
                     className="px-6 py-3 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium"
                   >
-                    {testing ? 'Test...' : 'Tester la connexion'}
+                    {testing ? 'Test...' : 'Tester'}
                   </button>
 
                   <button
@@ -301,6 +329,102 @@ export default function SettingsPage() {
             </div>
           </form>
         </div>
+
+        {/* Section Agendas - Liste des calendriers */}
+        {hasConfig && (
+          <div className="bg-white border border-gray-200 rounded-xl shadow-sm p-6">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-xl font-semibold text-gray-900">Agendas</h2>
+              <button
+                onClick={handleDiscoverCalendars}
+                disabled={discovering}
+                className="px-4 py-2 bg-[#005f82] text-white rounded-lg hover:bg-[#004a66] disabled:opacity-50 transition-colors text-sm"
+              >
+                {discovering ? 'Découverte...' : '🔄 Découvrir les calendriers'}
+              </button>
+            </div>
+
+            {calendars.length > 0 ? (
+              <div className="space-y-6">
+                {/* Calendriers de l'utilisateur */}
+                <div>
+                  <h3 className="text-sm font-medium text-[#005f82] mb-3 border-b pb-2">
+                    Calendriers de {user?.username}
+                  </h3>
+                  <div className="space-y-2">
+                    {calendars.filter(cal =>
+                      cal.name.toLowerCase().includes('default') ||
+                      cal.name.toLowerCase().includes(user?.username?.toLowerCase() || '')
+                    ).map((calendar) => (
+                      <div key={calendar.id} className="flex items-center justify-between p-3 hover:bg-gray-50 rounded-lg">
+                        <div className="flex items-center gap-3">
+                          <input
+                            type="checkbox"
+                            checked={calendar.is_enabled}
+                            onChange={() => handleToggleCalendar(calendar)}
+                            className="h-5 w-5 text-[#005f82] focus:ring-[#005f82] border-gray-300 rounded"
+                          />
+                          <span className="text-gray-900">{calendar.name}</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <input
+                            type="color"
+                            value={calendar.color}
+                            onChange={(e) => handleColorChange(calendar, e.target.value)}
+                            className="w-8 h-8 rounded cursor-pointer border border-gray-300"
+                          />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Calendriers partagés */}
+                {calendars.filter(cal =>
+                  !cal.name.toLowerCase().includes('default') &&
+                  !cal.name.toLowerCase().includes(user?.username?.toLowerCase() || '')
+                ).length > 0 && (
+                  <div>
+                    <h3 className="text-sm font-medium text-[#005f82] mb-3 border-b pb-2">
+                      Calendriers partagés avec moi
+                    </h3>
+                    <div className="space-y-2">
+                      {calendars.filter(cal =>
+                        !cal.name.toLowerCase().includes('default') &&
+                        !cal.name.toLowerCase().includes(user?.username?.toLowerCase() || '')
+                      ).map((calendar) => (
+                        <div key={calendar.id} className="flex items-center justify-between p-3 hover:bg-gray-50 rounded-lg">
+                          <div className="flex items-center gap-3">
+                            <input
+                              type="checkbox"
+                              checked={calendar.is_enabled}
+                              onChange={() => handleToggleCalendar(calendar)}
+                              className="h-5 w-5 text-[#005f82] focus:ring-[#005f82] border-gray-300 rounded"
+                            />
+                            <span className="text-gray-900">{calendar.name}</span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <input
+                              type="color"
+                              value={calendar.color}
+                              onChange={(e) => handleColorChange(calendar, e.target.value)}
+                              className="w-8 h-8 rounded cursor-pointer border border-gray-300"
+                            />
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="text-center py-8 text-gray-500">
+                <p>Aucun calendrier découvert.</p>
+                <p className="text-sm mt-2">Cliquez sur &quot;Découvrir les calendriers&quot; pour les charger.</p>
+              </div>
+            )}
+          </div>
+        )}
 
         <div className="mt-8 bg-blue-50 border border-blue-200 rounded-xl p-6">
           <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">

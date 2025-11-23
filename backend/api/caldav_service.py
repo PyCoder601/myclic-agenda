@@ -261,7 +261,7 @@ class CalDAVService:
 
     def sync_all(self, user):
         """
-        Synchronisation bidirectionnelle complète
+        Synchronisation bidirectionnelle complète avec tous les calendriers activés
 
         Args:
             user: Utilisateur Django
@@ -279,17 +279,86 @@ class CalDAVService:
             stats['errors'].append("Synchronisation désactivée")
             return stats
 
-        # Envoyer les tâches locales vers CalDAV
-        local_tasks = Task.objects.filter(user=user)
-        for task in local_tasks:
-            if self.push_task(task):
-                stats['pushed'] += 1
-            else:
-                stats['errors'].append(f"Erreur push: {task.title}")
+        try:
+            # Importer ici pour éviter les dépendances circulaires
+            from .models import CalendarSource
 
-        # Récupérer les tâches depuis CalDAV
-        pulled_tasks = self.pull_tasks(user)
-        stats['pulled'] = len(pulled_tasks)
+            # Se connecter au serveur CalDAV
+            client = caldav.DAVClient(
+                url=self.config.caldav_url,
+                username=self.config.username,
+                password=self.config.password
+            )
+            principal = client.principal()
+
+            # Récupérer tous les calendriers activés pour cet utilisateur
+            calendar_sources = CalendarSource.objects.filter(
+                user=user,
+                caldav_config=self.config,
+                is_enabled=True
+            )
+
+            # Synchroniser chaque calendrier activé
+            for cal_source in calendar_sources:
+                try:
+                    # Trouver le calendrier CalDAV correspondant
+                    calendars = principal.calendars()
+                    target_calendar = None
+
+                    for cal in calendars:
+                        if cal.url.canonical() == cal_source.calendar_url:
+                            target_calendar = cal
+                            break
+
+                    if not target_calendar:
+                        continue
+
+                    # Récupérer les événements de ce calendrier
+                    events = target_calendar.events()
+
+                    for event in events:
+                        ical_str = event.data
+                        task_data = self.ical_to_task(ical_str, user)
+
+                        if task_data:
+                            # Vérifier si la tâche existe déjà
+                            existing_task = Task.objects.filter(
+                                caldav_uid=task_data['caldav_uid']
+                            ).first()
+
+                            if existing_task:
+                                # Mettre à jour la tâche existante
+                                for key, value in task_data.items():
+                                    if key != 'user':
+                                        setattr(existing_task, key, value)
+
+                                if hasattr(event, 'props'):
+                                    existing_task.caldav_etag = event.props.get(dav.GetEtag())
+                                existing_task.last_synced = timezone.now()
+                                existing_task.calendar_source = cal_source
+                                existing_task.save()
+                                stats['pulled'] += 1
+                            else:
+                                # Créer une nouvelle tâche
+                                task = Task.objects.create(**task_data)
+                                if hasattr(event, 'props'):
+                                    task.caldav_etag = event.props.get(dav.GetEtag())
+                                task.last_synced = timezone.now()
+                                task.calendar_source = cal_source
+                                task.save()
+                                stats['pulled'] += 1
+
+                except Exception as e:
+                    stats['errors'].append(f"Erreur calendrier {cal_source.name}: {str(e)}")
+                    print(f"Erreur lors de la synchronisation du calendrier {cal_source.name}: {e}")
+
+            # Mettre à jour la date de dernière synchronisation
+            self.config.last_sync = timezone.now()
+            self.config.save(update_fields=['last_sync'])
+
+        except Exception as e:
+            stats['errors'].append(f"Erreur générale: {str(e)}")
+            print(f"Erreur lors de la synchronisation: {e}")
 
         return stats
 

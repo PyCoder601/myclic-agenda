@@ -6,6 +6,16 @@ export interface User {
   last_name: string;
 }
 
+export interface CalendarSource {
+  id: number;
+  name: string;
+  calendar_url: string;
+  is_enabled: boolean;
+  color: string;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface Task {
   id: number;
   title: string;
@@ -18,6 +28,9 @@ export interface Task {
   caldav_uid?: string;
   caldav_etag?: string;
   last_synced?: string;
+  calendar_source?: number;
+  calendar_source_name?: string;
+  calendar_source_color?: string;
 }
 
 export interface CalDAVConfig {
@@ -29,6 +42,7 @@ export interface CalDAVConfig {
   last_sync: string | null;
   created_at: string;
   updated_at: string;
+  calendars?: CalendarSource[];
 }
 
 export interface AuthResponse {

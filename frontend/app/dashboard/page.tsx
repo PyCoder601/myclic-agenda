@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import { logout } from '@/store/authSlice';
-import { Calendar as CalendarIcon, LogOut, Plus, CheckCircle2, Clock, TrendingUp, User, ChevronRight, ChevronLeft, RefreshCw, Settings } from 'lucide-react';
+import { Calendar as CalendarIcon, LogOut, Plus, RefreshCw, Settings } from 'lucide-react';
 import Calendar from '@/components/Calendar';
 import TaskModal from '@/components/TaskModal';
 import api, { caldavAPI } from '@/lib/api';
@@ -24,7 +24,6 @@ export default function DashboardPage() {
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [modalInitialDate, setModalInitialDate] = useState<Date>();
   const [modalInitialHour, setModalInitialHour] = useState<number>();
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
   const [syncMessage, setSyncMessage] = useState<string | null>(null);
   const [isCalendarDropdownOpen, setIsCalendarDropdownOpen] = useState(false);
@@ -159,25 +158,6 @@ export default function DashboardPage() {
     }
   };
 
-  const getStats = () => {
-    const total = filteredTasks.length;
-    const completed = filteredTasks.filter(t => t.is_completed).length;
-    const upcoming = filteredTasks.filter(t => {
-      const now = new Date();
-      const start = new Date(t.start_date);
-      return start > now && !t.is_completed;
-    }).length;
-
-    return { total, completed, upcoming };
-  };
-
-  const getUpcomingTasks = () => {
-    const now = new Date();
-    return filteredTasks
-      .filter(t => new Date(t.start_date) > now && !t.is_completed)
-      .sort((a, b) => new Date(a.start_date).getTime() - new Date(b.start_date).getTime())
-      .slice(0, 5);
-  };
 
   if (authLoading || loading) {
     return (
@@ -190,8 +170,6 @@ export default function DashboardPage() {
     );
   }
 
-  const stats = getStats();
-  const upcomingTasks = getUpcomingTasks();
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
@@ -422,128 +400,6 @@ export default function DashboardPage() {
               />
             </div>
           </div>
-
-          {/* Sidebar Toggle Button */}
-          {!isSidebarOpen && (
-            <button
-              onClick={() => setIsSidebarOpen(true)}
-              className="w-10 h-10 bg-white hover:bg-slate-50 rounded-lg shadow-md border border-slate-200 flex items-center justify-center transition-all hover:scale-105"
-              title="Afficher les statistiques"
-            >
-              <ChevronRight className="w-5 h-5 text-slate-600" />
-            </button>
-          )}
-
-          {/* Sidebar */}
-          {isSidebarOpen && (
-            <div className="w-80 flex flex-col gap-3 animate-slideIn">
-              {/* Close Button */}
-              <div className="flex justify-end">
-                <button
-                  onClick={() => setIsSidebarOpen(false)}
-                  className="w-8 h-8 bg-white hover:bg-slate-50 rounded-lg shadow-sm border border-slate-200 flex items-center justify-center transition-all"
-                  title="Masquer les statistiques"
-                >
-                  <ChevronLeft className="w-4 h-4 text-slate-600" />
-                </button>
-              </div>
-
-              {/* User Info Card - Compact */}
-              <div className="bg-gradient-to-br from-[#005f82] to-[#007ba8] rounded-xl p-4 shadow-lg text-white">
-                <div className="flex items-center gap-3 mb-3">
-                  <div className="bg-white/20 backdrop-blur-sm p-2 rounded-lg">
-                    <User className="w-5 h-5" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <h3 className="font-semibold text-sm truncate">{user?.first_name || user?.username}</h3>
-                    <p className="text-xs text-blue-100 truncate">{user?.email}</p>
-                  </div>
-                </div>
-                <div className="bg-white/10 backdrop-blur-sm rounded-lg p-2">
-                  <p className="text-xs text-blue-100">Productivité</p>
-                  <div className="flex items-baseline gap-2 mt-0.5">
-                    <span className="text-2xl font-bold">{stats.total > 0 ? Math.round((stats.completed / stats.total) * 100) : 0}%</span>
-                    <span className="text-xs text-blue-100">complétées</span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Stats - Compact */}
-              <div className="bg-white rounded-xl p-4 shadow-lg border border-slate-200">
-                <h2 className="text-sm font-semibold text-slate-800 mb-3 flex items-center gap-2">
-                  <TrendingUp className="w-4 h-4 text-[#005f82]" />
-                  Statistiques
-                </h2>
-                <div className="space-y-2">
-                  <div className="flex items-center gap-3 p-3 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg border border-blue-100">
-                    <div className="bg-blue-500 p-2 rounded-lg">
-                      <CalendarIcon className="w-4 h-4 text-white" />
-                    </div>
-                    <div>
-                      <div className="text-xs text-slate-600 font-medium">Total</div>
-                      <div className="text-xl font-bold text-slate-800">{stats.total}</div>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center gap-3 p-3 bg-gradient-to-r from-green-50 to-emerald-50 rounded-lg border border-green-100">
-                    <div className="bg-green-500 p-2 rounded-lg">
-                      <CheckCircle2 className="w-4 h-4 text-white" />
-                    </div>
-                    <div>
-                      <div className="text-xs text-slate-600 font-medium">Terminées</div>
-                      <div className="text-xl font-bold text-slate-800">{stats.completed}</div>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center gap-3 p-3 bg-gradient-to-r from-orange-50 to-amber-50 rounded-lg border border-orange-100">
-                    <div className="bg-orange-500 p-2 rounded-lg">
-                      <Clock className="w-4 h-4 text-white" />
-                    </div>
-                    <div>
-                      <div className="text-xs text-slate-600 font-medium">À venir</div>
-                      <div className="text-xl font-bold text-slate-800">{stats.upcoming}</div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Upcoming Tasks - Compact */}
-              <div className="bg-white rounded-xl p-4 shadow-lg border border-slate-200 flex-1 overflow-hidden flex flex-col min-h-0">
-                <h2 className="text-sm font-semibold text-slate-800 mb-3">Prochaines tâches</h2>
-                <div className="space-y-2 overflow-y-auto flex-1">
-                  {upcomingTasks.length === 0 ? (
-                    <div className="text-center py-6">
-                      <Clock className="w-10 h-10 text-slate-300 mx-auto mb-2" />
-                      <p className="text-slate-500 text-xs">Aucune tâche à venir</p>
-                    </div>
-                  ) : (
-                    upcomingTasks.map(task => (
-                      <div
-                        key={task.id}
-                        onClick={() => handleTaskClick(task)}
-                        className="group p-3 bg-gradient-to-r from-slate-50 to-blue-50 rounded-lg border border-slate-200 hover:border-[#005f82] cursor-pointer transition-all hover:shadow-md"
-                      >
-                        <div className="flex items-start gap-2">
-                          <div className="bg-[#005f82] w-1 h-1 rounded-full mt-1.5 group-hover:scale-150 transition-transform"></div>
-                          <div className="flex-1 min-w-0">
-                            <h3 className="font-medium text-slate-800 text-xs mb-0.5 group-hover:text-[#005f82] transition-colors truncate">{task.title}</h3>
-                            <p className="text-[10px] text-slate-500">
-                              {new Date(task.start_date).toLocaleDateString('fr-FR', {
-                                day: 'numeric',
-                                month: 'short',
-                                hour: '2-digit',
-                                minute: '2-digit',
-                              })}
-                            </p>
-                          </div>
-                        </div>
-                      </div>
-                    ))
-                  )}
-                </div>
-              </div>
-            </div>
-          )}
         </div>
       </div>
 

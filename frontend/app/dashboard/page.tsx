@@ -239,40 +239,7 @@ export default function DashboardPage() {
           {/* Main Calendar */}
           <div className="flex-1 flex flex-col min-w-0">
             {/* View Mode Selector and Calendar Filter */}
-            <div className="mb-3 flex items-center gap-3">
-              <div className="flex gap-1.5 bg-white p-1 rounded-lg shadow-sm border border-slate-200 w-fit">
-                <button
-                  onClick={() => setViewMode('day')}
-                  className={`px-4 py-1.5 rounded-md font-medium transition-all text-sm ${
-                    viewMode === 'day'
-                      ? 'bg-gradient-to-r from-[#005f82] to-[#007ba8] text-white shadow-md'
-                      : 'text-slate-600 hover:bg-slate-50'
-                  }`}
-                >
-                  Aujourd&apos;hui
-                </button>
-                <button
-                  onClick={() => setViewMode('week')}
-                  className={`px-4 py-1.5 rounded-md font-medium transition-all text-sm ${
-                    viewMode === 'week'
-                      ? 'bg-gradient-to-r from-[#005f82] to-[#007ba8] text-white shadow-md'
-                      : 'text-slate-600 hover:bg-slate-50'
-                  }`}
-                >
-                  Cette semaine
-                </button>
-                <button
-                  onClick={() => setViewMode('month')}
-                  className={`px-4 py-1.5 rounded-md font-medium transition-all text-sm ${
-                    viewMode === 'month'
-                      ? 'bg-gradient-to-r from-[#005f82] to-[#007ba8] text-white shadow-md'
-                      : 'text-slate-600 hover:bg-slate-50'
-                  }`}
-                >
-                  Ce mois
-                </button>
-              </div>
-
+            <div className="mb-3 flex items-center justify-between gap-3">
               {/* Calendar Dropdown Selector */}
               {calendars.length > 0 && (
                 <div className="relative calendar-dropdown-container">
@@ -386,6 +353,40 @@ export default function DashboardPage() {
                   )}
                 </div>
               )}
+
+              {/* View Mode Selector */}
+              <div className="flex gap-1.5 bg-white p-1 rounded-lg shadow-sm border border-slate-200 w-fit">
+                <button
+                  onClick={() => setViewMode('day')}
+                  className={`px-4 py-1.5 rounded-md font-medium transition-all text-sm ${
+                    viewMode === 'day'
+                      ? 'bg-gradient-to-r from-[#005f82] to-[#007ba8] text-white shadow-md'
+                      : 'text-slate-600 hover:bg-slate-50'
+                  }`}
+                >
+                  Aujourd&apos;hui
+                </button>
+                <button
+                  onClick={() => setViewMode('week')}
+                  className={`px-4 py-1.5 rounded-md font-medium transition-all text-sm ${
+                    viewMode === 'week'
+                      ? 'bg-gradient-to-r from-[#005f82] to-[#007ba8] text-white shadow-md'
+                      : 'text-slate-600 hover:bg-slate-50'
+                  }`}
+                >
+                  Cette semaine
+                </button>
+                <button
+                  onClick={() => setViewMode('month')}
+                  className={`px-4 py-1.5 rounded-md font-medium transition-all text-sm ${
+                    viewMode === 'month'
+                      ? 'bg-gradient-to-r from-[#005f82] to-[#007ba8] text-white shadow-md'
+                      : 'text-slate-600 hover:bg-slate-50'
+                  }`}
+                >
+                  Ce mois
+                </button>
+              </div>
             </div>
 
             {/* Calendar */}

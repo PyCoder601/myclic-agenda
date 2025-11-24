@@ -1,0 +1,27 @@
+name: Deploy to VPS
+
+on:
+  release:
+    types: [created]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: SSH and deploy
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          port: ${{ secrets.VPS_PORT }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          script: |
+            cd /home/myclic-mailing/www/kubiweb-mailbuilder
+            git fetch origin
+            git reset --hard origin/master
+            echo "${{ secrets.BACKEND_ENV }}" > backend/.env.prod
+            echo "${{ secrets.FRONTEND_ENV }}" > frontend/.env
+            docker compose up --build -d --remove-orphans

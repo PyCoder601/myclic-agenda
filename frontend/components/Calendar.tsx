@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo, useCallback, memo } from 'react';
 import { format, startOfWeek, endOfWeek, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, addDays, startOfDay, endOfDay } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
@@ -33,34 +33,64 @@ export default function Calendar({ tasks, viewMode, currentDate, onDateChange, o
     }
   }, [viewMode, currentDate]);
 
-  const getTasksForDate = (date: Date, hour?: number) => {
+  // Mémoïser les tâches par date/heure pour éviter les recalculs
+  const tasksByDateTime = useMemo(() => {
+    const map = new Map<string, Task[]>();
+
+    tasks.forEach(task => {
+      const taskStart = new Date(task.start_date);
+      const taskEnd = new Date(task.end_date);
+
+      // Pour chaque heure dans la durée de la tâche
+      let current = new Date(taskStart);
+      while (current <= taskEnd) {
+        const dateKey = format(current, 'yyyy-MM-dd');
+        const hour = current.getHours();
+        const key = `${dateKey}-${hour}`;
+
+        if (!map.has(key)) {
+          map.set(key, []);
+        }
+        if (!map.get(key)!.find(t => t.id === task.id)) {
+          map.get(key)!.push(task);
+        }
+
+        current = new Date(current.getTime() + 60 * 60 * 1000); // +1 heure
+      }
+    });
+
+    return map;
+  }, [tasks]);
+
+  const getTasksForDate = useCallback((date: Date, hour?: number) => {
+    const dateKey = format(date, 'yyyy-MM-dd');
+
+    if (hour !== undefined) {
+      const key = `${dateKey}-${hour}`;
+      return tasksByDateTime.get(key) || [];
+    }
+
+    // Pour une journée entière
+    const dayStart = startOfDay(date);
+    const dayEnd = endOfDay(date);
+
     return tasks.filter(task => {
       const taskStart = new Date(task.start_date);
       const taskEnd = new Date(task.end_date);
-      
-      if (hour !== undefined) {
-        const hourStart = new Date(date);
-        hourStart.setHours(hour, 0, 0, 0);
-        const hourEnd = new Date(date);
-        hourEnd.setHours(hour, 59, 59, 999);
-        
-        return taskStart <= hourEnd && taskEnd >= hourStart;
-      }
-      
-      return taskStart <= endOfDay(date) && taskEnd >= startOfDay(date);
+      return taskStart <= dayEnd && taskEnd >= dayStart;
     });
-  };
+  }, [tasks, tasksByDateTime]);
 
-  const isTaskSpanning = (task: Task, date: Date) => {
+  const isTaskSpanning = useCallback((task: Task, date: Date) => {
     const taskStart = new Date(task.start_date);
     const taskEnd = new Date(task.end_date);
     const dayStart = startOfDay(date);
     const dayEnd = endOfDay(date);
     
     return taskStart < dayStart && taskEnd > dayEnd;
-  };
+  }, []);
 
-  const navigatePrevious = () => {
+  const navigatePrevious = useCallback(() => {
     const newDate = new Date(currentDate);
     if (viewMode === 'day') {
       newDate.setDate(newDate.getDate() - 1);
@@ -70,9 +100,9 @@ export default function Calendar({ tasks, viewMode, currentDate, onDateChange, o
       newDate.setMonth(newDate.getMonth() - 1);
     }
     onDateChange(newDate);
-  };
+  }, [currentDate, viewMode, onDateChange]);
 
-  const navigateNext = () => {
+  const navigateNext = useCallback(() => {
     const newDate = new Date(currentDate);
     if (viewMode === 'day') {
       newDate.setDate(newDate.getDate() + 1);
@@ -82,9 +112,9 @@ export default function Calendar({ tasks, viewMode, currentDate, onDateChange, o
       newDate.setMonth(newDate.getMonth() + 1);
     }
     onDateChange(newDate);
-  };
+  }, [currentDate, viewMode, onDateChange]);
 
-  const getDateRange = () => {
+  const getDateRange = useMemo(() => {
     if (viewMode === 'day') {
       return format(currentDate, 'EEEE d MMMM yyyy', { locale: fr });
     } else if (viewMode === 'week') {
@@ -94,7 +124,24 @@ export default function Calendar({ tasks, viewMode, currentDate, onDateChange, o
     } else {
       return format(currentDate, 'MMMM yyyy', { locale: fr });
     }
-  };
+  }, [viewMode, currentDate]);
+
+  // Mémoïser les jours de la semaine pour la vue semaine
+  const weekDays = useMemo(() => {
+    const weekStart = startOfWeek(currentDate, { weekStartsOn: 1 });
+    return Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
+  }, [currentDate]);
+
+  // Mémoïser les jours du mois pour la vue mois
+  const calendarDays = useMemo(() => {
+    const monthStart = startOfMonth(currentDate);
+    const monthEnd = endOfMonth(currentDate);
+    const calendarStart = startOfWeek(monthStart, { weekStartsOn: 1 });
+    const calendarEnd = endOfWeek(monthEnd, { weekStartsOn: 1 });
+    return eachDayOfInterval({ start: calendarStart, end: calendarEnd });
+  }, [currentDate]);
+
+  const weekDayLabels = useMemo(() => ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'], []);
 
   const renderDayView = () => {
     const currentHour = new Date().getHours();
@@ -130,7 +177,7 @@ export default function Calendar({ tasks, viewMode, currentDate, onDateChange, o
                   className="flex-1 p-2 hover:bg-blue-50/40 cursor-pointer transition-all duration-200 relative"
                   onClick={() => onAddTask(currentDate, hour)}
                 >
-                  {hourTasks.map(task => {
+                  {hourTasks.length > 0 && hourTasks.map(task => {
                     const taskColor = task.calendar_source_color || '#005f82';
                     return (
                       <div
@@ -176,8 +223,7 @@ export default function Calendar({ tasks, viewMode, currentDate, onDateChange, o
   };
 
   const renderWeekView = () => {
-    const weekStart = startOfWeek(currentDate, { weekStartsOn: 1 });
-    const weekDays = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
+
     const currentHour = new Date().getHours();
     const today = new Date();
 
@@ -229,7 +275,7 @@ export default function Calendar({ tasks, viewMode, currentDate, onDateChange, o
                       }`}
                       onClick={() => onAddTask(day, hour)}
                     >
-                      {dayTasks.map(task => {
+                      {dayTasks.length > 0 && dayTasks.map(task => {
                         const taskColor = task.calendar_source_color || '#005f82';
                         return (
                           <div
@@ -263,18 +309,10 @@ export default function Calendar({ tasks, viewMode, currentDate, onDateChange, o
   };
 
   const renderMonthView = () => {
-    const monthStart = startOfMonth(currentDate);
-    const monthEnd = endOfMonth(currentDate);
-    const calendarStart = startOfWeek(monthStart, { weekStartsOn: 1 });
-    const calendarEnd = endOfWeek(monthEnd, { weekStartsOn: 1 });
-    const calendarDays = eachDayOfInterval({ start: calendarStart, end: calendarEnd });
-
-    const weekDays = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'];
-
     return (
       <div className="flex-1 flex flex-col bg-white">
         <div className="grid grid-cols-7 border-b border-slate-200 bg-gradient-to-r from-slate-50 to-blue-50">
-          {weekDays.map(day => (
+          {weekDayLabels.map(day => (
             <div key={day} className="p-3 text-center font-semibold text-slate-700 border-r border-slate-200 last:border-r-0">
               {day}
             </div>
@@ -304,7 +342,7 @@ export default function Calendar({ tasks, viewMode, currentDate, onDateChange, o
                   {format(day, 'd')}
                 </div>
                 <div className="space-y-1">
-                  {dayTasks.slice(0, 3).map(task => {
+                  {dayTasks.length > 0 && dayTasks.slice(0, 3).map(task => {
                     const isSpanning = isTaskSpanning(task, day);
                     const taskStart = new Date(task.start_date);
                     const taskEnd = new Date(task.end_date);
@@ -364,7 +402,7 @@ export default function Calendar({ tasks, viewMode, currentDate, onDateChange, o
 
           <div className="text-center min-w-[280px]">
             <h2 className="text-lg font-bold bg-gradient-to-r from-[#005f82] to-[#007ba8] bg-clip-text text-transparent capitalize">
-              {getDateRange()}
+              {getDateRange}
             </h2>
             <p className="text-xs text-slate-500 mt-1 flex items-center justify-center gap-2">
               <span className="w-2 h-2 bg-gradient-to-r from-[#005f82] to-[#007ba8] rounded-full animate-pulse-slow shadow-sm"></span>

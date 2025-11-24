@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import { logout } from '@/store/authSlice';
@@ -34,13 +34,6 @@ export default function DashboardPage() {
     }
   }, [user, authLoading, router]);
 
-  useEffect(() => {
-    if (user) {
-      fetchTasks();
-      fetchCalendars();
-    }
-  }, [user]);
-
   // Fermer le dropdown quand on clique en dehors
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -54,7 +47,7 @@ export default function DashboardPage() {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [isCalendarDropdownOpen]);
 
-  const fetchTasks = async () => {
+  const fetchTasks = useCallback(async () => {
     try {
       const response = await api.get('/tasks/');
       setTasks(response.data);
@@ -63,43 +56,60 @@ export default function DashboardPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
-  const fetchCalendars = async () => {
+  const fetchCalendars = useCallback(async () => {
     try {
       const response = await caldavAPI.getConfig();
       setCalendars(response.data.calendars || []);
-    } catch (error) {
+    } catch {
       // Pas de configuration CalDAV ou erreur
       setCalendars([]);
     }
-  };
+  }, []);
 
-  const handleToggleCalendar = async (calendar: CalendarSource) => {
+  useEffect(() => {
+    if (user) {
+      fetchTasks();
+      fetchCalendars();
+    }
+  }, [user, fetchTasks, fetchCalendars]);
+
+  const handleToggleCalendar = useCallback(async (calendar: CalendarSource) => {
     try {
-      await caldavAPI.updateCalendar(calendar.id, { is_enabled: !calendar.is_enabled });
-      setCalendars(calendars.map(cal =>
+      // Optimisation : mise à jour immédiate de l'UI
+      setCalendars(prev => prev.map(cal =>
         cal.id === calendar.id ? { ...cal, is_enabled: !cal.is_enabled } : cal
       ));
+
+      // Mise à jour en arrière-plan
+      await caldavAPI.updateCalendar(calendar.id, { is_enabled: !calendar.is_enabled });
     } catch (error) {
       console.error('Erreur lors de la mise à jour du calendrier:', error);
+      // Rollback en cas d'erreur
+      setCalendars(prev => prev.map(cal =>
+        cal.id === calendar.id ? { ...cal, is_enabled: !cal.is_enabled } : cal
+      ));
     }
-  };
+  }, []);
 
-  // Filtrer les tâches en fonction des calendriers activés
-  const filteredTasks = tasks.filter(task => {
-    if (calendars.length === 0) return true; // Pas de calendriers configurés, afficher toutes les tâches
-    if (!task.calendar_source) return true; // Tâches sans calendrier source
-    const calendar = calendars.find(cal => cal.id === task.calendar_source);
-    return !calendar || calendar.is_enabled; // Afficher si le calendrier est activé ou non trouvé
-  });
+  // Filtrer les tâches en fonction des calendriers activés avec mémoïsation
+  const filteredTasks = useMemo(() => {
+    if (calendars.length === 0) return tasks;
 
-  const handleLogout = () => {
+    return tasks.filter(task => {
+      if (!task.calendar_source) return true;
+      const calendar = calendars.find(cal => cal.id === task.calendar_source);
+      return !calendar || calendar.is_enabled;
+    });
+  }, [tasks, calendars]);
+
+  const handleLogout = useCallback(() => {
     dispatch(logout());
     router.push('/login');
-  };
+  }, [dispatch, router]);
 
-  const handleSaveTask = async (taskData: Omit<Task, 'id' | 'created_at' | 'updated_at'>) => {
+  const handleSaveTask = useCallback(async (taskData: Omit<Task, 'id' | 'created_at' | 'updated_at'>) => {
     try {
       if (selectedTask) {
         await api.put(`/tasks/${selectedTask.id}/`, taskData);
@@ -112,32 +122,32 @@ export default function DashboardPage() {
     } catch (error) {
       console.error('Erreur lors de la sauvegarde de l\'événement:', error);
     }
-  };
+  }, [selectedTask, fetchTasks]);
 
-  const handleDeleteTask = async (id: number) => {
+  const handleDeleteTask = useCallback(async (id: number) => {
     try {
       await api.delete(`/tasks/${id}/`);
       await fetchTasks();
     } catch (error) {
       console.error('Erreur lors de la suppression de l\'événement:', error);
     }
-  };
+  }, [fetchTasks]);
 
-  const handleTaskClick = (task: Task) => {
+  const handleTaskClick = useCallback((task: Task) => {
     setSelectedTask(task);
     setModalInitialDate(undefined);
     setModalInitialHour(undefined);
     setIsModalOpen(true);
-  };
+  }, []);
 
-  const handleAddTask = (date: Date, hour?: number) => {
+  const handleAddTask = useCallback((date: Date, hour?: number) => {
     setSelectedTask(null);
     setModalInitialDate(date);
     setModalInitialHour(hour);
     setIsModalOpen(true);
-  };
+  }, []);
 
-  const handleSync = async () => {
+  const handleSync = useCallback(async () => {
     setIsSyncing(true);
     setSyncMessage(null);
 
@@ -156,7 +166,7 @@ export default function DashboardPage() {
     } finally {
       setIsSyncing(false);
     }
-  };
+  }, [fetchTasks]);
 
 
   if (authLoading || loading) {

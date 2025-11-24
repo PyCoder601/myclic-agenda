@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef, useMemo, useCallback, memo } from 'react';
 import { format, startOfWeek, endOfWeek, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, addDays, startOfDay, endOfDay } from 'date-fns';
 import { fr } from 'date-fns/locale';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { ChevronLeft, ChevronRight, X } from 'lucide-react';
 import { Task, ViewMode } from '@/lib/types';
 
 interface CalendarProps {
@@ -15,10 +15,70 @@ interface CalendarProps {
   onAddTask: (date: Date, hour?: number) => void;
 }
 
+const DayTasksModal = memo(({ date, tasks, onClose, onTaskClick }: { date: Date; tasks: Task[]; onClose: () => void; onTaskClick: (task: Task) => void; }) => {
+    if (!date) return null;
+
+    return (
+        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center z-50 p-4" onClick={onClose}>
+            <div className="bg-white rounded-2xl max-w-lg w-full max-h-[80vh] flex flex-col shadow-2xl border border-slate-200" onClick={(e) => e.stopPropagation()}>
+                <div className="flex items-center justify-between p-4 border-b border-slate-200 bg-slate-50/50 rounded-t-2xl">
+                    <h2 className="text-lg font-bold text-slate-800 capitalize">
+                        {format(date, 'EEEE d MMMM yyyy', { locale: fr })}
+                    </h2>
+                    <button
+                        onClick={onClose}
+                        className="p-2 hover:bg-slate-200/60 rounded-xl transition-all text-slate-500 hover:text-slate-700"
+                    >
+                        <X className="w-5 h-5" />
+                    </button>
+                </div>
+                <div className="overflow-y-auto p-4 space-y-3">
+                    {tasks.length > 0 ? (
+                        tasks.sort((a, b) => new Date(a.start_date).getTime() - new Date(b.start_date).getTime()).map(task => {
+                            const taskColor = task.calendar_source_color || '#005f82';
+                            return (
+                                <div
+                                    key={task.id}
+                                    onClick={() => {
+                                        onTaskClick(task);
+                                        onClose();
+                                    }}
+                                    className="group/task p-3 rounded-xl hover:shadow-lg cursor-pointer transition-all duration-300"
+                                    style={{
+                                        background: `linear-gradient(135deg, ${taskColor}1a 0%, ${taskColor}0d 100%)`,
+                                        borderLeft: `4px solid ${taskColor}`
+                                    }}
+                                >
+                                    <div className="font-semibold text-slate-800 text-sm">{task.title}</div>
+                                    <div className="flex items-center justify-between mt-1 text-xs text-slate-600">
+                                        <span>
+                                            {format(new Date(task.start_date), 'HH:mm')} - {format(new Date(task.end_date), 'HH:mm')}
+                                        </span>
+                                        {task.calendar_source_name && (
+                                            <div className="text-[10px] px-2 py-0.5 rounded-full font-medium" style={{ backgroundColor: `${taskColor}26`, color: taskColor }}>
+                                                {task.calendar_source_name}
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                            );
+                        })
+                    ) : (
+                        <p className="text-center text-slate-500 py-8">Aucun événement pour ce jour.</p>
+                    )}
+                </div>
+            </div>
+        </div>
+    );
+});
+DayTasksModal.displayName = 'DayTasksModal';
+
+
 export default function Calendar({ tasks, viewMode, currentDate, onDateChange, onTaskClick, onAddTask }: CalendarProps) {
   const [hours] = useState(Array.from({ length: 24 }, (_, i) => i));
   const currentHourRef = useRef<HTMLDivElement>(null);
   const dayViewRef = useRef<HTMLDivElement>(null);
+  const [dayTasksModalDate, setDayTasksModalDate] = useState<Date | null>(null);
 
   // Scroll vers l'heure actuelle dans la vue jour et semaine
   useEffect(() => {
@@ -374,9 +434,15 @@ export default function Calendar({ tasks, viewMode, currentDate, onDateChange, o
                     );
                   })}
                   {dayTasks.length > 3 && (
-                    <div className="text-xs text-slate-500 pl-1 font-medium">
+                    <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setDayTasksModalDate(day);
+                        }}
+                        className="text-xs text-blue-600 hover:text-blue-800 font-semibold pl-1 text-left w-full hover:underline"
+                    >
                       +{dayTasks.length - 3} autres
-                    </div>
+                    </button>
                   )}
                 </div>
               </div>
@@ -388,43 +454,53 @@ export default function Calendar({ tasks, viewMode, currentDate, onDateChange, o
   };
 
   return (
-    <div className="flex flex-col h-full bg-white rounded-2xl overflow-hidden shadow-xl border border-slate-200/50 animate-fadeIn">
-      {/* Calendar Header avec gradient et animations */}
-      <div className="flex items-center justify-between p-4 border-b border-slate-200/50 bg-gradient-to-r from-white via-blue-50/40 to-white backdrop-blur-sm">
-        <div className="flex items-center gap-3">
-          <button
-            onClick={navigatePrevious}
-            className="group p-2.5 hover:bg-gradient-to-r hover:from-blue-50 hover:to-indigo-50 rounded-xl transition-all duration-300 text-slate-700 hover:shadow-lg border border-transparent hover:border-[#005f82]/20"
-            title="Période précédente"
-          >
-            <ChevronLeft className="w-5 h-5 text-slate-600 group-hover:text-[#005f82] transition-all duration-300 group-hover:-translate-x-1" />
-          </button>
+    <>
+      <div className="flex flex-col h-full bg-white rounded-2xl overflow-hidden shadow-xl border border-slate-200/50 animate-fadeIn">
+        {/* Calendar Header avec gradient et animations */}
+        <div className="flex items-center justify-between p-4 border-b border-slate-200/50 bg-gradient-to-r from-white via-blue-50/40 to-white backdrop-blur-sm">
+          <div className="flex items-center gap-3">
+            <button
+              onClick={navigatePrevious}
+              className="group p-2.5 hover:bg-gradient-to-r hover:from-blue-50 hover:to-indigo-50 rounded-xl transition-all duration-300 text-slate-700 hover:shadow-lg border border-transparent hover:border-[#005f82]/20"
+              title="Période précédente"
+            >
+              <ChevronLeft className="w-5 h-5 text-slate-600 group-hover:text-[#005f82] transition-all duration-300 group-hover:-translate-x-1" />
+            </button>
 
-          <div className="text-center min-w-[280px]">
-            <h2 className="text-lg font-bold bg-gradient-to-r from-[#005f82] to-[#007ba8] bg-clip-text text-transparent capitalize">
-              {getDateRange}
-            </h2>
-            <p className="text-xs text-slate-500 mt-1 flex items-center justify-center gap-2">
-              <span className="w-2 h-2 bg-gradient-to-r from-[#005f82] to-[#007ba8] rounded-full animate-pulse-slow shadow-sm"></span>
-              <span className="font-medium">{tasks.length}</span>
-              {tasks.length > 1 ? 'événements' : 'événement'}
-            </p>
+            <div className="text-center min-w-[280px]">
+              <h2 className="text-lg font-bold bg-gradient-to-r from-[#005f82] to-[#007ba8] bg-clip-text text-transparent capitalize">
+                {getDateRange}
+              </h2>
+              <p className="text-xs text-slate-500 mt-1 flex items-center justify-center gap-2">
+                <span className="w-2 h-2 bg-gradient-to-r from-[#005f82] to-[#007ba8] rounded-full animate-pulse-slow shadow-sm"></span>
+                <span className="font-medium">{tasks.length}</span>
+                {tasks.length > 1 ? 'événements' : 'événement'}
+              </p>
+            </div>
+
+            <button
+              onClick={navigateNext}
+              className="group p-2.5 hover:bg-gradient-to-r hover:from-blue-50 hover:to-indigo-50 rounded-xl transition-all duration-300 text-slate-700 hover:shadow-lg border border-transparent hover:border-[#005f82]/20"
+              title="Période suivante"
+            >
+              <ChevronRight className="w-5 h-5 text-slate-600 group-hover:text-[#005f82] transition-all duration-300 group-hover:translate-x-1" />
+            </button>
           </div>
-
-          <button
-            onClick={navigateNext}
-            className="group p-2.5 hover:bg-gradient-to-r hover:from-blue-50 hover:to-indigo-50 rounded-xl transition-all duration-300 text-slate-700 hover:shadow-lg border border-transparent hover:border-[#005f82]/20"
-            title="Période suivante"
-          >
-            <ChevronRight className="w-5 h-5 text-slate-600 group-hover:text-[#005f82] transition-all duration-300 group-hover:translate-x-1" />
-          </button>
         </div>
-      </div>
 
-      {viewMode === 'day' && renderDayView()}
-      {viewMode === 'week' && renderWeekView()}
-      {viewMode === 'month' && renderMonthView()}
-    </div>
+        {viewMode === 'day' && renderDayView()}
+        {viewMode === 'week' && renderWeekView()}
+        {viewMode === 'month' && renderMonthView()}
+      </div>
+      {dayTasksModalDate && (
+        <DayTasksModal
+          date={dayTasksModalDate}
+          tasks={getTasksForDate(dayTasksModalDate)}
+          onClose={() => setDayTasksModalDate(null)}
+          onTaskClick={onTaskClick}
+        />
+      )}
+    </>
   );
 }
 

@@ -1,0 +1,46 @@
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: agenda_db
+    volumes:
+      - postgres_data:/var/lib/postgresql/data/
+    env_file:
+      - ./backend/.env.prod
+    networks:
+      - agenda-net
+    restart: unless-stopped
+
+  backend:
+    build: ./backend
+    container_name: agenda_backend
+    env_file:
+      - ./backend/.env.prod
+    volumes:
+      - ./backend/media:/app/media
+    depends_on:
+      - db
+    ports:
+      - "8021:8020"
+    networks:
+      - agenda-net
+    restart: unless-stopped
+
+  frontend:
+    build: ./frontend
+    container_name: agenda_frontend
+    env_file:
+      - ./frontend/.env
+    ports:
+      - "3021:3000"
+    depends_on:
+      - backend
+    networks:
+      - agenda-net
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+
+networks:
+  agenda-net:
+    driver: bridge

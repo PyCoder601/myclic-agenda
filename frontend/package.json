@@ -10,6 +10,9 @@
   },
   "dependencies": {
     "@reduxjs/toolkit": "^2.10.1",
+    "@tiptap/extension-underline": "^3.11.0",
+    "@tiptap/react": "^3.11.0",
+    "@tiptap/starter-kit": "^3.11.0",
     "axios": "^1.13.2",
     "date-fns": "^4.1.0",
     "lucide-react": "^0.554.0",
@@ -20,6 +23,7 @@
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
+    "@tailwindcss/typography": "^0.5.19",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",

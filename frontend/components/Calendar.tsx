@@ -50,7 +50,10 @@ const DayTasksModal = memo(({ date, tasks, onClose, onTaskClick }: { date: Date;
                                     }}
                                 >
                                     <div className="font-semibold text-slate-800 text-sm">{task.title}</div>
-                                    <div className="flex items-center justify-between mt-1 text-xs text-slate-600">
+                                    {task.description && (
+                                      <div className="prose prose-sm mt-1 text-slate-600 max-w-none" dangerouslySetInnerHTML={{ __html: task.description }} />
+                                    )}
+                                    <div className="flex items-center justify-between mt-2 text-xs text-slate-600">
                                         <span>
                                             {format(new Date(task.start_date), 'HH:mm')} - {format(new Date(task.end_date), 'HH:mm')}
                                         </span>
@@ -255,7 +258,7 @@ export default function Calendar({ tasks, viewMode, currentDate, onDateChange, o
                       >
                         <div className="font-semibold text-white text-xs group-hover/task:text-shadow">{task.title}</div>
                         {task.description && (
-                          <div className="text-[10px] text-white/90 mt-1 line-clamp-1">{task.description}</div>
+                          <div className="text-[10px] text-white/90 mt-1 line-clamp-1 prose prose-sm prose-white max-w-none" dangerouslySetInnerHTML={{ __html: task.description }} />
                         )}
                         <div className="flex items-center justify-between mt-1.5">
                           <div className="text-[10px] text-white/80 font-medium flex items-center gap-1">

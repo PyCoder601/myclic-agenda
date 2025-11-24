@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { X } from 'lucide-react';
 import { Task } from '@/lib/types';
+import RichTextEditor from './RichTextEditor';
 
 interface TaskModalProps {
   isOpen: boolean;
@@ -29,7 +30,7 @@ export default function TaskModal({ isOpen, onClose, onSave, onDelete, task, ini
     if (task) {
       return {
         title: task.title,
-        description: task.description,
+        description: task.description || '',
         start_date: task.start_date.slice(0, 16),
         end_date: task.end_date.slice(0, 16),
         is_completed: task.is_completed,
@@ -61,7 +62,7 @@ export default function TaskModal({ isOpen, onClose, onSave, onDelete, task, ini
       if (task) {
         setFormData({
           title: task.title,
-          description: task.description,
+          description: task.description || '',
           start_date: task.start_date.slice(0, 16),
           end_date: task.end_date.slice(0, 16),
           is_completed: task.is_completed,
@@ -141,12 +142,9 @@ export default function TaskModal({ isOpen, onClose, onSave, onDelete, task, ini
             <label className="block text-sm font-semibold text-slate-700 mb-2">
               Description
             </label>
-            <textarea
-              value={formData.description}
-              onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-              rows={4}
-              className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#005f82] focus:border-transparent text-slate-800 resize-none transition-all"
-              placeholder="Description de l'événement"
+            <RichTextEditor
+              content={formData.description}
+              onChange={(newContent) => setFormData({ ...formData, description: newContent })}
             />
           </div>
 

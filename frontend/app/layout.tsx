@@ -14,8 +14,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Agenda - Gestion de tâches",
-  description: "Application de gestion de tâches et calendrier",
+  title: "Agenda - Gestion d'événements",
+  description: "Application de gestion d'événements et calendrier",
 };
 
 export default function RootLayout({

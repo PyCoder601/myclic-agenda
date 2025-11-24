@@ -112,7 +112,7 @@ export default function TaskModal({ isOpen, onClose, onSave, onDelete, task, ini
       <div className="bg-white rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto shadow-2xl border border-slate-200">
         <div className="flex items-center justify-between p-6 border-b border-slate-200 bg-gradient-to-r from-slate-50 to-blue-50">
           <h2 className="text-2xl font-bold bg-gradient-to-r from-[#005f82] to-[#007ba8] bg-clip-text text-transparent">
-            {task ? 'Modifier la tâche' : 'Nouvelle tâche'}
+            {task ? 'Modifier l&apos;événement' : 'Nouvel événement'}
           </h2>
           <button
             onClick={onClose}
@@ -133,7 +133,7 @@ export default function TaskModal({ isOpen, onClose, onSave, onDelete, task, ini
               value={formData.title}
               onChange={(e) => setFormData({ ...formData, title: e.target.value })}
               className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#005f82] focus:border-transparent text-slate-800 font-medium transition-all"
-              placeholder="Titre de la tâche"
+              placeholder="Titre de l'événement"
             />
           </div>
 
@@ -146,7 +146,7 @@ export default function TaskModal({ isOpen, onClose, onSave, onDelete, task, ini
               onChange={(e) => setFormData({ ...formData, description: e.target.value })}
               rows={4}
               className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#005f82] focus:border-transparent text-slate-800 resize-none transition-all"
-              placeholder="Description de la tâche"
+              placeholder="Description de l'événement"
             />
           </div>
 
@@ -187,7 +187,7 @@ export default function TaskModal({ isOpen, onClose, onSave, onDelete, task, ini
               className="w-5 h-5 text-[#005f82] bg-white border-slate-300 rounded focus:ring-[#005f82] cursor-pointer"
             />
             <label htmlFor="completed" className="ml-3 text-sm font-semibold text-slate-700 cursor-pointer">
-              Tâche terminée
+              Événement terminé
             </label>
           </div>
 

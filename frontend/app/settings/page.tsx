@@ -151,7 +151,7 @@ export default function SettingsPage() {
       const response = await caldavAPI.sync();
       setMessage({ 
         type: 'success', 
-        text: `Synchronisation terminée ! ${response.data.stats.pushed} tâches envoyées, ${response.data.stats.pulled} tâches reçues` 
+        text: `Synchronisation terminée ! ${response.data.stats.pushed} événements envoyés, ${response.data.stats.pulled} événements reçus`
       });
       await loadConfig();
     } catch (error: any) {
@@ -563,7 +563,7 @@ export default function SettingsPage() {
             <p><strong>2.</strong> Créez un utilisateur si ce n&#39;est pas déjà fait</p>
             <p><strong>3.</strong> Notez l&#39;URL CalDAV (généralement https://votre-domaine.com/dav.php)</p>
             <p><strong>4.</strong> Utilisez les identifiants de votre utilisateur Baikal</p>
-            <p><strong>5.</strong> La synchronisation se fera automatiquement à chaque création/modification de tâche</p>
+            <p><strong>5.</strong> La synchronisation se fera automatiquement à chaque création/modification d'événement</p>
           </div>
         </div>
       </div>

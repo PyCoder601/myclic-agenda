@@ -60,7 +60,7 @@ export default function SignupPage() {
             <CalendarIcon className="w-8 h-8 text-white" />
           </div>
           <h1 className="text-3xl font-bold text-white mb-2">Créer un compte</h1>
-          <p className="text-gray-300">Rejoignez-nous pour gérer vos tâches</p>
+          <p className="text-gray-300">Rejoignez-nous pour gérer vos événements</p>
         </div>
 
         <div className="bg-[#002633] rounded-2xl shadow-xl p-8 border border-[#005f82]">

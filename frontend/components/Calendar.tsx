@@ -369,7 +369,7 @@ export default function Calendar({ tasks, viewMode, currentDate, onDateChange, o
             <p className="text-xs text-slate-500 mt-1 flex items-center justify-center gap-2">
               <span className="w-2 h-2 bg-gradient-to-r from-[#005f82] to-[#007ba8] rounded-full animate-pulse-slow shadow-sm"></span>
               <span className="font-medium">{tasks.length}</span>
-              {tasks.length > 1 ? 'tâches' : 'tâche'}
+              {tasks.length > 1 ? 'événements' : 'événement'}
             </p>
           </div>
 

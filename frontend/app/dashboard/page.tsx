@@ -59,7 +59,7 @@ export default function DashboardPage() {
       const response = await api.get('/tasks/');
       setTasks(response.data);
     } catch (error) {
-      console.error('Erreur lors de la récupération des tâches:', error);
+      console.error('Erreur lors de la récupération des événements:', error);
     } finally {
       setLoading(false);
     }
@@ -110,7 +110,7 @@ export default function DashboardPage() {
       setIsModalOpen(false);
       setSelectedTask(null);
     } catch (error) {
-      console.error('Erreur lors de la sauvegarde de la tâche:', error);
+      console.error('Erreur lors de la sauvegarde de l\'événement:', error);
     }
   };
 
@@ -119,7 +119,7 @@ export default function DashboardPage() {
       await api.delete(`/tasks/${id}/`);
       await fetchTasks();
     } catch (error) {
-      console.error('Erreur lors de la suppression de la tâche:', error);
+      console.error('Erreur lors de la suppression de l\'événement:', error);
     }
   };
 
@@ -224,7 +224,7 @@ export default function DashboardPage() {
                 className="group flex items-center gap-2 bg-gradient-to-r from-[#005f82] to-[#007ba8] hover:from-[#007ba8] hover:to-[#005f82] text-white px-5 py-2.5 rounded-xl transition-all duration-300 font-medium text-sm shadow-lg hover:shadow-xl transform hover:scale-105 active:scale-95"
               >
                 <Plus className="w-4 h-4 transition-transform duration-300 group-hover:rotate-90" />
-                <span>Nouvelle tâche</span>
+                <span>Nouvel événement</span>
               </button>
               <div className="h-8 w-px bg-gradient-to-b from-transparent via-slate-300 to-transparent"></div>
               <button

@@ -183,7 +183,20 @@ class TaskViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         """Retourner uniquement les tâches de l'utilisateur connecté"""
-        return Task.objects.filter(user=self.request.user)
+        queryset = Task.objects.filter(user=self.request.user)
+
+        # Filtrage par date pour pagination (optimisation)
+        start_date = self.request.query_params.get('start_date', None)
+        end_date = self.request.query_params.get('end_date', None)
+
+        if start_date and end_date:
+            # Retourner les tâches qui se chevauchent avec la période demandée
+            queryset = queryset.filter(
+                start_date__lte=end_date,
+                end_date__gte=start_date
+            )
+
+        return queryset.order_by('start_date')
 
     def perform_create(self, serializer):
         """Associer la tâche à l'utilisateur connecté et synchroniser avec CalDAV en arrière-plan"""

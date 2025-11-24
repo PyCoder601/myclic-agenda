@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import { logout } from '@/store/authSlice';
@@ -17,7 +17,7 @@ export default function DashboardPage() {
   
   const [tasks, setTasks] = useState<Task[]>([]);
   const [calendars, setCalendars] = useState<CalendarSource[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false); // Ne plus bloquer l'UI au démarrage
   const [viewMode, setViewMode] = useState<ViewMode>('week');
   const [currentDate, setCurrentDate] = useState(new Date());
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -27,6 +27,11 @@ export default function DashboardPage() {
   const [isSyncing, setIsSyncing] = useState(false);
   const [syncMessage, setSyncMessage] = useState<string | null>(null);
   const [isCalendarDropdownOpen, setIsCalendarDropdownOpen] = useState(false);
+
+  // Cache des tâches par mois
+  const tasksCache = useRef<Map<string, Task[]>>(new Map());
+  const loadingMonths = useRef<Set<string>>(new Set());
+  const [isInitialized, setIsInitialized] = useState(false);
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -47,16 +52,84 @@ export default function DashboardPage() {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [isCalendarDropdownOpen]);
 
-  const fetchTasks = useCallback(async () => {
+  // Générer une clé de cache pour un mois
+  const getMonthKey = useCallback((date: Date) => {
+    return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+  }, []);
+
+  // Calculer les dates de début et fin d'un mois (avec marge pour les vues)
+  const getMonthRange = useCallback((date: Date) => {
+    const year = date.getFullYear();
+    const month = date.getMonth();
+
+    // Début du mois - 7 jours avant pour capturer les tâches qui commencent avant
+    const start = new Date(year, month, -7);
+    // Fin du mois + 7 jours après pour capturer les tâches qui se terminent après
+    const end = new Date(year, month + 1, 7);
+
+    return {
+      start: start.toISOString().split('T')[0],
+      end: end.toISOString().split('T')[0]
+    };
+  }, []);
+
+  // Charger les tâches d'un mois spécifique avec cache
+  const fetchTasksForMonth = useCallback(async (date: Date, force = false) => {
+    const monthKey = getMonthKey(date);
+
+    // Vérifier le cache si pas de force reload
+    if (!force && tasksCache.current.has(monthKey)) {
+      return tasksCache.current.get(monthKey) || [];
+    }
+
+    // Éviter les chargements multiples du même mois
+    if (loadingMonths.current.has(monthKey)) {
+      return tasksCache.current.get(monthKey) || [];
+    }
+
+    loadingMonths.current.add(monthKey);
+    setLoading(true);
+
     try {
-      const response = await api.get('/tasks/');
-      setTasks(response.data);
+      const { start, end } = getMonthRange(date);
+      const response = await api.get(`/tasks/?start_date=${start}&end_date=${end}`);
+      const monthTasks = response.data;
+
+      // Mettre en cache
+      tasksCache.current.set(monthKey, monthTasks);
+
+      return monthTasks;
     } catch (error) {
       console.error('Erreur lors de la récupération des événements:', error);
+      return [];
     } finally {
+      loadingMonths.current.delete(monthKey);
       setLoading(false);
     }
-  }, []);
+  }, [getMonthKey, getMonthRange]);
+
+  // Précharger les mois adjacents en arrière-plan
+  const preloadAdjacentMonths = useCallback(async (date: Date) => {
+    const prevMonth = new Date(date.getFullYear(), date.getMonth() - 1, 1);
+    const nextMonth = new Date(date.getFullYear(), date.getMonth() + 1, 1);
+
+    // Précharger sans attendre (non bloquant)
+    Promise.all([
+      fetchTasksForMonth(prevMonth),
+      fetchTasksForMonth(nextMonth)
+    ]).catch(() => {
+      // Ignorer les erreurs de préchargement
+    });
+  }, [fetchTasksForMonth]);
+
+  // Charger les tâches pour la date actuelle et mettre à jour l'état
+  const loadCurrentMonthTasks = useCallback(async () => {
+    const monthTasks = await fetchTasksForMonth(currentDate);
+    setTasks(monthTasks);
+
+    // Précharger les mois adjacents en arrière-plan
+    preloadAdjacentMonths(currentDate);
+  }, [currentDate, fetchTasksForMonth, preloadAdjacentMonths]);
 
   const fetchCalendars = useCallback(async () => {
     try {
@@ -68,12 +141,21 @@ export default function DashboardPage() {
     }
   }, []);
 
+  // Initialisation : charger les calendriers et les tâches du mois actuel
   useEffect(() => {
-    if (user) {
-      fetchTasks();
+    if (user && !isInitialized) {
       fetchCalendars();
+      loadCurrentMonthTasks();
+      setIsInitialized(true);
     }
-  }, [user, fetchTasks, fetchCalendars]);
+  }, [user, isInitialized, fetchCalendars, loadCurrentMonthTasks]);
+
+  // Recharger les tâches quand le mois change
+  useEffect(() => {
+    if (user && isInitialized) {
+      loadCurrentMonthTasks();
+    }
+  }, [currentDate, user, isInitialized, loadCurrentMonthTasks]);
 
   const handleToggleCalendar = useCallback(async (calendar: CalendarSource) => {
     try {
@@ -116,22 +198,42 @@ export default function DashboardPage() {
       } else {
         await api.post('/tasks/', taskData);
       }
-      await fetchTasks();
+
+      // Invalider le cache du mois concerné
+      const taskDate = new Date(taskData.start_date);
+      const monthKey = getMonthKey(taskDate);
+      tasksCache.current.delete(monthKey);
+
+      // Recharger les tâches du mois actuel
+      await loadCurrentMonthTasks();
+
       setIsModalOpen(false);
       setSelectedTask(null);
     } catch (error) {
       console.error('Erreur lors de la sauvegarde de l\'événement:', error);
     }
-  }, [selectedTask, fetchTasks]);
+  }, [selectedTask, getMonthKey, loadCurrentMonthTasks]);
 
   const handleDeleteTask = useCallback(async (id: number) => {
     try {
+      // Trouver la tâche pour invalider le bon mois
+      const task = tasks.find(t => t.id === id);
+
       await api.delete(`/tasks/${id}/`);
-      await fetchTasks();
+
+      // Invalider le cache du mois concerné
+      if (task) {
+        const taskDate = new Date(task.start_date);
+        const monthKey = getMonthKey(taskDate);
+        tasksCache.current.delete(monthKey);
+      }
+
+      // Recharger les tâches du mois actuel
+      await loadCurrentMonthTasks();
     } catch (error) {
       console.error('Erreur lors de la suppression de l\'événement:', error);
     }
-  }, [fetchTasks]);
+  }, [tasks, getMonthKey, loadCurrentMonthTasks]);
 
   const handleTaskClick = useCallback((task: Task) => {
     setSelectedTask(task);
@@ -154,7 +256,13 @@ export default function DashboardPage() {
     try {
       const response = await caldavAPI.sync();
       setSyncMessage(`✓ ${response.data.stats.pushed} envoyées, ${response.data.stats.pulled} reçues`);
-      await fetchTasks();
+
+      // Invalider tout le cache après sync
+      tasksCache.current.clear();
+
+      // Recharger les tâches du mois actuel
+      await loadCurrentMonthTasks();
+
       setTimeout(() => setSyncMessage(null), 5000);
     } catch (error) {
       if ((error as {response?: {status?: number}}).response?.status === 404) {
@@ -166,10 +274,10 @@ export default function DashboardPage() {
     } finally {
       setIsSyncing(false);
     }
-  }, [fetchTasks]);
+  }, [loadCurrentMonthTasks]);
 
 
-  if (authLoading || loading) {
+  if (authLoading) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
         <div className="text-center">

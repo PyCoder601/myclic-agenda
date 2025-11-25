@@ -20,7 +20,7 @@ services:
     depends_on:
       - db
     ports:
-      - "8021:8020"
+      - "8021:8021"
     networks:
       - agenda-net
     restart: unless-stopped

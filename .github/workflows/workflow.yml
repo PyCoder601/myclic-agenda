@@ -19,7 +19,7 @@ jobs:
           port: ${{ secrets.VPS_PORT }}
           key: ${{ secrets.VPS_SSH_KEY }}
           script: |
-            cd /home/myclic-mailing/www/kubiweb-mailbuilder
+            cd /home/myclic-mailing/www/myclic-agenda
             git fetch origin
             git reset --hard origin/master
             echo "${{ secrets.BACKEND_ENV }}" > backend/.env.prod

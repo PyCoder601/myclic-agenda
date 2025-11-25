@@ -1,4 +1,4 @@
-from django.contrib.auth import authenticate
+from django.contrib.auth import authenticate, get_user_model
 from rest_framework import viewsets, status
 from rest_framework.decorators import api_view, permission_classes, action
 from rest_framework.permissions import IsAuthenticated, AllowAny
@@ -8,15 +8,20 @@ import threading
 import caldav
 
 from .models import Task, CalDAVConfig, CalendarSource
-from .serializers import TaskSerializer, UserSerializer, CalDAVConfigSerializer, CalendarSourceSerializer
+from .serializers import (
+    TaskSerializer, UserSerializer, CalDAVConfigSerializer,
+    CalendarSourceSerializer, UserCreateSerializer
+)
 from .caldav_service import CalDAVService
+
+User = get_user_model()
 
 
 @api_view(['POST'])
 @permission_classes([AllowAny])
 def signup(request):
     """Inscription d'un nouvel utilisateur"""
-    serializer = UserSerializer(data=request.data)
+    serializer = UserCreateSerializer(data=request.data)
     if serializer.is_valid():
         user = serializer.save()
         refresh = RefreshToken.for_user(user)
@@ -182,9 +187,20 @@ class TaskViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
-        """Retourner uniquement les tâches de l'utilisateur connecté"""
-        queryset = Task.objects.filter(user=self.request.user)
+        """
+        Retourner les tâches de l'utilisateur connecté et les tâches
+        des calendriers partagés avec lui.
+        """
+        # Tâches de l'utilisateur
+        user_tasks = Task.objects.filter(user=self.request.user)
 
+        # Tâches des calendriers partagés avec l'utilisateur
+        shared_calendar_sources = CalendarSource.objects.filter(shared_with=self.request.user)
+        shared_tasks = Task.objects.filter(calendar_source__in=shared_calendar_sources)
+
+        # Combiner les deux querysets
+        queryset = user_tasks | shared_tasks
+        
         # Filtrage par date pour pagination (optimisation)
         start_date = self.request.query_params.get('start_date', None)
         end_date = self.request.query_params.get('end_date', None)
@@ -346,6 +362,70 @@ def discover_calendars(request):
         return Response({
             'error': f'Erreur lors de la découverte des calendriers: {str(e)}'
         }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def search_users(request):
+    """Rechercher des utilisateurs par nom d'utilisateur"""
+    query = request.query_params.get('query', '')
+    if len(query) < 2:
+        return Response({'users': []})
+
+    users = User.objects.filter(username__icontains=query).exclude(id=request.user.id)
+    serializer = UserSerializer(users, many=True)
+    return Response({'users': serializer.data})
+
+
+@api_view(['POST', 'DELETE'])
+@permission_classes([IsAuthenticated])
+def share_calendar(request, calendar_id):
+    """Partager ou révoquer le partage d'un calendrier"""
+    try:
+        calendar = CalendarSource.objects.get(id=calendar_id, user=request.user)
+    except CalendarSource.DoesNotExist:
+        return Response({'error': 'Calendrier non trouvé'}, status=status.HTTP_404_NOT_FOUND)
+
+    user_id = request.data.get('user_id')
+    try:
+        target_user = User.objects.get(id=user_id)
+    except User.DoesNotExist:
+        return Response({'error': 'Utilisateur non trouvé'}, status=status.HTTP_404_NOT_FOUND)
+
+    try:
+        config = CalDAVConfig.objects.get(user=request.user)
+        service = CalDAVService(config)
+    except CalDAVConfig.DoesNotExist:
+        return Response({'error': 'Configuration CalDAV non trouvée'}, status=status.HTTP_400_BAD_REQUEST)
+
+    if request.method == 'POST':
+        access_level = request.data.get('access_level', 'read')  # 'read' ou 'read-write'
+        
+        # Ajouter au modèle
+        calendar.shared_with.add(target_user)
+        
+        # Partager via CalDAV
+        if not service.share_calendar(calendar, target_user, access_level):
+            # Rollback si le partage CalDAV échoue
+            calendar.shared_with.remove(target_user)
+            return Response({'error': 'Impossible de partager le calendrier sur le serveur CalDAV'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+        return Response({
+            'message': f'Calendrier partagé avec {target_user.username}'
+        }, status=status.HTTP_200_OK)
+
+    elif request.method == 'DELETE':
+        # Retirer du modèle
+        calendar.shared_with.remove(target_user)
+        
+        # Révoquer via CalDAV
+        if not service.unshare_calendar(calendar, target_user):
+            # On ne fait pas de rollback, car on veut que la base de données soit cohérente
+            return Response({'error': 'Impossible de révoquer le partage sur le serveur CalDAV, mais la base de données a été mise à jour'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+        return Response({
+            'message': f'Partage révoqué pour {target_user.username}'
+        }, status=status.HTTP_200_OK)
 
 
 @api_view(['PUT', 'DELETE'])

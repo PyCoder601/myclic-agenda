@@ -8,6 +8,7 @@ from datetime import datetime
 import pytz
 from django.utils import timezone
 from .models import Task, CalDAVConfig
+from django.contrib.auth.models import User
 
 
 class CalDAVService:
@@ -361,6 +362,84 @@ class CalDAVService:
             print(f"Erreur lors de la synchronisation: {e}")
 
         return stats
+
+    def get_principal_url(self, username):
+        """Construire l'URL du principal pour un utilisateur"""
+        base_path = self.client.url.path.split('/dav.php')[0]
+        return f"{base_path}/principals/{username}"
+
+    def share_calendar(self, calendar_source, target_user, access_level='read'):
+        """
+        Partager un calendrier avec un autre utilisateur
+
+        Args:
+            calendar_source: Instance de CalendarSource
+            target_user: Instance de User
+            access_level: 'read' ou 'read-write'
+
+        Returns:
+            bool: Succès de l'opération
+        """
+        if not self.client:
+            if not self.connect():
+                return False
+
+        try:
+            principal = self.client.principal()
+            target_calendar = None
+            for cal in principal.calendars():
+                if cal.url.canonical() == calendar_source.calendar_url:
+                    target_calendar = cal
+                    break
+
+            if not target_calendar:
+                print(f"Calendrier non trouvé: {calendar_source.calendar_url}")
+                return False
+
+            principal_url = self.get_principal_url(target_user.username)
+            target_calendar.share_with(principal_url, access_level)
+            print(f"Calendrier {calendar_source.name} partagé avec {target_user.username} (accès: {access_level})")
+            return True
+
+        except Exception as e:
+            print(f"Erreur lors du partage du calendrier: {e}")
+            return False
+
+    def unshare_calendar(self, calendar_source, target_user):
+        """
+        Révoquer le partage d'un calendrier
+
+        Args:
+            calendar_source: Instance de CalendarSource
+            target_user: Instance de User
+
+        Returns:
+            bool: Succès de l'opération
+        """
+        if not self.client:
+            if not self.connect():
+                return False
+
+        try:
+            principal = self.client.principal()
+            target_calendar = None
+            for cal in principal.calendars():
+                if cal.url.canonical() == calendar_source.calendar_url:
+                    target_calendar = cal
+                    break
+
+            if not target_calendar:
+                print(f"Calendrier non trouvé: {calendar_source.calendar_url}")
+                return False
+
+            principal_url = self.get_principal_url(target_user.username)
+            target_calendar.unshare(principal_url)
+            print(f"Partage du calendrier {calendar_source.name} révoqué pour {target_user.username}")
+            return True
+
+        except Exception as e:
+            print(f"Erreur lors de la révocation du partage: {e}")
+            return False
 
     def delete_task(self, task):
         """

@@ -14,6 +14,7 @@ export interface CalendarSource {
   color: string;
   created_at: string;
   updated_at: string;
+  shared_with?: { id: number; username: string }[];
 }
 
 export interface Task {

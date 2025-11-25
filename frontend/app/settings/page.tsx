@@ -18,6 +18,13 @@ export default function SettingsPage() {
   const [hasConfig, setHasConfig] = useState(false);
   const [calendars, setCalendars] = useState<CalendarSource[]>([]);
 
+  const [isShareModalOpen, setIsShareModalOpen] = useState(false);
+  const [selectedCalendar, setSelectedCalendar] = useState<CalendarSource | null>(null);
+  const [shareSearchQuery, setShareSearchQuery] = useState('');
+  const [shareSearchResults, setShareSearchResults] = useState<any[]>([]);
+  const [sharingLoading, setSharingLoading] = useState(false);
+
+
   const [formData, setFormData] = useState({
     caldav_url: '',
     username: '',
@@ -35,6 +42,18 @@ export default function SettingsPage() {
     }
     loadConfig();
   }, [user, router]);
+
+  const openShareModal = (calendar: CalendarSource) => {
+    setSelectedCalendar(calendar);
+    setIsShareModalOpen(true);
+  };
+
+  const closeShareModal = () => {
+    setSelectedCalendar(null);
+    setIsShareModalOpen(false);
+    setShareSearchQuery('');
+    setShareSearchResults([]);
+  };
 
   const loadConfig = async () => {
     try {
@@ -55,6 +74,7 @@ export default function SettingsPage() {
       }
     }
   };
+
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -160,6 +180,77 @@ export default function SettingsPage() {
       setSyncing(false);
     }
   };
+
+  const handleRemoveShare = async (userId: number) => {
+    if (!selectedCalendar) return;
+
+    setSharingLoading(true);
+    try {
+      await caldavAPI.unshareCalendar(selectedCalendar.id, userId);
+      
+      // Mettre à jour l'état local
+      const updatedCalendars = calendars.map(cal => {
+        if (cal.id === selectedCalendar.id) {
+          return {
+            ...cal,
+            shared_with: cal.shared_with?.filter(su => su.id !== userId)
+          };
+        }
+        return cal;
+      });
+      setCalendars(updatedCalendars);
+      setSelectedCalendar(updatedCalendars.find(cal => cal.id === selectedCalendar.id) || null);
+
+      setMessage({ type: 'success', text: 'Partage révoqué' });
+    } catch (error) {
+      setMessage({ type: 'error', text: 'Erreur lors de la révocation du partage' });
+    } finally {
+      setSharingLoading(false);
+    }
+  };
+
+  const handleAddShare = async (userId: number) => {
+    if (!selectedCalendar) return;
+
+    setSharingLoading(true);
+    try {
+      await caldavAPI.shareCalendar(selectedCalendar.id, userId);
+      
+      // Recharger la configuration pour obtenir la liste à jour
+      await loadConfig();
+      // Ou mettre à jour l'état local manuellement si l'API de partage renvoie le nouvel utilisateur
+      
+      setShareSearchQuery('');
+      setShareSearchResults([]);
+      setMessage({ type: 'success', text: 'Calendrier partagé !' });
+    } catch (error) {
+      setMessage({ type: 'error', text: 'Erreur lors du partage' });
+    } finally {
+      setSharingLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (shareSearchQuery.length < 2) {
+      setShareSearchResults([]);
+      return;
+    }
+
+    const searchUsers = async () => {
+      try {
+        const response = await caldavAPI.searchUsers(shareSearchQuery);
+        setShareSearchResults(response.data.users);
+      } catch (error) {
+        console.error("Erreur lors de la recherche d'utilisateurs", error);
+      }
+    };
+
+    const debounceSearch = setTimeout(() => {
+      searchUsers();
+    }, 300);
+
+    return () => clearTimeout(debounceSearch);
+  }, [shareSearchQuery]);
 
   const handleDelete = async () => {
     if (!confirm('Êtes-vous sûr de vouloir supprimer la configuration CalDAV ?')) {
@@ -479,6 +570,15 @@ export default function SettingsPage() {
                             className="w-10 h-10 rounded-xl cursor-pointer border-2 border-slate-200 hover:border-[#005f82] transition-all duration-300 hover:scale-110"
                             title="Changer la couleur"
                           />
+                          <button
+                            onClick={() => openShareModal(calendar)}
+                            className="p-2 rounded-xl hover:bg-slate-200 transition-all"
+                            title="Partager le calendrier"
+                          >
+                            <svg className="w-6 h-6 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                            </svg>
+                          </button>
                         </div>
                       </div>
                     ))}
@@ -563,9 +663,84 @@ export default function SettingsPage() {
             <p><strong>2.</strong> Créez un utilisateur si ce n&#39;est pas déjà fait</p>
             <p><strong>3.</strong> Notez l&#39;URL CalDAV (généralement https://votre-domaine.com/dav.php)</p>
             <p><strong>4.</strong> Utilisez les identifiants de votre utilisateur Baikal</p>
-            <p><strong>5.</strong> La synchronisation se fera automatiquement à chaque création/modification d'événement</p>
+            <p><strong>5.</strong> La synchronisation se fera automatiquement à chaque création/modification d&#39;événement</p>
           </div>
         </div>
+
+        {isShareModalOpen && selectedCalendar && (
+          <div className="fixed inset-0 flex items-center justify-center z-50">
+            <div className="bg-white rounded-2xl shadow-2xl p-8 max-w-lg w-full">
+              <h3 className="text-xl font-bold text-slate-900 mb-4">
+                Partager &quot;{selectedCalendar.name}&quot;
+              </h3>
+
+              {/* Utilisateurs déjà partagés */}
+              <div className="mb-6">
+                <h4 className="font-semibold text-slate-700 mb-2">Partagé avec :</h4>
+                <div className="space-y-2">
+                  {selectedCalendar.shared_with && selectedCalendar.shared_with.length > 0 ? (
+                    selectedCalendar.shared_with.map(sharedUser => (
+                      <div key={sharedUser.id} className="flex justify-between items-center bg-slate-100 p-2 rounded-lg">
+                        <span>{sharedUser.username}</span>
+                        <button
+                          onClick={() => handleRemoveShare(sharedUser.id)}
+                          disabled={sharingLoading}
+                          className="text-red-500 hover:text-red-700 font-medium disabled:opacity-50"
+                        >
+                          {sharingLoading ? '...' : 'Retirer'}
+                        </button>
+                      </div>
+                    ))
+                  ) : (
+                    <p className="text-slate-500 text-sm">Ce calendrier n&#39;est partagé avec personne.</p>
+                  )}
+                </div>
+              </div>
+
+              {/* Recherche d'utilisateurs */}
+              <div className="mb-4">
+                <label htmlFor="user-search" className="font-semibold text-slate-700 mb-2 block">
+                  Ajouter un utilisateur :
+                </label>
+                <input
+                  type="text"
+                  id="user-search"
+                  value={shareSearchQuery}
+                  onChange={(e) => setShareSearchQuery(e.target.value)}
+                  placeholder="Rechercher un nom d'utilisateur..."
+                  className="w-full px-4 py-2 border border-slate-300 rounded-xl"
+                />
+              </div>
+
+              {/* Résultats de la recherche */}
+              {shareSearchResults.length > 0 && (
+                <div className="space-y-2 max-h-40 overflow-y-auto">
+                  {shareSearchResults.map(foundUser => (
+                    <div key={foundUser.id} className="flex justify-between items-center bg-blue-50 p-2 rounded-lg">
+                      <span>{foundUser.username}</span>
+                      <button
+                        onClick={() => handleAddShare(foundUser.id)}
+                        disabled={sharingLoading}
+                        className="text-blue-600 hover:text-blue-800 font-medium disabled:opacity-50"
+                      >
+                        {sharingLoading ? '...' : 'Ajouter'}
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              <div className="mt-6 text-right">
+                <button
+                  onClick={closeShareModal}
+                  className="px-6 py-2 bg-slate-200 text-slate-800 rounded-xl hover:bg-slate-300"
+                >
+                  Fermer
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

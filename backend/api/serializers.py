@@ -3,7 +3,7 @@ from django.contrib.auth.models import User
 from .models import Task, CalDAVConfig, CalendarSource
 
 
-class UserSerializer(serializers.ModelSerializer):
+class UserCreateSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True)
 
     class Meta:
@@ -24,12 +24,24 @@ class UserSerializer(serializers.ModelSerializer):
         )
         return user
 
+class UserSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = User
+        fields = ('id', 'username', 'email', 'first_name', 'last_name')
+
+class UserSharedSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = User
+        fields = ('id', 'username')
 
 class CalendarSourceSerializer(serializers.ModelSerializer):
+    shared_with = UserSharedSerializer(many=True, read_only=True)
+
     class Meta:
         model = CalendarSource
-        fields = ('id', 'name', 'calendar_url', 'is_enabled', 'color', 'created_at', 'updated_at')
-        read_only_fields = ('created_at', 'updated_at')
+        fields = ('id', 'name', 'calendar_url', 'is_enabled', 'color', 'created_at', 'updated_at', 'shared_with')
+        read_only_fields = ('created_at', 'updated_at', 'shared_with')
+
 
 
 class CalDAVConfigSerializer(serializers.ModelSerializer):

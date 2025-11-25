@@ -26,6 +26,7 @@ class CalendarSource(models.Model):
     is_enabled = models.BooleanField(default=True, help_text="Afficher ce calendrier")
     color = models.CharField(max_length=7, default='#005f82', help_text="Couleur d'affichage")
     caldav_config = models.ForeignKey('CalDAVConfig', on_delete=models.CASCADE, related_name='calendars')
+    shared_with = models.ManyToManyField(User, related_name='shared_calendars', blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

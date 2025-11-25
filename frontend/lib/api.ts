@@ -102,6 +102,17 @@ export const caldavAPI = {
 
   // Supprimer un calendrier
   deleteCalendar: (calendarId: number) => api.delete(`/caldav/calendars/${calendarId}/`),
+
+  // Rechercher des utilisateurs
+  searchUsers: (query: string) => api.get(`/users/search/?query=${query}`),
+
+  // Partager un calendrier
+  shareCalendar: (calendarId: number, userId: number, accessLevel = 'read') =>
+    api.post(`/caldav/calendars/${calendarId}/share/`, { user_id: userId, access_level: accessLevel }),
+
+  // Révoquer le partage
+  unshareCalendar: (calendarId: number, userId: number) =>
+    api.delete(`/caldav/calendars/${calendarId}/share/`, { data: { user_id: userId } }),
 };
 
 export default api;

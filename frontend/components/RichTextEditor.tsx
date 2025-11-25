@@ -1,6 +1,7 @@
 'use client';
 
-import { useEditor, EditorContent, FloatingMenu, BubbleMenu } from '@tiptap/react';
+import { useEditor, EditorContent, BubbleMenu } from '@tiptap/react';
+import { FloatingMenu } from '@tiptap/react/menus';
 import StarterKit from '@tiptap/starter-kit';
 import Underline from '@tiptap/extension-underline';
 import { Bold, Italic, Underline as UnderlineIcon, Strikethrough, Pilcrow, List, ListOrdered, Undo, Redo } from 'lucide-react';

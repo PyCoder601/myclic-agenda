@@ -1,6 +1,6 @@
 from rest_framework import serializers
 from django.contrib.auth.models import User
-from .models import Task, CalDAVConfig, CalendarSource
+from .models import Task, CalDAVConfig, CalendarSource, CalendarShare
 
 
 class UserCreateSerializer(serializers.ModelSerializer):
@@ -34,14 +34,22 @@ class UserSharedSerializer(serializers.ModelSerializer):
         model = User
         fields = ('id', 'username')
 
+class CalendarShareSerializer(serializers.ModelSerializer):
+    user = UserSharedSerializer(read_only=True)
+
+    class Meta:
+        model = CalendarShare
+        fields = ('id', 'user', 'permission')
+
+
 class CalendarSourceSerializer(serializers.ModelSerializer):
-    shared_with = UserSharedSerializer(many=True, read_only=True)
+    shares = CalendarShareSerializer(source='calendarshare_set', many=True, read_only=True)
     user = UserSharedSerializer(read_only=True)
 
     class Meta:
         model = CalendarSource
-        fields = ('id', 'user', 'name', 'calendar_url', 'is_enabled', 'color', 'created_at', 'updated_at', 'shared_with')
-        read_only_fields = ('created_at', 'updated_at', 'shared_with', 'user')
+        fields = ('id', 'user', 'name', 'calendar_url', 'is_enabled', 'color', 'created_at', 'updated_at', 'shares')
+        read_only_fields = ('created_at', 'updated_at', 'shares', 'user')
 
 
 

@@ -18,6 +18,30 @@ class CalDAVConfig(models.Model):
         return f"CalDAV config for {self.user.username}"
 
 
+class CalendarShare(models.Model):
+    """Modèle intermédiaire pour le partage de calendriers avec permissions."""
+    PERMISSION_CHOICES = [
+        ('read', 'Lecture seule'),
+        ('write', 'Lecture/Écriture'),
+    ]
+    calendar_source = models.ForeignKey('CalendarSource', on_delete=models.CASCADE)
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    permission = models.CharField(
+        max_length=10,
+        choices=PERMISSION_CHOICES,
+        default='read',
+        help_text="Niveau de permission pour l'utilisateur partagé"
+    )
+
+    class Meta:
+        unique_together = ('calendar_source', 'user')
+        verbose_name = "Partage de calendrier"
+        verbose_name_plural = "Partages de calendriers"
+
+    def __str__(self):
+        return f"{self.user.username} a un accès en {self.get_permission_display()} à {self.calendar_source.name}"
+
+
 class CalendarSource(models.Model):
     """Source de calendrier CalDAV pour un utilisateur"""
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='calendar_sources')
@@ -26,7 +50,13 @@ class CalendarSource(models.Model):
     is_enabled = models.BooleanField(default=True, help_text="Afficher ce calendrier")
     color = models.CharField(max_length=7, default='#005f82', help_text="Couleur d'affichage")
     caldav_config = models.ForeignKey('CalDAVConfig', on_delete=models.CASCADE, related_name='calendars')
-    shared_with = models.ManyToManyField(User, related_name='shared_calendars', blank=True)
+    shared_with = models.ManyToManyField(
+        User,
+        through='CalendarShare',
+        related_name='shared_calendars',
+        blank=True,
+        help_text="Utilisateurs avec qui ce calendrier est partagé"
+    )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

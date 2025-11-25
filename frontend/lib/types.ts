@@ -6,6 +6,12 @@ export interface User {
   last_name: string;
 }
 
+export interface CalendarShare {
+  id: number;
+  user: { id: number; username: string };
+  permission: 'read' | 'write';
+}
+
 export interface CalendarSource {
   id: number;
   user: { id: number; username: string };
@@ -15,7 +21,7 @@ export interface CalendarSource {
   color: string;
   created_at: string;
   updated_at: string;
-  shared_with?: { id: number; username: string }[];
+  shares: CalendarShare[];
 }
 
 export interface Task {

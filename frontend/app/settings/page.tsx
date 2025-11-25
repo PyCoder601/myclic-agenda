@@ -23,7 +23,7 @@ export default function SettingsPage() {
   const [shareSearchQuery, setShareSearchQuery] = useState('');
   const [shareSearchResults, setShareSearchResults] = useState<any[]>([]);
   const [sharingLoading, setSharingLoading] = useState(false);
-
+  const [permissionLevel, setPermissionLevel] = useState<'read' | 'write'>('read');
 
   const [formData, setFormData] = useState({
     caldav_url: '',
@@ -193,37 +193,27 @@ export default function SettingsPage() {
     try {
       await caldavAPI.unshareCalendar(selectedCalendar.id, userId);
       
-      // Mettre à jour l'état local
-      const updatedCalendars = calendars.map(cal => {
-        if (cal.id === selectedCalendar.id) {
-          return {
-            ...cal,
-            shared_with: cal.shared_with?.filter(su => su.id !== userId)
-          };
-        }
-        return cal;
-      });
-      setCalendars(updatedCalendars);
-      setSelectedCalendar(updatedCalendars.find(cal => cal.id === selectedCalendar.id) || null);
+      // Recharger la config pour avoir les données à jour
+      await loadConfig();
 
       setMessage({ type: 'success', text: 'Partage révoqué' });
     } catch (error) {
       setMessage({ type: 'error', text: 'Erreur lors de la révocation du partage' });
     } finally {
       setSharingLoading(false);
+      closeShareModal(); // Fermer la modale après l'action
     }
   };
 
-  const handleAddShare = async (userId: number) => {
+  const handleAddShare = async (userId: number, permission: 'read' | 'write') => {
     if (!selectedCalendar) return;
 
     setSharingLoading(true);
     try {
-      await caldavAPI.shareCalendar(selectedCalendar.id, userId);
+      await caldavAPI.shareCalendar(selectedCalendar.id, userId, permission);
       
       // Recharger la configuration pour obtenir la liste à jour
       await loadConfig();
-      // Ou mettre à jour l'état local manuellement si l'API de partage renvoie le nouvel utilisateur
       
       setShareSearchQuery('');
       setShareSearchResults([]);
@@ -232,6 +222,7 @@ export default function SettingsPage() {
       setMessage({ type: 'error', text: 'Erreur lors du partage' });
     } finally {
       setSharingLoading(false);
+      closeShareModal(); // Fermer la modale après l'action
     }
   };
 
@@ -541,10 +532,7 @@ export default function SettingsPage() {
                     Calendriers de {user?.username}
                   </h3>
                   <div className="space-y-2">
-                    {calendars.filter(cal =>
-                      cal.name.toLowerCase().includes('default') ||
-                      cal.name.toLowerCase().includes(user?.username?.toLowerCase() || '')
-                    ).map((calendar, index) => (
+                    {calendars.filter(cal => cal.user.id === user?.id).map((calendar, index) => (
                       <div
                         key={calendar.id}
                         className="group flex items-center justify-between p-4 hover:bg-gradient-to-r hover:from-blue-50 hover:to-indigo-50 rounded-xl transition-all duration-300 border border-transparent hover:border-[#005f82]/20 hover:shadow-md animate-fadeIn"
@@ -591,22 +579,16 @@ export default function SettingsPage() {
                 </div>
 
                 {/* Calendriers partagés */}
-                {calendars.filter(cal =>
-                  !cal.name.toLowerCase().includes('default') &&
-                  !cal.name.toLowerCase().includes(user?.username?.toLowerCase() || '')
-                ).length > 0 && (
+                {calendars.filter(cal => cal.user.id !== user?.id).length > 0 && (
                   <div className="animate-slideInDown" style={{ animationDelay: '100ms' }}>
-                    <h3 className="text-sm font-bold text-[#005f82] mb-3 pb-2 border-b border-[#005f82]/20 uppercase tracking-wider flex items-center gap-2">
+                    <h3 className="text-sm font-bold text-purple-700 mb-3 pb-2 border-b border-purple-200 uppercase tracking-wider flex items-center gap-2">
                       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
                       </svg>
-                      Calendriers partagés
+                      Calendriers partagés avec vous
                     </h3>
                     <div className="space-y-2">
-                      {calendars.filter(cal =>
-                        !cal.name.toLowerCase().includes('default') &&
-                        !cal.name.toLowerCase().includes(user?.username?.toLowerCase() || '')
-                      ).map((calendar, index) => (
+                      {calendars.filter(cal => cal.user.id !== user?.id).map((calendar, index) => (
                         <div
                           key={calendar.id}
                           className="group flex items-center justify-between p-4 hover:bg-gradient-to-r hover:from-purple-50 hover:to-pink-50 rounded-xl transition-all duration-300 border border-transparent hover:border-purple-200 hover:shadow-md animate-fadeIn"
@@ -618,16 +600,19 @@ export default function SettingsPage() {
                                 type="checkbox"
                                 checked={calendar.is_enabled}
                                 onChange={() => handleToggleCalendar(calendar)}
-                                className="h-5 w-5 text-[#005f82] focus:ring-[#005f82] border-slate-300 rounded transition-all duration-200 cursor-pointer"
+                                className="h-5 w-5 text-purple-600 focus:ring-purple-500 border-slate-300 rounded transition-all duration-200 cursor-pointer"
                               />
                             </div>
                             <div
                               className="w-4 h-4 rounded-full shadow-lg ring-2 ring-white transition-all duration-300 group-hover:scale-125"
                               style={{ backgroundColor: calendar.color }}
                             />
-                            <span className="text-slate-900 font-medium group-hover:text-purple-700 transition-colors duration-200">
-                              {calendar.name}
-                            </span>
+                            <div>
+                                <span className="text-slate-900 font-medium group-hover:text-purple-700 transition-colors duration-200">
+                                {calendar.name}
+                                </span>
+                                <span className="text-xs text-slate-500 ml-2">(de {calendar.user.username})</span>
+                            </div>
                           </div>
                           <div className="flex items-center gap-2">
                             <input
@@ -673,7 +658,7 @@ export default function SettingsPage() {
         </div>
 
         {isShareModalOpen && selectedCalendar && (
-          <div className="fixed inset-0 flex items-center justify-center z-50">
+          <div className="fixed inset-0 bg-black/30 backdrop-blur-sm flex items-center justify-center z-50 animate-fadeIn">
             <div className="bg-white rounded-2xl shadow-2xl p-8 max-w-lg w-full">
               <h3 className="text-xl font-bold text-slate-900 mb-4">
                 Partager &quot;{selectedCalendar.name}&quot;
@@ -682,18 +667,23 @@ export default function SettingsPage() {
               {/* Utilisateurs déjà partagés */}
               <div className="mb-6">
                 <h4 className="font-semibold text-slate-700 mb-2">Partagé avec :</h4>
-                <div className="space-y-2">
-                  {selectedCalendar.shared_with && selectedCalendar.shared_with.length > 0 ? (
-                    selectedCalendar.shared_with.map(sharedUser => (
-                      <div key={sharedUser.id} className="flex justify-between items-center bg-slate-100 p-2 rounded-lg">
-                        <span>{sharedUser.username}</span>
-                        <button
-                          onClick={() => handleRemoveShare(sharedUser.id)}
-                          disabled={sharingLoading}
-                          className="text-red-500 hover:text-red-700 font-medium disabled:opacity-50"
-                        >
-                          {sharingLoading ? '...' : 'Retirer'}
-                        </button>
+                <div className="space-y-2 max-h-32 overflow-y-auto">
+                  {selectedCalendar.shares && selectedCalendar.shares.length > 0 ? (
+                    selectedCalendar.shares.map(share => (
+                      <div key={share.id} className="flex justify-between items-center bg-slate-100 p-2 rounded-lg">
+                        <span>{share.user.username}</span>
+                        <div className="flex items-center gap-2">
+                            <span className={`px-2 py-1 text-xs font-semibold rounded-full ${share.permission === 'write' ? 'bg-green-100 text-green-800' : 'bg-blue-100 text-blue-800'}`}>
+                                {share.permission === 'write' ? 'Lecture/Écriture' : 'Lecture seule'}
+                            </span>
+                            <button
+                                onClick={() => handleRemoveShare(share.user.id)}
+                                disabled={sharingLoading}
+                                className="text-red-500 hover:text-red-700 font-medium disabled:opacity-50"
+                            >
+                                {sharingLoading ? '...' : 'Retirer'}
+                            </button>
+                        </div>
                       </div>
                     ))
                   ) : (
@@ -707,14 +697,20 @@ export default function SettingsPage() {
                 <label htmlFor="user-search" className="font-semibold text-slate-700 mb-2 block">
                   Ajouter un utilisateur :
                 </label>
-                <input
-                  type="text"
-                  id="user-search"
-                  value={shareSearchQuery}
-                  onChange={(e) => setShareSearchQuery(e.target.value)}
-                  placeholder="Rechercher un nom d'utilisateur..."
-                  className="w-full px-4 py-2 border border-slate-300 rounded-xl"
-                />
+                <div className="flex gap-2">
+                    <input
+                        type="text"
+                        id="user-search"
+                        value={shareSearchQuery}
+                        onChange={(e) => setShareSearchQuery(e.target.value)}
+                        placeholder="Rechercher un nom d'utilisateur..."
+                        className="w-full px-4 py-2 border border-slate-300 rounded-xl"
+                    />
+                    <select value={permissionLevel} onChange={(e) => setPermissionLevel(e.target.value as 'read' | 'write')} className="border border-slate-300 rounded-xl px-2">
+                        <option value="read">Lecture seule</option>
+                        <option value="write">Lecture/Écriture</option>
+                    </select>
+                </div>
               </div>
 
               {/* Résultats de la recherche */}
@@ -724,7 +720,7 @@ export default function SettingsPage() {
                     <div key={foundUser.id} className="flex justify-between items-center bg-blue-50 p-2 rounded-lg">
                       <span>{foundUser.username}</span>
                       <button
-                        onClick={() => handleAddShare(foundUser.id)}
+                        onClick={() => handleAddShare(foundUser.id, permissionLevel)}
                         disabled={sharingLoading}
                         className="text-blue-600 hover:text-blue-800 font-medium disabled:opacity-50"
                       >
@@ -750,4 +746,3 @@ export default function SettingsPage() {
     </div>
   );
 }
-

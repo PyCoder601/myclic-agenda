@@ -110,8 +110,8 @@ export const caldavAPI = {
   searchUsers: (query: string) => api.get(`/users/search/?query=${query}`),
 
   // Partager un calendrier
-  shareCalendar: (calendarId: number, userId: number, accessLevel = 'read') =>
-    api.post(`/caldav/calendars/${calendarId}/share/`, { user_id: userId, access_level: accessLevel }),
+  shareCalendar: (calendarId: number, userId: number, permission = 'read') =>
+    api.post(`/caldav/calendars/${calendarId}/share/`, { user_id: userId, permission: permission }),
 
   // Révoquer le partage
   unshareCalendar: (calendarId: number, userId: number) =>

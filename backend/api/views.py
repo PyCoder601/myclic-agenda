@@ -1,13 +1,15 @@
 from django.contrib.auth import authenticate, get_user_model
+from django.db.models import Q
 from rest_framework import viewsets, status
 from rest_framework.decorators import api_view, permission_classes, action
+from rest_framework.exceptions import PermissionDenied
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.response import Response
 from rest_framework_simplejwt.tokens import RefreshToken
 import threading
 import caldav
 
-from .models import Task, CalDAVConfig, CalendarSource
+from .models import Task, CalDAVConfig, CalendarSource, CalendarShare
 from .serializers import (
     TaskSerializer, UserSerializer, CalDAVConfigSerializer,
     CalendarSourceSerializer, UserCreateSerializer
@@ -188,25 +190,29 @@ class TaskViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         """
-        Retourner les tâches de l'utilisateur connecté et les tâches
-        des calendriers partagés avec lui.
+        Retourner les tâches des calendriers de l'utilisateur
+        et des calendriers partagés avec lui.
         """
-        # Tâches de l'utilisateur
-        user_tasks = Task.objects.filter(user=self.request.user)
+        user = self.request.user
 
-        # Tâches des calendriers partagés avec l'utilisateur
-        shared_calendar_sources = CalendarSource.objects.filter(shared_with=self.request.user)
-        shared_tasks = Task.objects.filter(calendar_source__in=shared_calendar_sources)
+        # Calendriers partagés avec l'utilisateur (avec n'importe quelle permission)
+        shared_calendar_pks = CalendarShare.objects.filter(user=user).values_list('calendar_source_id', flat=True)
 
-        # Combiner les deux querysets
-        queryset = user_tasks | shared_tasks
-        
-        # Filtrage par date pour pagination (optimisation)
+        # Critères de filtrage
+        # 1. Tâches dans les calendriers de l'utilisateur
+        # 2. Tâches dans les calendriers partagés avec l'utilisateur
+        # 3. Tâches sans calendrier (personnelles) créées par l'utilisateur
+        queryset = Task.objects.filter(
+            Q(calendar_source__user=user) |
+            Q(calendar_source_id__in=shared_calendar_pks) |
+            Q(calendar_source__isnull=True, user=user)
+        ).distinct()
+
+        # Filtrage par date pour optimisation
         start_date = self.request.query_params.get('start_date', None)
         end_date = self.request.query_params.get('end_date', None)
 
         if start_date and end_date:
-            # Retourner les tâches qui se chevauchent avec la période demandée
             queryset = queryset.filter(
                 start_date__lte=end_date,
                 end_date__gte=start_date
@@ -214,31 +220,34 @@ class TaskViewSet(viewsets.ModelViewSet):
 
         return queryset.order_by('start_date')
 
+    def check_write_permission(self, user, calendar_source):
+        """Vérifie si l'utilisateur a la permission d'écriture sur un calendrier."""
+        # Si aucun calendrier, la tâche est personnelle, seul le créateur peut modifier.
+        # La logique est gérée par `perform_create` et l'instance de la tâche pour les autres actions.
+        if not calendar_source:
+            return True
+
+        if calendar_source.user == user:
+            return True
+
+        try:
+            share = CalendarShare.objects.get(calendar_source=calendar_source, user=user)
+            if share.permission == 'write':
+                return True
+        except CalendarShare.DoesNotExist:
+            pass
+
+        return False
+
     def perform_create(self, serializer):
-        """Associer la tâche à l'utilisateur connecté et synchroniser avec CalDAV en arrière-plan"""
+        """Associer la tâche à l'utilisateur et vérifier les permissions d'écriture."""
+        calendar_source = serializer.validated_data.get('calendar_source')
+
+        if calendar_source and not self.check_write_permission(self.request.user, calendar_source):
+            raise PermissionDenied("Vous n'avez pas la permission d'ajouter des tâches à ce calendrier.")
+
         task = serializer.save(user=self.request.user)
 
-        # Synchroniser avec CalDAV en arrière-plan si configuré (non bloquant)
-        def sync_to_caldav():
-            try:
-                config = CalDAVConfig.objects.get(user=self.request.user)
-                if config.sync_enabled:
-                    service = CalDAVService(config)
-                    service.push_task(task)
-            except CalDAVConfig.DoesNotExist:
-                pass  # Pas de configuration CalDAV, continuer normalement
-            except Exception as e:
-                print(f"Erreur lors de la synchronisation CalDAV en arrière-plan: {e}")
-
-        # Lancer la synchronisation dans un thread séparé (non bloquant)
-        thread = threading.Thread(target=sync_to_caldav, daemon=True)
-        thread.start()
-
-    def perform_update(self, serializer):
-        """Mettre à jour la tâche et synchroniser avec CalDAV en arrière-plan"""
-        task = serializer.save()
-
-        # Synchroniser avec CalDAV en arrière-plan si configuré (non bloquant)
         def sync_to_caldav():
             try:
                 config = CalDAVConfig.objects.get(user=self.request.user)
@@ -250,30 +259,58 @@ class TaskViewSet(viewsets.ModelViewSet):
             except Exception as e:
                 print(f"Erreur lors de la synchronisation CalDAV en arrière-plan: {e}")
 
-        # Lancer la synchronisation dans un thread séparé (non bloquant)
+        thread = threading.Thread(target=sync_to_caldav, daemon=True)
+        thread.start()
+
+    def perform_update(self, serializer):
+        """Vérifier les permissions d'écriture avant de mettre à jour."""
+        instance = self.get_object()
+        user = self.request.user
+
+        # Vérifier si la source du calendrier a changé
+        new_calendar_source = serializer.validated_data.get('calendar_source')
+        if new_calendar_source and new_calendar_source != instance.calendar_source:
+             if not self.check_write_permission(user, new_calendar_source):
+                 raise PermissionDenied("Vous n'avez pas la permission de déplacer cette tâche vers ce calendrier.")
+
+        if not self.check_write_permission(user, instance.calendar_source):
+            if instance.user != user:
+                raise PermissionDenied("Vous n'avez pas la permission de modifier cette tâche.")
+
+        task = serializer.save()
+
+        def sync_to_caldav():
+            try:
+                config = CalDAVConfig.objects.get(user=self.request.user)
+                if config.sync_enabled:
+                    service = CalDAVService(config)
+                    service.push_task(task)
+            except CalDAVConfig.DoesNotExist:
+                pass
+            except Exception as e:
+                print(f"Erreur lors de la synchronisation CalDAV en arrière-plan: {e}")
+
         thread = threading.Thread(target=sync_to_caldav, daemon=True)
         thread.start()
 
     def perform_destroy(self, instance):
-        """Supprimer la tâche et synchroniser avec CalDAV en arrière-plan"""
-        # Sauvegarder les informations nécessaires avant suppression
+        """Vérifier les permissions d'écriture avant de supprimer."""
+        if not self.check_write_permission(self.request.user, instance.calendar_source):
+             if instance.user != self.request.user:
+                raise PermissionDenied("Vous n'avez pas la permission de supprimer cette tâche.")
+
         caldav_uid = instance.caldav_uid
         user = self.request.user
-
-        # Supprimer la tâche localement d'abord (retour immédiat au client)
         instance.delete()
 
-        # Supprimer de CalDAV en arrière-plan si configuré (non bloquant)
         def delete_from_caldav():
             try:
                 config = CalDAVConfig.objects.get(user=user)
                 if config.sync_enabled and caldav_uid:
                     service = CalDAVService(config)
-                    # Créer un objet temporaire pour la suppression
                     class TempTask:
                         def __init__(self, uid):
                             self.caldav_uid = uid
-
                     temp_task = TempTask(caldav_uid)
                     service.delete_task(temp_task)
             except CalDAVConfig.DoesNotExist:
@@ -281,7 +318,6 @@ class TaskViewSet(viewsets.ModelViewSet):
             except Exception as e:
                 print(f"Erreur lors de la suppression CalDAV en arrière-plan: {e}")
 
-        # Lancer la suppression dans un thread séparé (non bloquant)
         if caldav_uid:
             thread = threading.Thread(target=delete_from_caldav, daemon=True)
             thread.start()
@@ -292,17 +328,12 @@ class TaskViewSet(viewsets.ModelViewSet):
         try:
             config = CalDAVConfig.objects.get(user=request.user)
         except CalDAVConfig.DoesNotExist:
-            return Response({
-                'error': 'Configuration CalDAV non trouvée'
-            }, status=status.HTTP_404_NOT_FOUND)
+            return Response({'error': 'Configuration CalDAV non trouvée'}, status=status.HTTP_404_NOT_FOUND)
 
         service = CalDAVService(config)
         stats = service.sync_all(request.user)
 
-        return Response({
-            'message': 'Synchronisation terminée',
-            'stats': stats
-        })
+        return Response({'message': 'Synchronisation terminée', 'stats': stats})
 
 
 @api_view(['GET'])
@@ -368,14 +399,17 @@ def discover_calendars(request):
 @permission_classes([IsAuthenticated])
 def get_all_calendars(request):
     """
-    Récupérer tous les calendriers : ceux possédés par l'utilisateur 
+    Récupérer tous les calendriers : ceux possédés par l\'utilisateur 
     et ceux partagés avec lui.
     """
     user = request.user
-    owned_calendars = CalendarSource.objects.filter(user=user)
-    shared_calendars = CalendarSource.objects.filter(shared_with=user)
     
-    all_calendars = (owned_calendars | shared_calendars).distinct()
+    # Utilise Q objects pour combiner les querysets
+    owned_calendars = Q(user=user)
+    shared_calendar_pks = CalendarShare.objects.filter(user=user).values_list('calendar_source_id', flat=True)
+    shared_calendars = Q(pk__in=shared_calendar_pks)
+    
+    all_calendars = CalendarSource.objects.filter(owned_calendars | shared_calendars).distinct()
     
     serializer = CalendarSourceSerializer(all_calendars, many=True)
     return Response(serializer.data)
@@ -384,7 +418,7 @@ def get_all_calendars(request):
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def search_users(request):
-    """Rechercher des utilisateurs par nom d'utilisateur"""
+    """Rechercher des utilisateurs par nom d\'utilisateur"""
     query = request.query_params.get('query', '')
     if len(query) < 2:
         return Response({'users': []})
@@ -397,7 +431,7 @@ def search_users(request):
 @api_view(['POST', 'DELETE'])
 @permission_classes([IsAuthenticated])
 def share_calendar(request, calendar_id):
-    """Partager ou révoquer le partage d'un calendrier au sein de l'application"""
+    """Partager, mettre à jour ou révoquer le partage d\'un calendrier."""
     try:
         calendar = CalendarSource.objects.get(id=calendar_id, user=request.user)
     except CalendarSource.DoesNotExist:
@@ -410,16 +444,29 @@ def share_calendar(request, calendar_id):
         return Response({'error': 'Utilisateur non trouvé'}, status=status.HTTP_404_NOT_FOUND)
 
     if request.method == 'POST':
-        calendar.shared_with.add(target_user)
-        return Response({
-            'message': f'Calendrier partagé avec {target_user.username} au sein de l\'application.'
-        }, status=status.HTTP_200_OK)
+        permission = request.data.get('permission', 'read')
+        if permission not in ['read', 'write']:
+            return Response({'error': 'Permission invalide. Choisissez "read" ou "write".'}, status=status.HTTP_400_BAD_REQUEST)
+
+        share, created = CalendarShare.objects.update_or_create(
+            calendar_source=calendar,
+            user=target_user,
+            defaults={'permission': permission}
+        )
+        
+        message = f'Calendrier partagé avec {target_user.username} (permission: {share.get_permission_display()}).'
+        if not created:
+            message = f'Permission pour {target_user.username} mise à jour en {share.get_permission_display()}.'
+            
+        return Response({'message': message}, status=status.HTTP_200_OK)
 
     elif request.method == 'DELETE':
-        calendar.shared_with.remove(target_user)
-        return Response({
-            'message': f'Partage révoqué pour {target_user.username} au sein de l\'application.'
-        }, status=status.HTTP_200_OK)
+        try:
+            share = CalendarShare.objects.get(calendar_source=calendar, user=target_user)
+            share.delete()
+            return Response({'message': f'Partage révoqué pour {target_user.username}.'}, status=status.HTTP_200_OK)
+        except CalendarShare.DoesNotExist:
+            return Response({'error': 'Ce calendrier n\'est pas partagé avec cet utilisateur.'}, status=status.HTTP_404_NOT_FOUND)
 
 
 @api_view(['PUT', 'DELETE'])

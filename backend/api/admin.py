@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Task, CalDAVConfig, CalendarSource
+from .models import Task, CalDAVConfig, CalendarSource, CalendarShare
 
 # Register your models here.
 @admin.register(Task)
@@ -27,4 +27,12 @@ class CalendarSourceAdmin(admin.ModelAdmin):
     search_fields = ('name', 'user__username', 'calendar_url')
     readonly_fields = ('created_at', 'updated_at')
     list_editable = ('is_enabled', 'color')
+
+@admin.register(CalendarShare)
+class CalendarShareAdmin(admin.ModelAdmin):
+    list_display = ('calendar_source', 'user', 'permission')
+    list_filter = ('permission', 'user', 'calendar_source')
+    search_fields = ('calendar_source__name', 'user__username')
+    list_editable = ('permission',)
+    autocomplete_fields = ('calendar_source', 'user')
 

@@ -67,6 +67,20 @@ class CalDAVConfigSerializer(serializers.ModelSerializer):
         }
         read_only_fields = ('last_sync', 'created_at', 'updated_at')
 
+    def update(self, instance, validated_data):
+        # Ne pas mettre à jour le mot de passe s'il n'est pas fourni
+        password = validated_data.pop('password', None)
+        
+        # Mettre à jour les autres champs
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
+        
+        if password:
+            instance.password = password
+            
+        instance.save()
+        return instance
+
 
 class TaskSerializer(serializers.ModelSerializer):
     calendar_source_name = serializers.CharField(source='calendar_source.name', read_only=True)

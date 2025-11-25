@@ -1,6 +1,8 @@
 """
 Service pour gérer la synchronisation avec le serveur CalDAV (Baikal)
 """
+import os
+
 import caldav
 from caldav.elements import dav
 from icalendar import Calendar, Event
@@ -8,6 +10,9 @@ from datetime import datetime
 import pytz
 from django.utils import timezone
 from .models import Task
+
+from dotenv import load_dotenv
+load_dotenv()
 
 
 class CalDAVService:
@@ -21,8 +26,9 @@ class CalDAVService:
             caldav_config: Instance de CalDAVConfig (contient username/password)
             base_caldav_url: L'URL de base du serveur CalDAV.
         """
+
         self.config = caldav_config
-        self.base_caldav_url = base_caldav_url
+        self.base_caldav_url = os.getenv("BAIKAL_SERVER_URL")
         self.client = None
         self.calendar = None
 
@@ -34,7 +40,7 @@ class CalDAVService:
         
         try:
             self.client = caldav.DAVClient(
-                url=self.base_caldav_url,
+                url=os.getenv("BAIKAL_SERVER_URL"),
                 username=self.config.username,
                 password=self.config.password
             )
@@ -291,7 +297,7 @@ class CalDAVService:
 
             # Se connecter au serveur CalDAV
             client = caldav.DAVClient(
-                url=self.config.caldav_url,
+                url=os.getenv("BAIKAL_SERVER_URL"),
                 username=self.config.username,
                 password=self.config.password
             )

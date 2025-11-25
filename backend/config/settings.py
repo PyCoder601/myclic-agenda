@@ -13,6 +13,7 @@ from datetime import timedelta
 from pathlib import Path
 import os
 from dotenv import load_dotenv
+from django.core.exceptions import ImproperlyConfigured
 
 load_dotenv()
 
@@ -42,6 +43,8 @@ CORS_ALLOW_CREDENTIALS = True
 CORS_ALLOWED_ORIGINS = os.getenv("CORS_ALLOWED_ORIGINS").split(",")
 
 BAIKAL_SERVER_URL = os.getenv("BAIKAL_SERVER_URL")
+if not BAIKAL_SERVER_URL:
+    raise ImproperlyConfigured("BAIKAL_SERVER_URL environment variable is not set.")
 
 
 # Application definition

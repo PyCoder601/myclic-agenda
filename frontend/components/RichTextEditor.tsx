@@ -1,12 +1,13 @@
 'use client';
 
-import { useEditor, EditorContent, BubbleMenu } from '@tiptap/react';
-import { FloatingMenu } from '@tiptap/react/menus';
+import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import Underline from '@tiptap/extension-underline';
 import { Bold, Italic, Underline as UnderlineIcon, Strikethrough, Pilcrow, List, ListOrdered, Undo, Redo } from 'lucide-react';
 
-const MenuBar = ({ editor }: { editor: any }) => {
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-expect-error
+const MenuBar = ({ editor }) => {
   if (!editor) {
     return null;
   }

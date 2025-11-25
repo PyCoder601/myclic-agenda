@@ -62,7 +62,6 @@ export const caldavAPI = {
 
   // Créer ou mettre à jour la configuration CalDAV
   saveConfig: (data: {
-    caldav_url: string;
     username: string;
     password: string;
     calendar_name?: string;
@@ -71,7 +70,6 @@ export const caldavAPI = {
 
   // Mettre à jour la configuration CalDAV
   updateConfig: (data: Partial<{
-    caldav_url: string;
     username: string;
     password: string;
     calendar_name: string;

@@ -43,7 +43,6 @@ export interface Task {
 
 export interface CalDAVConfig {
   id: number;
-  caldav_url: string;
   username: string;
   calendar_name: string;
   sync_enabled: boolean;

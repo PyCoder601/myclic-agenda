@@ -14,7 +14,7 @@ class TaskAdmin(admin.ModelAdmin):
 
 @admin.register(CalDAVConfig)
 class CalDAVConfigAdmin(admin.ModelAdmin):
-    list_display = ('user', 'caldav_url', 'username', 'sync_enabled', 'last_sync', 'created_at')
+    list_display = ('user', 'username', 'sync_enabled', 'last_sync', 'created_at')
     list_filter = ('sync_enabled', 'last_sync')
     search_fields = ('user__username', 'caldav_url', 'username')
     readonly_fields = ('last_sync', 'created_at', 'updated_at')

@@ -5,7 +5,6 @@ from django.contrib.auth.models import User
 class CalDAVConfig(models.Model):
     """Configuration CalDAV pour chaque utilisateur"""
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='caldav_config')
-    caldav_url = models.URLField(help_text="URL du serveur CalDAV (ex: https://example.com/baikal/dav.php)")
     username = models.CharField(max_length=200)
     password = models.CharField(max_length=200)  # En production, chiffrer ce champ
     calendar_name = models.CharField(max_length=200, default='default')

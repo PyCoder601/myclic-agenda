@@ -41,6 +41,8 @@ CORS_ALLOW_CREDENTIALS = True
 
 CORS_ALLOWED_ORIGINS = os.getenv("CORS_ALLOWED_ORIGINS").split(",")
 
+BAIKAL_SERVER_URL = os.getenv("BAIKAL_SERVER_URL")
+
 
 # Application definition
 

@@ -13,22 +13,28 @@ from .models import Task
 class CalDAVService:
     """Service de synchronisation CalDAV"""
 
-    def __init__(self, caldav_config):
+    def __init__(self, caldav_config, base_caldav_url=None):
         """
-        Initialiser le service avec la configuration CalDAV
+        Initialiser le service avec la configuration CalDAV et l'URL de base du serveur.
 
         Args:
-            caldav_config: Instance de CalDAVConfig
+            caldav_config: Instance de CalDAVConfig (contient username/password)
+            base_caldav_url: L'URL de base du serveur CalDAV.
         """
         self.config = caldav_config
+        self.base_caldav_url = base_caldav_url
         self.client = None
         self.calendar = None
 
     def connect(self):
         """Établir la connexion avec le serveur CalDAV"""
+        if not self.base_caldav_url:
+            print("Erreur: base_caldav_url non fourni pour CalDAVService.")
+            return False
+        
         try:
             self.client = caldav.DAVClient(
-                url=self.config.caldav_url,
+                url=self.base_caldav_url,
                 username=self.config.username,
                 password=self.config.password
             )

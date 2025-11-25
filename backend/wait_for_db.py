@@ -1,27 +1,37 @@
 import os
 import time
 import psycopg2
+from psycopg2 import OperationalError
 
 def wait_for_db():
-    db_conn_str = os.environ.get('DATABASE_URL')
-    if not db_conn_str:
-        print("DATABASE_URL environment variable not set. Assuming SQLite or no external DB.")
-        return
+    db_host = os.environ.get('DB_HOST')
+    db_name = os.environ.get('DB_NAME')
+    db_user = os.environ.get('DB_USER')
+    db_password = os.environ.get('DB_PASSWORD')
+    db_port = os.environ.get('DB_PORT')
 
-    max_tries = 20
-    tries = 0
-    while tries < max_tries:
+    db_conn = None
+    retries = 10
+    while retries > 0:
         try:
-            conn = psycopg2.connect(db_conn_str, connect_timeout=5)
-            conn.close()
+            db_conn = psycopg2.connect(
+                host=db_host,
+                dbname=db_name,
+                user=db_user,
+                password=db_password,
+                port=db_port
+            )
             print("Database is ready!")
+            db_conn.close()
             return
-        except psycopg2.OperationalError as e:
-            print(f"Database not ready yet: {e}")
-            tries += 1
+        except OperationalError as e:
+            print(f"Database not ready yet, waiting... ({e})")
+            retries -= 1
             time.sleep(3)
-    print("Error: Could not connect to the database after multiple attempts.")
-    exit(1)
 
-if __name__ == '__main__':
+    if db_conn is None:
+        print("Could not connect to the database. Exiting.")
+        exit(1)
+
+if __name__ == "__main__":
     wait_for_db()

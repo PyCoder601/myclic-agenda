@@ -57,17 +57,22 @@ export default function SettingsPage() {
 
   const loadConfig = async () => {
     try {
-      const response = await caldavAPI.getConfig();
-      setConfig(response.data);
+      // Charger la configuration de base
+      const configResponse = await caldavAPI.getConfig();
+      setConfig(configResponse.data);
       setHasConfig(true);
-      setCalendars(response.data.calendars || []);
       setFormData({
-        caldav_url: response.data.caldav_url,
-        username: response.data.username,
+        caldav_url: configResponse.data.caldav_url,
+        username: configResponse.data.username,
         password: '',
-        calendar_name: response.data.calendar_name,
-        sync_enabled: response.data.sync_enabled,
+        calendar_name: configResponse.data.calendar_name,
+        sync_enabled: configResponse.data.sync_enabled,
       });
+
+      // Charger tous les calendriers (possédés et partagés)
+      const calendarsResponse = await caldavAPI.getAllCalendars();
+      setCalendars(calendarsResponse.data);
+
     } catch (error: any) {
       if (error.response?.status === 404) {
         setHasConfig(false);

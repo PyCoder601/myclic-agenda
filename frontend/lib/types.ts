@@ -8,6 +8,7 @@ export interface User {
 
 export interface CalendarSource {
   id: number;
+  user: { id: number; username: string };
   name: string;
   calendar_url: string;
   is_enabled: boolean;

@@ -133,8 +133,8 @@ export default function DashboardPage() {
 
   const fetchCalendars = useCallback(async () => {
     try {
-      const response = await caldavAPI.getConfig();
-      setCalendars(response.data.calendars || []);
+      const response = await caldavAPI.getAllCalendars();
+      setCalendars(response.data || []);
     } catch {
       // Pas de configuration CalDAV ou erreur
       setCalendars([]);
@@ -276,6 +276,23 @@ export default function DashboardPage() {
     }
   }, [loadCurrentMonthTasks]);
 
+  // Séparation des calendriers pour l'affichage
+  const ownedCalendars = useMemo(() => 
+    calendars.filter(cal => cal.user?.id === user?.id),
+    [calendars, user]
+  );
+  const sharedCalendars = useMemo(() => 
+    calendars.filter(cal => cal.user?.id !== user?.id),
+    [calendars, user]
+  );
+  const sharedUserCalendars = useMemo(() => 
+    sharedCalendars.filter(cal => !cal.name.toLowerCase().includes('kubicom')),
+    [sharedCalendars]
+  );
+  const sharedResourceCalendars = useMemo(() =>
+    sharedCalendars.filter(cal => cal.name.toLowerCase().includes('kubicom')),
+    [sharedCalendars]
+  );
 
   if (authLoading) {
     return (
@@ -404,16 +421,13 @@ export default function DashboardPage() {
                           </button>
                         </div>
 
-                        {/* Calendriers de l'utilisateur */}
+                        {/* Mes calendriers */}
                         <div className="mb-4">
                           <div className="text-xs font-semibold text-[#005f82] mb-2 px-2 uppercase tracking-wider">
                             Mes calendriers
                           </div>
                           <div className="space-y-1">
-                            {calendars.filter(cal =>
-                              cal.name.toLowerCase().includes('default') ||
-                              cal.name.toLowerCase().includes(user?.username?.toLowerCase() || '')
-                            ).map((calendar) => (
+                            {ownedCalendars.map((calendar) => (
                               <button
                                 key={calendar.id}
                                 onClick={() => handleToggleCalendar(calendar)}
@@ -424,7 +438,7 @@ export default function DashboardPage() {
                                     <input
                                       type="checkbox"
                                       checked={calendar.is_enabled}
-                                      onChange={() => {}}
+                                      readOnly
                                       className="h-5 w-5 text-[#005f82] focus:ring-[#005f82] border-gray-300 rounded transition-all duration-200 pointer-events-none"
                                     />
                                   </div>
@@ -441,39 +455,65 @@ export default function DashboardPage() {
                           </div>
                         </div>
 
-                        {/* Calendriers partagés */}
-                        {calendars.filter(cal =>
-                          !cal.name.toLowerCase().includes('default') &&
-                          !cal.name.toLowerCase().includes(user?.username?.toLowerCase() || '')
-                        ).length > 0 && (
-                          <div>
-                            <div className="text-xs font-semibold text-[#005f82] mb-2 px-2 border-t border-slate-200 pt-4 uppercase tracking-wider">
-                              Calendriers partagés
+                        {/* Calendriers partagés avec moi */}
+                        {sharedUserCalendars.length > 0 && (
+                          <div className="mb-4">
+                            <div className="text-xs font-semibold text-blue-600 mb-2 px-2 border-t border-slate-200 pt-4 uppercase tracking-wider">
+                              Calendriers partagés avec moi
                             </div>
                             <div className="space-y-1">
-                              {calendars.filter(cal =>
-                                !cal.name.toLowerCase().includes('default') &&
-                                !cal.name.toLowerCase().includes(user?.username?.toLowerCase() || '')
-                              ).map((calendar) => (
+                              {sharedUserCalendars.map((calendar) => (
+                                <button
+                                  key={calendar.id}
+                                  onClick={() => handleToggleCalendar(calendar)}
+                                  className="group w-full flex items-center justify-between p-3 hover:bg-gradient-to-r hover:from-blue-50 hover:to-indigo-50 rounded-xl transition-all duration-200 border border-transparent hover:border-blue-200"
+                                >
+                                  <div className="flex items-center gap-3 flex-1">
+                                    <input
+                                      type="checkbox"
+                                      checked={calendar.is_enabled}
+                                      readOnly
+                                      className="h-5 w-5 text-blue-600 focus:ring-blue-500 border-gray-300 rounded pointer-events-none"
+                                    />
+                                    <div
+                                      className="w-4 h-4 rounded-full flex-shrink-0 shadow-md ring-2 ring-white"
+                                      style={{ backgroundColor: calendar.color }}
+                                    />
+                                    <span className={`text-sm font-medium ${calendar.is_enabled ? 'text-slate-800' : 'text-slate-400'}`}>
+                                      {calendar.name}
+                                    </span>
+                                  </div>
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Ressources partagées */}
+                        {sharedResourceCalendars.length > 0 && (
+                          <div>
+                            <div className="text-xs font-semibold text-purple-600 mb-2 px-2 border-t border-slate-200 pt-4 uppercase tracking-wider">
+                              Ressources partagées avec moi
+                            </div>
+                            <div className="space-y-1">
+                              {sharedResourceCalendars.map((calendar) => (
                                 <button
                                   key={calendar.id}
                                   onClick={() => handleToggleCalendar(calendar)}
                                   className="group w-full flex items-center justify-between p-3 hover:bg-gradient-to-r hover:from-purple-50 hover:to-pink-50 rounded-xl transition-all duration-200 border border-transparent hover:border-purple-200"
                                 >
                                   <div className="flex items-center gap-3 flex-1">
-                                    <div className={`relative transition-all duration-200 ${calendar.is_enabled ? 'scale-100' : 'scale-90 opacity-50'}`}>
-                                      <input
-                                        type="checkbox"
-                                        checked={calendar.is_enabled}
-                                        onChange={() => {}}
-                                        className="h-5 w-5 text-[#005f82] focus:ring-[#005f82] border-gray-300 rounded transition-all duration-200 pointer-events-none"
-                                      />
-                                    </div>
+                                    <input
+                                      type="checkbox"
+                                      checked={calendar.is_enabled}
+                                      readOnly
+                                      className="h-5 w-5 text-purple-600 focus:ring-purple-500 border-gray-300 rounded pointer-events-none"
+                                    />
                                     <div
-                                      className="w-4 h-4 rounded-full flex-shrink-0 shadow-md ring-2 ring-white transition-all duration-200 group-hover:scale-110"
+                                      className="w-4 h-4 rounded-full flex-shrink-0 shadow-md ring-2 ring-white"
                                       style={{ backgroundColor: calendar.color }}
                                     />
-                                    <span className={`text-sm font-medium transition-all duration-200 ${calendar.is_enabled ? 'text-slate-800' : 'text-slate-400'}`}>
+                                    <span className={`text-sm font-medium ${calendar.is_enabled ? 'text-slate-800' : 'text-slate-400'}`}>
                                       {calendar.name}
                                     </span>
                                   </div>

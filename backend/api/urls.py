@@ -4,7 +4,8 @@ from rest_framework_simplejwt.views import TokenRefreshView
 from .views import (
     TaskViewSet, signup, login, user_profile, update_profile,
     caldav_config, sync_caldav, test_caldav_connection,
-    discover_calendars, update_calendar_source, search_users, share_calendar
+    discover_calendars, update_calendar_source, search_users, share_calendar,
+    get_all_calendars
 )
 
 router = DefaultRouter()
@@ -26,6 +27,7 @@ urlpatterns = [
     path('caldav/sync/', sync_caldav, name='sync_caldav'),
     path('caldav/test/', test_caldav_connection, name='test_caldav'),
     path('caldav/discover/', discover_calendars, name='discover_calendars'),
+    path('caldav/calendars/all/', get_all_calendars, name='get_all_calendars'),
     path('caldav/calendars/<int:calendar_id>/', update_calendar_source, name='update_calendar_source'),
     path('caldav/calendars/<int:calendar_id>/share/', share_calendar, name='calendar-share'),
 

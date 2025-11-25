@@ -36,11 +36,12 @@ class UserSharedSerializer(serializers.ModelSerializer):
 
 class CalendarSourceSerializer(serializers.ModelSerializer):
     shared_with = UserSharedSerializer(many=True, read_only=True)
+    user = UserSharedSerializer(read_only=True)
 
     class Meta:
         model = CalendarSource
-        fields = ('id', 'name', 'calendar_url', 'is_enabled', 'color', 'created_at', 'updated_at', 'shared_with')
-        read_only_fields = ('created_at', 'updated_at', 'shared_with')
+        fields = ('id', 'user', 'name', 'calendar_url', 'is_enabled', 'color', 'created_at', 'updated_at', 'shared_with')
+        read_only_fields = ('created_at', 'updated_at', 'shared_with', 'user')
 
 
 

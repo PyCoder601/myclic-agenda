@@ -254,7 +254,7 @@ export default function Calendar({ tasks, viewMode, currentDate, onDateChange, o
 
   const weekDayLabels = useMemo(() => ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'], []);
 
-  const Draggable = ({ task, children, type = 'month' }: { task: Task; children: React.ReactNode; type?: 'month' | 'week' }) => {
+  const Draggable = ({ task, type = 'month' }: { task: Task; type?: 'month' | 'week' }) => {
     const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
       id: task.id,
     });
@@ -327,7 +327,6 @@ export default function Calendar({ tasks, viewMode, currentDate, onDateChange, o
   };
 
   const renderWeekView = () => {
-    const today = new Date();
 
     return (
       <div ref={dayViewRef} className="flex-1 overflow-auto bg-white">

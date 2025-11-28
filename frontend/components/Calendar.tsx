@@ -4,6 +4,7 @@ import { useState, useEffect, useRef, useMemo, useCallback, memo } from 'react';
 import { format, startOfWeek, endOfWeek, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, addDays, startOfDay, endOfDay } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { ChevronLeft, ChevronRight, X } from 'lucide-react';
+import { DndContext, DragEndEvent, DragOverlay, DragStartEvent, useDraggable, useDroppable } from '@dnd-kit/core';
 import { Task, ViewMode } from '@/lib/types';
 
 interface CalendarProps {
@@ -13,13 +14,14 @@ interface CalendarProps {
   onDateChange: (date: Date) => void;
   onTaskClick: (task: Task) => void;
   onAddTask: (date: Date, hour?: number) => void;
+  onTaskDrop: (taskId: number, newDate: Date) => void;
 }
 
 const DayTasksModal = memo(({ date, tasks, onClose, onTaskClick }: { date: Date; tasks: Task[]; onClose: () => void; onTaskClick: (task: Task) => void; }) => {
     if (!date) return null;
 
     return (
-        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center z-50 p-4" onClick={onClose}>
+        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center z-[100]" onClick={onClose}>
             <div className="bg-white rounded-2xl max-w-lg w-full max-h-[80vh] flex flex-col shadow-2xl border border-slate-200" onClick={(e) => e.stopPropagation()}>
                 <div className="flex items-center justify-between p-4 border-b border-slate-200 bg-slate-50/50 rounded-t-2xl">
                     <h2 className="text-lg font-bold text-slate-800 capitalize">
@@ -76,13 +78,55 @@ const DayTasksModal = memo(({ date, tasks, onClose, onTaskClick }: { date: Date;
 });
 DayTasksModal.displayName = 'DayTasksModal';
 
+const TaskItem = ({ task }: { task: Task }) => {
+  const taskColor = task.calendar_source_color || '#005f82';
+  return (
+    <div
+      className="text-xs p-1.5 text-white rounded-lg cursor-grab"
+      style={{
+        background: `linear-gradient(to right, ${taskColor}, ${taskColor}dd)`,
+        borderLeft: `3px solid ${taskColor}`,
+      }}
+    >
+      <div className="font-semibold truncate">{task.title}</div>
+    </div>
+  );
+};
 
-export default function Calendar({ tasks, viewMode, currentDate, onDateChange, onTaskClick, onAddTask }: CalendarProps) {
+
+export default function Calendar({ tasks, viewMode, currentDate, onDateChange, onTaskClick, onAddTask, onTaskDrop }: CalendarProps) {
   const [hours] = useState(Array.from({ length: 24 }, (_, i) => i));
   const currentHourRef = useRef<HTMLDivElement>(null);
   const dayViewRef = useRef<HTMLDivElement>(null);
   const [dayTasksModalDate, setDayTasksModalDate] = useState<Date | null>(null);
+  const [activeTask, setActiveTask] = useState<Task | null>(null);
 
+  const handleDragStart = (event: DragStartEvent) => {
+    const { active } = event;
+    const task = tasks.find(t => t.id === active.id);
+    if (task) {
+      setActiveTask(task);
+    }
+  };
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    setActiveTask(null);
+    const { active, over } = event;
+
+    if (over && active.id !== over.id) {
+      const taskId = active.id as number;
+      const newDate = over.data.current?.date as Date;
+
+      if (taskId && newDate) {
+        const task = tasks.find(t => t.id === taskId);
+        if (task && isSameDay(new Date(task.start_date), newDate)) {
+          return;
+        }
+        onTaskDrop(taskId, newDate);
+      }
+    }
+  };
+  
   // Scroll vers l'heure actuelle dans la vue jour et semaine
   useEffect(() => {
     if ((viewMode === 'day' || viewMode === 'week') && currentHourRef.current && dayViewRef.current) {
@@ -143,15 +187,6 @@ export default function Calendar({ tasks, viewMode, currentDate, onDateChange, o
       return taskStart <= dayEnd && taskEnd >= dayStart;
     });
   }, [tasks, tasksByDateTime]);
-
-  const isTaskSpanning = useCallback((task: Task, date: Date) => {
-    const taskStart = new Date(task.start_date);
-    const taskEnd = new Date(task.end_date);
-    const dayStart = startOfDay(date);
-    const dayEnd = endOfDay(date);
-    
-    return taskStart < dayStart && taskEnd > dayEnd;
-  }, []);
 
   const navigatePrevious = useCallback(() => {
     const newDate = new Date(currentDate);
@@ -371,88 +406,94 @@ export default function Calendar({ tasks, viewMode, currentDate, onDateChange, o
     );
   };
 
+  const DraggableTask = ({ task }: { task: Task }) => {
+    const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
+      id: task.id,
+    });
+
+    return (
+      <div
+        ref={setNodeRef}
+        {...listeners}
+        {...attributes}
+        style={{ opacity: isDragging ? 0.5 : 1 }}
+        onClick={(e) => { e.stopPropagation(); onTaskClick(task); }}
+      >
+        <TaskItem task={task} />
+      </div>
+    );
+  };
+
+  const DroppableDayCell = ({ day, children }: { day: Date; children: React.ReactNode }) => {
+    const { setNodeRef, isOver } = useDroppable({
+      id: format(day, 'yyyy-MM-dd'),
+      data: { date: day },
+    });
+
+    return (
+      <div ref={setNodeRef} className={`relative h-full transition-colors ${isOver ? 'bg-blue-100/50' : ''}`}>
+        {children}
+      </div>
+    );
+  };
+
   const renderMonthView = () => {
     return (
-      <div className="flex-1 flex flex-col bg-white">
-        <div className="grid grid-cols-7 border-b border-slate-200 bg-gradient-to-r from-slate-50 to-blue-50">
-          {weekDayLabels.map(day => (
-            <div key={day} className="p-3 text-center font-semibold text-slate-700 border-r border-slate-200 last:border-r-0">
-              {day}
-            </div>
-          ))}
-        </div>
-        <div className="flex-1 grid grid-cols-7 auto-rows-fr">
-          {calendarDays.map(day => {
-            const dayTasks = getTasksForDate(day);
-            const isCurrentMonth = day.getMonth() === currentDate.getMonth();
-            const isToday = isSameDay(day, new Date());
-
-            return (
-              <div
-                key={day.toString()}
-                className={`border-r border-b border-slate-200 p-2 min-h-[120px] hover:bg-blue-50/50 cursor-pointer transition-colors ${
-                  !isCurrentMonth ? 'bg-slate-50/50' : ''
-                }`}
-                onClick={() => onAddTask(day)}
-              >
-                <div className={`text-sm font-semibold mb-2 ${
-                  isToday 
-                    ? 'bg-gradient-to-r from-[#005f82] to-[#007ba8] text-white rounded-xl w-8 h-8 flex items-center justify-center shadow-md' 
-                    : isCurrentMonth 
-                      ? 'text-slate-800' 
-                      : 'text-slate-400'
-                }`}>
-                  {format(day, 'd')}
-                </div>
-                <div className="space-y-1">
-                  {dayTasks.length > 0 && dayTasks.slice(0, 3).map(task => {
-                    const isSpanning = isTaskSpanning(task, day);
-                    const taskStart = new Date(task.start_date);
-                    const taskEnd = new Date(task.end_date);
-                    const isStart = isSameDay(taskStart, day);
-                    const isEnd = isSameDay(taskEnd, day);
-                    const taskColor = task.calendar_source_color || '#005f82';
-
-                    return (
-                      <div
-                        key={task.id}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          onTaskClick(task);
-                        }}
-                        className={`text-xs p-1.5 hover:shadow-md text-white cursor-pointer transition-all ${
-                          isSpanning ? 'rounded-none' : 'rounded-lg'
-                        } ${
-                          isStart && !isEnd ? 'rounded-r-none' : ''
-                        } ${
-                          isEnd && !isStart ? 'rounded-l-none' : ''
-                        }`}
-                        style={{
-                          background: `linear-gradient(to right, ${taskColor}, ${taskColor}dd)`,
-                          borderLeft: `3px solid ${taskColor}`
-                        }}
-                      >
-                        <div className="font-semibold truncate">{task.title}</div>
-                      </div>
-                    );
-                  })}
-                  {dayTasks.length > 3 && (
-                    <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setDayTasksModalDate(day);
-                        }}
-                        className="text-xs text-blue-600 hover:text-blue-800 font-semibold pl-1 text-left w-full hover:underline"
-                    >
-                      +{dayTasks.length - 3} autres
-                    </button>
-                  )}
-                </div>
+      <DndContext onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
+        <div className="flex-1 flex flex-col bg-white">
+          <div className="grid grid-cols-7 border-b border-slate-200 bg-gradient-to-r from-slate-50 to-blue-50">
+            {weekDayLabels.map(day => (
+              <div key={day} className="p-3 text-center font-semibold text-slate-700 border-r border-slate-200 last:border-r-0">
+                {day}
               </div>
-            );
-          })}
+            ))}
+          </div>
+          <div className="flex-1 grid grid-cols-7 auto-rows-fr">
+            {calendarDays.map(day => {
+              const dayTasks = getTasksForDate(day);
+              const isCurrentMonth = day.getMonth() === currentDate.getMonth();
+              const isToday = isSameDay(day, new Date());
+
+              return (
+                <div
+                  key={day.toString()}
+                  className={`border-r border-b border-slate-200 min-h-[120px] ${!isCurrentMonth ? 'bg-slate-50/50' : ''}`}
+                >
+                  <DroppableDayCell day={day}>
+                    <div className="p-2 h-full" onClick={() => onAddTask(day)}>
+                      <div className={`text-sm font-semibold mb-2 ${
+                        isToday 
+                          ? 'bg-gradient-to-r from-[#005f82] to-[#007ba8] text-white rounded-xl w-8 h-8 flex items-center justify-center shadow-md' 
+                          : isCurrentMonth 
+                            ? 'text-slate-800' 
+                            : 'text-slate-400'
+                      }`}>
+                        {format(day, 'd')}
+                      </div>
+                      <div className="space-y-1">
+                        {dayTasks.filter(t => isSameDay(new Date(t.start_date), day)).slice(0, 3).map(task => (
+                          <DraggableTask key={task.id} task={task} />
+                        ))}
+                        {dayTasks.length > 3 && (
+                          <button
+                              onClick={(e) => { e.stopPropagation(); setDayTasksModalDate(day); }}
+                              className="text-xs text-blue-600 hover:text-blue-800 font-semibold pl-1 text-left w-full hover:underline"
+                          >
+                            +{dayTasks.length - 3} autres
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  </DroppableDayCell>
+                </div>
+              );
+            })}
+          </div>
         </div>
-      </div>
+        <DragOverlay>
+          {activeTask ? <TaskItem task={activeTask} /> : null}
+        </DragOverlay>
+      </DndContext>
     );
   };
 
@@ -506,4 +547,3 @@ export default function Calendar({ tasks, viewMode, currentDate, onDateChange, o
     </>
   );
 }
-

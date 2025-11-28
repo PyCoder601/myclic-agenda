@@ -276,6 +276,52 @@ export default function DashboardPage() {
     }
   }, [loadCurrentMonthTasks]);
 
+  const handleTaskDrop = useCallback(async (taskId: number, newDate: Date) => {
+    const task = tasks.find(t => t.id === taskId);
+    if (!task) return;
+
+    const oldStartDate = new Date(task.start_date);
+    const oldEndDate = new Date(task.end_date);
+    const duration = oldEndDate.getTime() - oldStartDate.getTime();
+
+    const newStartDate = new Date(newDate);
+    newStartDate.setHours(oldStartDate.getHours(), oldStartDate.getMinutes(), oldStartDate.getSeconds());
+
+    const newEndDate = new Date(newStartDate.getTime() + duration);
+
+    const updatedTask = {
+      ...task,
+      start_date: newStartDate.toISOString(),
+      end_date: newEndDate.toISOString(),
+    };
+
+    // Optimistic UI update
+    setTasks(prevTasks => prevTasks.map(t => t.id === taskId ? updatedTask : t));
+
+    try {
+      await api.put(`/tasks/${taskId}/`, {
+        ...task,
+        start_date: newStartDate.toISOString(),
+        end_date: newEndDate.toISOString(),
+      });
+
+      // Invalidate cache for old and new month
+      const oldMonthKey = getMonthKey(oldStartDate);
+      const newMonthKey = getMonthKey(newStartDate);
+      tasksCache.current.delete(oldMonthKey);
+      if (oldMonthKey !== newMonthKey) {
+        tasksCache.current.delete(newMonthKey);
+      }
+
+      await loadCurrentMonthTasks();
+
+    } catch (error) {
+      console.error('Erreur lors de la mise à jour de l\'événement par glisser-déposer:', error);
+      // Rollback on error
+      setTasks(prevTasks => prevTasks.map(t => t.id === taskId ? task : t));
+    }
+  }, [tasks, getMonthKey, loadCurrentMonthTasks]);
+
   // Séparation des calendriers pour l'affichage
   const ownedCalendars = useMemo(() => 
     calendars.filter(cal => cal.user?.id === user?.id),
@@ -581,6 +627,7 @@ export default function DashboardPage() {
                 onDateChange={setCurrentDate}
                 onTaskClick={handleTaskClick}
                 onAddTask={handleAddTask}
+                onTaskDrop={handleTaskDrop}
               />
             </div>
           </div>
@@ -605,4 +652,5 @@ export default function DashboardPage() {
     </div>
   );
 }
+
 

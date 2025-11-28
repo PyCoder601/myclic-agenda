@@ -93,6 +93,24 @@ const TaskItem = ({ task }: { task: Task }) => {
   );
 };
 
+const WeekTaskItem = ({ task }: { task: Task }) => {
+    const taskColor = task.calendar_source_color || '#005f82';
+    return (
+        <div
+            className="mb-0.5 p-1.5 rounded-lg hover:shadow-md cursor-grab transition-all text-[10px]"
+            style={{
+                background: `linear-gradient(to right, ${taskColor}, ${taskColor}dd)`,
+                borderLeft: `3px solid ${taskColor}`
+            }}
+        >
+            <div className="font-semibold text-white truncate">{task.title}</div>
+            <div className="text-white/80 font-medium mt-0.5">
+                {format(new Date(task.start_date), 'HH:mm')}
+            </div>
+        </div>
+    );
+};
+
 
 export default function Calendar({ tasks, viewMode, currentDate, onDateChange, onTaskClick, onAddTask, onTaskDrop }: CalendarProps) {
   const [hours] = useState(Array.from({ length: 24 }, (_, i) => i));
@@ -119,7 +137,8 @@ export default function Calendar({ tasks, viewMode, currentDate, onDateChange, o
 
       if (taskId && newDate) {
         const task = tasks.find(t => t.id === taskId);
-        if (task && isSameDay(new Date(task.start_date), newDate)) {
+        // Prevent drop if the date/time is identical
+        if (task && new Date(task.start_date).getTime() === newDate.getTime()) {
           return;
         }
         onTaskDrop(taskId, newDate);
@@ -127,7 +146,6 @@ export default function Calendar({ tasks, viewMode, currentDate, onDateChange, o
     }
   };
   
-  // Scroll vers l'heure actuelle dans la vue jour et semaine
   useEffect(() => {
     if ((viewMode === 'day' || viewMode === 'week') && currentHourRef.current && dayViewRef.current) {
       setTimeout(() => {
@@ -140,7 +158,6 @@ export default function Calendar({ tasks, viewMode, currentDate, onDateChange, o
     }
   }, [viewMode, currentDate]);
 
-  // Mémoïser les tâches par date/heure pour éviter les recalculs
   const tasksByDateTime = useMemo(() => {
     const map = new Map<string, Task[]>();
 
@@ -148,9 +165,8 @@ export default function Calendar({ tasks, viewMode, currentDate, onDateChange, o
       const taskStart = new Date(task.start_date);
       const taskEnd = new Date(task.end_date);
 
-      // Pour chaque heure dans la durée de la tâche
       let current = new Date(taskStart);
-      while (current <= taskEnd) {
+      while (current < taskEnd) {
         const dateKey = format(current, 'yyyy-MM-dd');
         const hour = current.getHours();
         const key = `${dateKey}-${hour}`;
@@ -162,7 +178,7 @@ export default function Calendar({ tasks, viewMode, currentDate, onDateChange, o
           map.get(key)!.push(task);
         }
 
-        current = new Date(current.getTime() + 60 * 60 * 1000); // +1 heure
+        current = new Date(current.getTime() + 60 * 60 * 1000);
       }
     });
 
@@ -177,7 +193,6 @@ export default function Calendar({ tasks, viewMode, currentDate, onDateChange, o
       return tasksByDateTime.get(key) || [];
     }
 
-    // Pour une journée entière
     const dayStart = startOfDay(date);
     const dayEnd = endOfDay(date);
 
@@ -224,13 +239,11 @@ export default function Calendar({ tasks, viewMode, currentDate, onDateChange, o
     }
   }, [viewMode, currentDate]);
 
-  // Mémoïser les jours de la semaine pour la vue semaine
   const weekDays = useMemo(() => {
     const weekStart = startOfWeek(currentDate, { weekStartsOn: 1 });
     return Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
   }, [currentDate]);
 
-  // Mémoïser les jours du mois pour la vue mois
   const calendarDays = useMemo(() => {
     const monthStart = startOfMonth(currentDate);
     const monthEnd = endOfMonth(currentDate);
@@ -240,6 +253,34 @@ export default function Calendar({ tasks, viewMode, currentDate, onDateChange, o
   }, [currentDate]);
 
   const weekDayLabels = useMemo(() => ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'], []);
+
+  const Draggable = ({ task, children, type = 'month' }: { task: Task; children: React.ReactNode; type?: 'month' | 'week' }) => {
+    const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
+      id: task.id,
+    });
+
+    return (
+      <div
+        ref={setNodeRef}
+        {...listeners}
+        {...attributes}
+        style={{ opacity: isDragging ? 0.5 : 1, cursor: 'grab' }}
+        onClick={(e) => { e.stopPropagation(); onTaskClick(task); }}
+      >
+        {type === 'month' ? <TaskItem task={task} /> : <WeekTaskItem task={task} />}
+      </div>
+    );
+  };
+  
+  const DroppableCell = ({ id, date, children, className = '' }: { id: string, date: Date, children: React.ReactNode, className?: string }) => {
+    const { setNodeRef, isOver } = useDroppable({ id, data: { date } });
+  
+    return (
+      <div ref={setNodeRef} className={`${className} ${isOver ? 'bg-blue-100/50' : ''}`}>
+        {children}
+      </div>
+    );
+  };
 
   const renderDayView = () => {
     const currentHour = new Date().getHours();
@@ -251,13 +292,15 @@ export default function Calendar({ tasks, viewMode, currentDate, onDateChange, o
           {hours.map(hour => {
             const hourTasks = getTasksForDate(currentDate, hour);
             const isCurrentHour = isToday && hour === currentHour;
+            const cellDate = new Date(currentDate);
+            cellDate.setHours(hour);
             
             return (
               <div 
                 key={hour} 
                 ref={isCurrentHour ? currentHourRef : null}
                 className={`group flex border-b border-slate-200/50 transition-all duration-200 ${
-                  isCurrentHour ? 'bg-blue-50/70 shadow-inner' : 'hover:bg-blue-50/30'
+                  isCurrentHour ? 'bg-blue-50/70 shadow-inner' : ''
                 }`}
                 style={{ minHeight: '50px' }}
               >
@@ -265,53 +308,16 @@ export default function Calendar({ tasks, viewMode, currentDate, onDateChange, o
                   isCurrentHour ? 'text-[#005f82] font-bold' : 'text-slate-700 group-hover:text-[#005f82]'
                 }`}>
                   {`${hour.toString().padStart(2, '0')}:00`}
-                  {isCurrentHour && (
-                    <div className="flex items-center justify-center mt-1">
-                      <div className="w-1.5 h-1.5 bg-[#005f82] rounded-full animate-pulse-slow shadow-md"></div>
-                    </div>
-                  )}
                 </div>
-                <div 
-                  className="flex-1 p-2 hover:bg-blue-50/40 cursor-pointer transition-all duration-200 relative"
-                  onClick={() => onAddTask(currentDate, hour)}
+                <DroppableCell
+                  id={`${format(currentDate, 'yyyy-MM-dd')}-${hour}`}
+                  date={cellDate}
+                  className="flex-1 p-2 cursor-pointer"
                 >
-                  {hourTasks.length > 0 && hourTasks.map(task => {
-                    const taskColor = task.calendar_source_color || '#005f82';
-                    return (
-                      <div
-                        key={task.id}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          onTaskClick(task);
-                        }}
-                        className="group/task mb-2 p-2.5 rounded-xl hover:shadow-xl cursor-pointer transition-all duration-300 hover:scale-[1.02] hover:-translate-y-0.5"
-                        style={{
-                          background: `linear-gradient(135deg, ${taskColor} 0%, ${taskColor}dd 100%)`,
-                          borderLeft: `4px solid ${taskColor}`,
-                          boxShadow: `0 2px 8px ${taskColor}30`
-                        }}
-                      >
-                        <div className="font-semibold text-white text-xs group-hover/task:text-shadow">{task.title}</div>
-                        {task.description && (
-                          <div className="text-[10px] text-white/90 mt-1 line-clamp-1 prose prose-sm prose-white max-w-none" dangerouslySetInnerHTML={{ __html: task.description }} />
-                        )}
-                        <div className="flex items-center justify-between mt-1.5">
-                          <div className="text-[10px] text-white/80 font-medium flex items-center gap-1">
-                            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                            </svg>
-                            {format(new Date(task.start_date), 'HH:mm')} - {format(new Date(task.end_date), 'HH:mm')}
-                          </div>
-                          {task.calendar_source_name && (
-                            <div className="text-[9px] text-white/70 bg-white/10 px-2 py-0.5 rounded-full">
-                              {task.calendar_source_name}
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
+                  {hourTasks.map(task => (
+                     <Draggable key={task.id} task={task} type="week" />
+                  ))}
+                </DroppableCell>
               </div>
             );
           })}
@@ -321,8 +327,6 @@ export default function Calendar({ tasks, viewMode, currentDate, onDateChange, o
   };
 
   const renderWeekView = () => {
-
-    const currentHour = new Date().getHours();
     const today = new Date();
 
     return (
@@ -345,101 +349,42 @@ export default function Calendar({ tasks, viewMode, currentDate, onDateChange, o
           ))}
         </div>
         <div className="min-h-full">
-          {hours.map(hour => {
-            const isCurrentHour = hour === currentHour;
-            
-            return (
-              <div 
-                key={hour} 
-                ref={isCurrentHour ? currentHourRef : null}
-                className={`flex border-b border-slate-200 ${isCurrentHour ? 'bg-blue-50/30' : ''}`} 
-                style={{ minHeight: '50px' }}
-              >
-                <div className={`w-16 flex-shrink-0 bg-gradient-to-r from-slate-50 to-blue-50 px-2 py-1 text-xs font-semibold border-r border-slate-200 ${
-                  isCurrentHour ? 'text-[#005f82]' : 'text-slate-700'
-                }`}>
-                  {`${hour.toString().padStart(2, '0')}:00`}
-                  {isCurrentHour && <div className="w-1 h-1 bg-[#005f82] rounded-full mx-auto mt-0.5"></div>}
-                </div>
-                {weekDays.map(day => {
-                  const dayTasks = getTasksForDate(day, hour);
-                  const isCurrentDayAndHour = isSameDay(day, today) && hour === currentHour;
-                  
-                  return (
-                    <div
-                      key={day.toString()}
-                      className={`flex-1 min-w-[100px] p-1 border-r border-slate-200 hover:bg-blue-50/50 cursor-pointer transition-colors ${
-                        isCurrentDayAndHour ? 'bg-blue-100/30' : ''
-                      }`}
-                      onClick={() => onAddTask(day, hour)}
-                    >
-                      {dayTasks.length > 0 && dayTasks.map(task => {
-                        const taskColor = task.calendar_source_color || '#005f82';
-                        return (
-                          <div
-                            key={task.id}
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              onTaskClick(task);
-                            }}
-                            className="mb-0.5 p-1.5 rounded-lg hover:shadow-md cursor-pointer transition-all text-[10px]"
-                            style={{
-                              background: `linear-gradient(to right, ${taskColor}, ${taskColor}dd)`,
-                              borderLeft: `3px solid ${taskColor}`
-                            }}
-                          >
-                            <div className="font-semibold text-white truncate">{task.title}</div>
-                            <div className="text-white/80 font-medium mt-0.5">
-                              {format(new Date(task.start_date), 'HH:mm')}
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  );
-                })}
+          {hours.map(hour => (
+            <div 
+              key={hour} 
+              className="flex border-b border-slate-200"
+              style={{ minHeight: '50px' }}
+            >
+              <div className="w-16 flex-shrink-0 bg-gradient-to-r from-slate-50 to-blue-50 px-2 py-1 text-xs font-semibold border-r border-slate-200">
+                {`${hour.toString().padStart(2, '0')}:00`}
               </div>
-            );
-          })}
+              {weekDays.map(day => {
+                const dayTasks = getTasksForDate(day, hour);
+                const cellDate = new Date(day);
+                cellDate.setHours(hour);
+                
+                return (
+                  <DroppableCell
+                      key={day.toString()}
+                      id={`${format(day, 'yyyy-MM-dd')}-${hour}`}
+                      date={cellDate}
+                      className="flex-1 min-w-[100px] p-1 border-r border-slate-200 cursor-pointer"
+                  >
+                    {dayTasks.map(task => (
+                      <Draggable key={task.id} task={task} type="week" />
+                    ))}
+                  </DroppableCell>
+                );
+              })}
+            </div>
+          ))}
         </div>
-      </div>
-    );
-  };
-
-  const DraggableTask = ({ task }: { task: Task }) => {
-    const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
-      id: task.id,
-    });
-
-    return (
-      <div
-        ref={setNodeRef}
-        {...listeners}
-        {...attributes}
-        style={{ opacity: isDragging ? 0.5 : 1 }}
-        onClick={(e) => { e.stopPropagation(); onTaskClick(task); }}
-      >
-        <TaskItem task={task} />
-      </div>
-    );
-  };
-
-  const DroppableDayCell = ({ day, children }: { day: Date; children: React.ReactNode }) => {
-    const { setNodeRef, isOver } = useDroppable({
-      id: format(day, 'yyyy-MM-dd'),
-      data: { date: day },
-    });
-
-    return (
-      <div ref={setNodeRef} className={`relative h-full transition-colors ${isOver ? 'bg-blue-100/50' : ''}`}>
-        {children}
       </div>
     );
   };
 
   const renderMonthView = () => {
     return (
-      <DndContext onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
         <div className="flex-1 flex flex-col bg-white">
           <div className="grid grid-cols-7 border-b border-slate-200 bg-gradient-to-r from-slate-50 to-blue-50">
             {weekDayLabels.map(day => (
@@ -459,7 +404,11 @@ export default function Calendar({ tasks, viewMode, currentDate, onDateChange, o
                   key={day.toString()}
                   className={`border-r border-b border-slate-200 min-h-[120px] ${!isCurrentMonth ? 'bg-slate-50/50' : ''}`}
                 >
-                  <DroppableDayCell day={day}>
+                  <DroppableCell
+                    id={format(day, 'yyyy-MM-dd')}
+                    date={day}
+                    className="h-full"
+                  >
                     <div className="p-2 h-full" onClick={() => onAddTask(day)}>
                       <div className={`text-sm font-semibold mb-2 ${
                         isToday 
@@ -472,7 +421,7 @@ export default function Calendar({ tasks, viewMode, currentDate, onDateChange, o
                       </div>
                       <div className="space-y-1">
                         {dayTasks.filter(t => isSameDay(new Date(t.start_date), day)).slice(0, 3).map(task => (
-                          <DraggableTask key={task.id} task={task} />
+                          <Draggable key={task.id} task={task} />
                         ))}
                         {dayTasks.length > 3 && (
                           <button
@@ -484,58 +433,52 @@ export default function Calendar({ tasks, viewMode, currentDate, onDateChange, o
                         )}
                       </div>
                     </div>
-                  </DroppableDayCell>
+                  </DroppableCell>
                 </div>
               );
             })}
           </div>
         </div>
-        <DragOverlay>
-          {activeTask ? <TaskItem task={activeTask} /> : null}
-        </DragOverlay>
-      </DndContext>
     );
   };
 
   return (
     <>
-      <div className="flex flex-col h-full bg-white rounded-2xl overflow-hidden shadow-xl border border-slate-200/50 animate-fadeIn">
-        {/* Calendar Header avec gradient et animations */}
-        <div className="flex items-center justify-between p-4 border-b border-slate-200/50 bg-gradient-to-r from-white via-blue-50/40 to-white backdrop-blur-sm">
-          <div className="flex items-center gap-3">
-            <button
-              onClick={navigatePrevious}
-              className="group p-2.5 hover:bg-gradient-to-r hover:from-blue-50 hover:to-indigo-50 rounded-xl transition-all duration-300 text-slate-700 hover:shadow-lg border border-transparent hover:border-[#005f82]/20"
-              title="Période précédente"
-            >
-              <ChevronLeft className="w-5 h-5 text-slate-600 group-hover:text-[#005f82] transition-all duration-300 group-hover:-translate-x-1" />
-            </button>
-
-            <div className="text-center min-w-[280px]">
-              <h2 className="text-lg font-bold bg-gradient-to-r from-[#005f82] to-[#007ba8] bg-clip-text text-transparent capitalize">
-                {getDateRange}
-              </h2>
-              <p className="text-xs text-slate-500 mt-1 flex items-center justify-center gap-2">
-                <span className="w-2 h-2 bg-gradient-to-r from-[#005f82] to-[#007ba8] rounded-full animate-pulse-slow shadow-sm"></span>
-                <span className="font-medium">{tasks.length}</span>
-                {tasks.length > 1 ? 'événements' : 'événement'}
-              </p>
+      <DndContext onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
+        <div className="flex flex-col h-full bg-white rounded-2xl overflow-hidden shadow-xl border border-slate-200/50 animate-fadeIn">
+          {/* Calendar Header */}
+          <div className="flex items-center justify-between p-4 border-b border-slate-200/50 bg-gradient-to-r from-white via-blue-50/40 to-white backdrop-blur-sm">
+            <div className="flex items-center gap-3">
+              <button
+                onClick={navigatePrevious}
+                className="group p-2.5 hover:bg-gradient-to-r hover:from-blue-50 hover:to-indigo-50 rounded-xl transition-all duration-300 text-slate-700 hover:shadow-lg border border-transparent hover:border-[#005f82]/20"
+                title="Période précédente"
+              >
+                <ChevronLeft className="w-5 h-5 text-slate-600 group-hover:text-[#005f82] transition-all duration-300 group-hover:-translate-x-1" />
+              </button>
+              <div className="text-center min-w-[280px]">
+                <h2 className="text-lg font-bold bg-gradient-to-r from-[#005f82] to-[#007ba8] bg-clip-text text-transparent capitalize">
+                  {getDateRange}
+                </h2>
+              </div>
+              <button
+                onClick={navigateNext}
+                className="group p-2.5 hover:bg-gradient-to-r hover:from-blue-50 hover:to-indigo-50 rounded-xl transition-all duration-300 text-slate-700 hover:shadow-lg border border-transparent hover:border-[#005f82]/20"
+                title="Période suivante"
+              >
+                <ChevronRight className="w-5 h-5 text-slate-600 group-hover:text-[#005f82] transition-all duration-300 group-hover:translate-x-1" />
+              </button>
             </div>
-
-            <button
-              onClick={navigateNext}
-              className="group p-2.5 hover:bg-gradient-to-r hover:from-blue-50 hover:to-indigo-50 rounded-xl transition-all duration-300 text-slate-700 hover:shadow-lg border border-transparent hover:border-[#005f82]/20"
-              title="Période suivante"
-            >
-              <ChevronRight className="w-5 h-5 text-slate-600 group-hover:text-[#005f82] transition-all duration-300 group-hover:translate-x-1" />
-            </button>
           </div>
-        </div>
 
-        {viewMode === 'day' && renderDayView()}
-        {viewMode === 'week' && renderWeekView()}
-        {viewMode === 'month' && renderMonthView()}
-      </div>
+          {viewMode === 'day' && renderDayView()}
+          {viewMode === 'week' && renderWeekView()}
+          {viewMode === 'month' && renderMonthView()}
+        </div>
+        <DragOverlay>
+            {activeTask ? (viewMode === 'month' ? <TaskItem task={activeTask} /> : <WeekTaskItem task={activeTask} />) : null}
+        </DragOverlay>
+      </DndContext>
       {dayTasksModalDate && (
         <DayTasksModal
           date={dayTasksModalDate}

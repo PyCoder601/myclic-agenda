@@ -285,7 +285,11 @@ export default function DashboardPage() {
     const duration = oldEndDate.getTime() - oldStartDate.getTime();
 
     const newStartDate = new Date(newDate);
-    newStartDate.setHours(oldStartDate.getHours(), oldStartDate.getMinutes(), oldStartDate.getSeconds());
+
+    // If the drop is from month view, the time will be 00:00. Preserve original time.
+    if (newStartDate.getHours() === 0 && newStartDate.getMinutes() === 0) {
+      newStartDate.setHours(oldStartDate.getHours(), oldStartDate.getMinutes(), oldStartDate.getSeconds());
+    }
 
     const newEndDate = new Date(newStartDate.getTime() + duration);
 

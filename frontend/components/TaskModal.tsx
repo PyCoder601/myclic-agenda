@@ -113,7 +113,7 @@ export default function TaskModal({ isOpen, onClose, onSave, onDelete, task, ini
       <div className="bg-white rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto shadow-2xl border border-slate-200">
         <div className="flex items-center justify-between p-6 border-b border-slate-200 bg-gradient-to-r from-slate-50 to-blue-50">
           <h2 className="text-2xl font-bold bg-gradient-to-r from-[#005f82] to-[#007ba8] bg-clip-text text-transparent">
-            {task ? 'Modifier l&apos;événement' : 'Nouvel événement'}
+            {task ? 'Modifier l\'événement' : 'Nouvel événement'}
           </h2>
           <button
             onClick={onClose}

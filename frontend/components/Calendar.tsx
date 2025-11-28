@@ -211,7 +211,7 @@ export default function Calendar({ tasks, viewMode, currentDate, onDateChange, o
     const isToday = isSameDay(currentDate, new Date());
 
     return (
-      <div ref={dayViewRef} className="flex-1 overflow-y-auto bg-gradient-to-br from-slate-50/30 to-blue-50/20">
+      <div ref={dayViewRef} className="flex-1 overflow-y-scroll bg-gradient-to-br from-slate-50/30 to-blue-50/20">
         <div className="min-h-full">
           {hours.map(hour => {
             const hourTasks = getTasksForDate(currentDate, hour);

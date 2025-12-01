@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef, useMemo, useCallback, memo } from 'react';
 import { format, startOfWeek, endOfWeek, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, addDays, startOfDay, endOfDay } from 'date-fns';
 import { fr } from 'date-fns/locale';
-import { ChevronLeft, ChevronRight, X } from 'lucide-react';
+import { ChevronLeft, ChevronRight, X, GripVertical } from 'lucide-react';
 import { DndContext, DragEndEvent, DragOverlay, DragStartEvent, useDraggable, useDroppable } from '@dnd-kit/core';
 import { Task, ViewMode } from '@/lib/types';
 
@@ -78,34 +78,60 @@ const DayTasksModal = memo(({ date, tasks, onClose, onTaskClick }: { date: Date;
 });
 DayTasksModal.displayName = 'DayTasksModal';
 
-const TaskItem = ({ task }: { task: Task }) => {
+const TaskItem = ({ task, onTaskClick, dragListeners, dragAttributes }: { task: Task; onTaskClick: (task: Task) => void; dragListeners?: any; dragAttributes?: any }) => {
   const taskColor = task.calendar_source_color || '#005f82';
   return (
     <div
-      className="text-xs p-1.5 text-white rounded-lg cursor-grab"
+      className="text-xs p-1.5 pr-1 text-white rounded-lg flex items-center gap-1 group/item"
       style={{
         background: `linear-gradient(to right, ${taskColor}, ${taskColor}dd)`,
         borderLeft: `3px solid ${taskColor}`,
       }}
     >
-      <div className="font-semibold truncate">{task.title}</div>
+        <div
+        {...dragListeners}
+        {...dragAttributes}
+        className="cursor-grab active:cursor-grabbing flex-shrink-0 opacity-0 group-hover/item:opacity-100 transition-opacity p-0.5 hover:bg-white/20 rounded"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <GripVertical className="w-3 h-3" />
+      </div>
+      <div
+        className="font-semibold truncate flex-1 cursor-pointer min-w-0"
+        onClick={(e) => { e.stopPropagation(); onTaskClick(task); }}
+      >
+        {task.title}
+      </div>
     </div>
   );
 };
 
-const WeekTaskItem = ({ task }: { task: Task }) => {
+const WeekTaskItem = ({ task, onTaskClick, dragListeners, dragAttributes }: { task: Task; onTaskClick: (task: Task) => void; dragListeners?: any; dragAttributes?: any }) => {
     const taskColor = task.calendar_source_color || '#005f82';
     return (
         <div
-            className="mb-0.5 p-1.5 rounded-lg hover:shadow-md cursor-grab transition-all text-[10px]"
+            className="mb-0.5 p-1.5 pl-1 rounded-lg hover:shadow-md transition-all text-[10px] flex items-start gap-1 group/item"
             style={{
                 background: `linear-gradient(to right, ${taskColor}, ${taskColor}dd)`,
                 borderLeft: `3px solid ${taskColor}`
             }}
         >
-            <div className="font-semibold text-white truncate">{task.title}</div>
-            <div className="text-white/80 font-medium mt-0.5">
-                {format(new Date(task.start_date), 'HH:mm')}
+            <div
+                {...dragListeners}
+                {...dragAttributes}
+                className="cursor-grab active:cursor-grabbing flex-shrink-0 opacity-0 group-hover/item:opacity-100 transition-opacity p-0.5 hover:bg-white/20 rounded mt-0.5"
+                onClick={(e) => e.stopPropagation()}
+            >
+                <GripVertical className="w-3 h-3 text-white" />
+            </div>
+            <div
+                className="flex-1 cursor-pointer min-w-0"
+                onClick={(e) => { e.stopPropagation(); onTaskClick(task); }}
+            >
+                <div className="font-semibold text-white truncate">{task.title}</div>
+                <div className="text-white/80 font-medium mt-0.5">
+                    {format(new Date(task.start_date), 'HH:mm')}
+                </div>
             </div>
         </div>
     );
@@ -262,12 +288,13 @@ export default function Calendar({ tasks, viewMode, currentDate, onDateChange, o
     return (
       <div
         ref={setNodeRef}
-        {...listeners}
-        {...attributes}
-        style={{ opacity: isDragging ? 0.5 : 1, cursor: 'grab' }}
-        onClick={(e) => { e.stopPropagation(); onTaskClick(task); }}
+        style={{ opacity: isDragging ? 0.5 : 1 }}
       >
-        {type === 'month' ? <TaskItem task={task} /> : <WeekTaskItem task={task} />}
+        {type === 'month' ? (
+          <TaskItem task={task} onTaskClick={onTaskClick} dragListeners={listeners} dragAttributes={attributes} />
+        ) : (
+          <WeekTaskItem task={task} onTaskClick={onTaskClick} dragListeners={listeners} dragAttributes={attributes} />
+        )}
       </div>
     );
   };
@@ -475,7 +502,11 @@ export default function Calendar({ tasks, viewMode, currentDate, onDateChange, o
           {viewMode === 'month' && renderMonthView()}
         </div>
         <DragOverlay>
-            {activeTask ? (viewMode === 'month' ? <TaskItem task={activeTask} /> : <WeekTaskItem task={activeTask} />) : null}
+            {activeTask ? (
+              viewMode === 'month' ?
+                <TaskItem task={activeTask} onTaskClick={onTaskClick} /> :
+                <WeekTaskItem task={activeTask} onTaskClick={onTaskClick} />
+            ) : null}
         </DragOverlay>
       </DndContext>
       {dayTasksModalDate && (

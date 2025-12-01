@@ -418,6 +418,30 @@ def get_all_calendars(request):
 
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
+def get_writable_calendars(request):
+    """
+    Récupérer tous les calendriers sur lesquels l'utilisateur a des droits d'écriture.
+    """
+    user = request.user
+
+    # Calendriers possédés par l'utilisateur
+    owned_calendars = Q(user=user)
+
+    # Calendriers partagés avec l'utilisateur avec permission 'write'
+    shared_calendar_pks = CalendarShare.objects.filter(
+        user=user,
+        permission='write'
+    ).values_list('calendar_source_id', flat=True)
+    shared_calendars = Q(pk__in=shared_calendar_pks)
+
+    writable_calendars = CalendarSource.objects.filter(owned_calendars | shared_calendars).distinct()
+
+    serializer = CalendarSourceSerializer(writable_calendars, many=True)
+    return Response(serializer.data)
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
 def search_users(request):
     """Rechercher des utilisateurs par nom d\'utilisateur"""
     query = request.query_params.get('query', '')

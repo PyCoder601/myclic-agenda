@@ -94,6 +94,9 @@ export const caldavAPI = {
   // Récupérer tous les calendriers (possédés et partagés)
   getAllCalendars: () => api.get('/caldav/calendars/all/'),
 
+  // Récupérer les calendriers avec droit d'écriture
+  getWritableCalendars: () => api.get('/caldav/calendars/writable/'),
+
   // Mettre à jour un calendrier (activer/désactiver, changer couleur, etc.)
   updateCalendar: (calendarId: number, data: Partial<{
     name: string;

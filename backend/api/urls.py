@@ -6,7 +6,7 @@ from .views import (
     TaskViewSet, signup, login, user_profile, update_profile,
     caldav_config, sync_caldav, test_caldav_connection,
     discover_calendars, update_calendar_source, search_users, share_calendar,
-    get_all_calendars
+    get_all_calendars, get_writable_calendars
 )
 
 router = DefaultRouter()
@@ -29,6 +29,7 @@ urlpatterns = [
     path('caldav/test/', csrf_exempt(test_caldav_connection), name='test_caldav'),
     path('caldav/discover/', csrf_exempt(discover_calendars), name='discover_calendars'),
     path('caldav/calendars/all/', csrf_exempt(get_all_calendars), name='get_all_calendars'),
+    path('caldav/calendars/writable/', csrf_exempt(get_writable_calendars), name='get_writable_calendars'),
     path('caldav/calendars/<int:calendar_id>/', csrf_exempt(update_calendar_source), name='update_calendar_source'),
     path('caldav/calendars/<int:calendar_id>/share/', csrf_exempt(share_calendar), name='calendar-share'),
 

@@ -2,8 +2,9 @@
 
 import { useState, useEffect } from 'react';
 import { X } from 'lucide-react';
-import { Task } from '@/lib/types';
+import { Task, CalendarSource } from '@/lib/types';
 import RichTextEditor from './RichTextEditor';
+import { caldavAPI } from '@/lib/api';
 
 interface TaskModalProps {
   isOpen: boolean;
@@ -26,6 +27,9 @@ const formatDateTimeLocal = (date: Date): string => {
 };
 
 export default function TaskModal({ isOpen, onClose, onSave, onDelete, task, initialDate, initialHour }: TaskModalProps) {
+  const [calendars, setCalendars] = useState<CalendarSource[]>([]);
+  const [searchTerm, setSearchTerm] = useState('');
+
   const [formData, setFormData] = useState(() => {
     if (task) {
       return {
@@ -34,6 +38,7 @@ export default function TaskModal({ isOpen, onClose, onSave, onDelete, task, ini
         start_date: task.start_date.slice(0, 16),
         end_date: task.end_date.slice(0, 16),
         is_completed: task.is_completed,
+        calendar_source: task.calendar_source || 'personal',
       };
     }
     
@@ -53,12 +58,24 @@ export default function TaskModal({ isOpen, onClose, onSave, onDelete, task, ini
       start_date: formatDateTimeLocal(start),
       end_date: formatDateTimeLocal(end),
       is_completed: false,
+      calendar_source: 'personal',
     };
   });
 
   // Réinitialiser le formulaire quand le modal s'ouvre ou que les props changent
   useEffect(() => {
     if (isOpen) {
+      // Charger les calendriers avec droits d'écriture
+      const fetchCalendars = async () => {
+        try {
+          const response = await caldavAPI.getWritableCalendars();
+          setCalendars(response.data);
+        } catch (error) {
+          console.error("Erreur lors de la récupération des calendriers:", error);
+        }
+      };
+      fetchCalendars();
+
       if (task) {
         setFormData({
           title: task.title,
@@ -66,6 +83,7 @@ export default function TaskModal({ isOpen, onClose, onSave, onDelete, task, ini
           start_date: task.start_date.slice(0, 16),
           end_date: task.end_date.slice(0, 16),
           is_completed: task.is_completed,
+          calendar_source: task.calendar_source || 'personal',
         });
       } else {
         const baseDate = initialDate ? new Date(initialDate) : new Date();
@@ -84,6 +102,7 @@ export default function TaskModal({ isOpen, onClose, onSave, onDelete, task, ini
           start_date: formatDateTimeLocal(start),
           end_date: formatDateTimeLocal(end),
           is_completed: false,
+          calendar_source: 'personal',
         });
       }
     }
@@ -93,8 +112,14 @@ export default function TaskModal({ isOpen, onClose, onSave, onDelete, task, ini
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    
+    const calendarSourceValue = formData.calendar_source === 'personal' 
+      ? null 
+      : Number(formData.calendar_source);
+
     onSave({
       ...formData,
+      calendar_source: calendarSourceValue,
       start_date: new Date(formData.start_date).toISOString(),
       end_date: new Date(formData.end_date).toISOString(),
     });
@@ -107,6 +132,10 @@ export default function TaskModal({ isOpen, onClose, onSave, onDelete, task, ini
       onClose();
     }
   };
+
+  const filteredCalendars = calendars.filter(c => 
+    c.name.toLowerCase().includes(searchTerm.toLowerCase())
+  );
 
   return (
     <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
@@ -136,6 +165,26 @@ export default function TaskModal({ isOpen, onClose, onSave, onDelete, task, ini
               className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#005f82] focus:border-transparent text-slate-800 font-medium transition-all"
               placeholder="Titre de l'événement"
             />
+          </div>
+
+          <div>
+            <label className="block text-sm font-semibold text-slate-700 mb-2">
+              Calendrier
+            </label>
+            <div className="relative">
+              <select
+                value={formData.calendar_source}
+                onChange={(e) => setFormData({ ...formData, calendar_source: e.target.value })}
+                className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#005f82] focus:border-transparent text-slate-800 font-medium transition-all appearance-none"
+              >
+                <option value="personal">Personnel</option>
+                {calendars.map(cal => (
+                  <option key={cal.id} value={cal.id}>
+                    {cal.name} ({cal.user.username})
+                  </option>
+                ))}
+              </select>
+            </div>
           </div>
 
           <div>

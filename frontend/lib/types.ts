@@ -58,8 +58,7 @@ export interface AuthResponse {
     refresh: string;
 }
 
-export type ViewMode = 'day' | 'week' | 'month';
-export type MainViewMode = 'personal' | 'group';
+export type ViewMode = 'day' | 'week' | 'month' | 'group';
 
 
 

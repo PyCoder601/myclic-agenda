@@ -318,7 +318,8 @@ export default function Calendar({ tasks, viewMode, currentDate, onDateChange, o
         <div className="min-h-full">
           {hours.map(hour => {
             const hourTasks = getTasksForDate(currentDate, hour);
-            const isCurrentHour = isToday && hour === currentHour;
+            const isCurrentHour = hour === currentHour;
+            const shouldHighlight = isToday && isCurrentHour;
             const cellDate = new Date(currentDate);
             cellDate.setHours(hour);
             
@@ -327,12 +328,12 @@ export default function Calendar({ tasks, viewMode, currentDate, onDateChange, o
                 key={hour} 
                 ref={isCurrentHour ? currentHourRef : null}
                 className={`group flex border-b border-slate-200/50 transition-all duration-200 ${
-                  isCurrentHour ? 'bg-blue-50/70 shadow-inner' : ''
+                  shouldHighlight ? 'bg-blue-50/70 shadow-inner' : ''
                 }`}
                 style={{ minHeight: '50px' }}
               >
                 <div className={`w-16 flex-shrink-0 bg-gradient-to-r from-slate-50 to-blue-50/50 px-2 py-1 text-xs font-semibold border-r border-slate-200/50 transition-all duration-200 ${
-                  isCurrentHour ? 'text-[#005f82] font-bold' : 'text-slate-700 group-hover:text-[#005f82]'
+                  shouldHighlight ? 'text-[#005f82] font-bold' : 'text-slate-700 group-hover:text-[#005f82]'
                 }`}>
                   {`${hour.toString().padStart(2, '0')}:00`}
                 </div>
@@ -354,6 +355,7 @@ export default function Calendar({ tasks, viewMode, currentDate, onDateChange, o
   };
 
   const renderWeekView = () => {
+    const currentHour = new Date().getHours();
 
     return (
       <div ref={dayViewRef} className="flex-1 overflow-auto bg-white">
@@ -375,35 +377,44 @@ export default function Calendar({ tasks, viewMode, currentDate, onDateChange, o
           ))}
         </div>
         <div className="min-h-full">
-          {hours.map(hour => (
-            <div 
-              key={hour} 
-              className="flex border-b border-slate-200"
-              style={{ minHeight: '50px' }}
-            >
-              <div className="w-16 flex-shrink-0 bg-gradient-to-r from-slate-50 to-blue-50 px-2 py-1 text-xs font-semibold border-r border-slate-200">
-                {`${hour.toString().padStart(2, '0')}:00`}
+          {hours.map(hour => {
+            const isCurrentHour = hour === currentHour;
+
+            return (
+              <div
+                key={hour}
+                ref={isCurrentHour ? currentHourRef : null}
+                className={`flex border-b border-slate-200 transition-all duration-200 ${
+                  isCurrentHour ? 'bg-blue-50/70 shadow-inner' : ''
+                }`}
+                style={{ minHeight: '50px' }}
+              >
+                <div className={`w-16 flex-shrink-0 bg-gradient-to-r from-slate-50 to-blue-50 px-2 py-1 text-xs font-semibold border-r border-slate-200 transition-all duration-200 ${
+                  isCurrentHour ? 'text-[#005f82] font-bold' : 'text-slate-700'
+                }`}>
+                  {`${hour.toString().padStart(2, '0')}:00`}
+                </div>
+                {weekDays.map(day => {
+                  const dayTasks = getTasksForDate(day, hour);
+                  const cellDate = new Date(day);
+                  cellDate.setHours(hour);
+
+                  return (
+                    <DroppableCell
+                        key={day.toString()}
+                        id={`${format(day, 'yyyy-MM-dd')}-${hour}`}
+                        date={cellDate}
+                        className="flex-1 min-w-[100px] p-1 border-r border-slate-200 cursor-pointer"
+                    >
+                      {dayTasks.map(task => (
+                        <Draggable key={task.id} task={task} type="week" />
+                      ))}
+                    </DroppableCell>
+                  );
+                })}
               </div>
-              {weekDays.map(day => {
-                const dayTasks = getTasksForDate(day, hour);
-                const cellDate = new Date(day);
-                cellDate.setHours(hour);
-                
-                return (
-                  <DroppableCell
-                      key={day.toString()}
-                      id={`${format(day, 'yyyy-MM-dd')}-${hour}`}
-                      date={cellDate}
-                      className="flex-1 min-w-[100px] p-1 border-r border-slate-200 cursor-pointer"
-                  >
-                    {dayTasks.map(task => (
-                      <Draggable key={task.id} task={task} type="week" />
-                    ))}
-                  </DroppableCell>
-                );
-              })}
-            </div>
-          ))}
+            );
+          })}
         </div>
       </div>
     );

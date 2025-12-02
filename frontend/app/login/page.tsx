@@ -13,7 +13,7 @@ export default function LoginPage() {
   const router = useRouter();
   
   const [formData, setFormData] = useState({
-    username: '',
+    email: '',
     password: '',
   });
 
@@ -25,7 +25,7 @@ export default function LoginPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    dispatch(login({ username: formData.username, password: formData.password }));
+    dispatch(login({ email: formData.email, password: formData.password }));
   };
 
   return (
@@ -49,17 +49,17 @@ export default function LoginPage() {
 
             <div>
               <label className="block text-sm font-medium text-gray-300 mb-2">
-                Nom d&apos;utilisateur
+                Email
               </label>
               <div className="relative">
                 <User className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
                 <input
                   type="text"
                   required
-                  value={formData.username}
-                  onChange={(e) => setFormData({ ...formData, username: e.target.value })}
+                  value={formData.email}
+                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                   className="w-full pl-10 pr-4 py-3 bg-[#001a24] border border-[#003a52] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#005f82] text-white"
-                  placeholder="Votre nom d'utilisateur"
+                  placeholder="Votre adresse email"
                 />
               </div>
             </div>

@@ -19,7 +19,6 @@ from .caldav_service import CalDAVService
 
 User = get_user_model()
 
-
 @api_view(['POST'])
 @permission_classes([AllowAny])
 def signup(request):
@@ -40,15 +39,18 @@ def signup(request):
 @permission_classes([AllowAny])
 def login(request):
     """Connexion d'un utilisateur"""
-    username = request.data.get('username')
+    email = request.data.get('email')
     password = request.data.get('password')
 
-    if not username or not password:
+    if not email or not password:
         return Response({
             'error': 'Veuillez fournir un nom d\'utilisateur et un mot de passe'
         }, status=status.HTTP_400_BAD_REQUEST)
 
+    username = User.objects.get(email=email).username
+
     user = authenticate(username=username, password=password)
+
 
     if user is not None:
         refresh = RefreshToken.for_user(user)

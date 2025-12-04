@@ -1,6 +1,6 @@
-from django.contrib.auth import authenticate, get_user_model
+from django.contrib.auth import authenticate
 from django.db.models import Q
-from rest_framework import viewsets, status
+from rest_framework import viewsets, status, generics
 from rest_framework.decorators import api_view, permission_classes, action
 from rest_framework.exceptions import PermissionDenied
 from rest_framework.permissions import IsAuthenticated, AllowAny
@@ -10,29 +10,28 @@ import threading
 import caldav
 from django.conf import settings
 
-from .models import Task, CalDAVConfig, CalendarSource, CalendarShare
+from .models import Task, CalDAVConfig, CalendarSource, CalendarShare, User
 from .serializers import (
     TaskSerializer, UserSerializer, CalDAVConfigSerializer,
-    CalendarSourceSerializer, UserCreateSerializer
+    CalendarSourceSerializer
 )
 from .caldav_service import CalDAVService
 
-User = get_user_model()
-
-@api_view(['POST'])
-@permission_classes([AllowAny])
-def signup(request):
-    """Inscription d'un nouvel utilisateur"""
-    serializer = UserCreateSerializer(data=request.data)
-    if serializer.is_valid():
-        user = serializer.save()
-        refresh = RefreshToken.for_user(user)
-        return Response({
-            'user': UserSerializer(user).data,
-            'refresh': str(refresh),
-            'access': str(refresh.access_token),
-        }, status=status.HTTP_201_CREATED)
-    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+#
+# @api_view(['POST'])
+# @permission_classes([AllowAny])
+# def signup(request):
+#     """Inscription d'un nouvel utilisateur"""
+#     serializer = UserCreateSerializer(data=request.data)
+#     if serializer.is_valid():
+#         user = serializer.save()
+#         refresh = RefreshToken.for_user(user)
+#         return Response({
+#             'user': UserSerializer(user).data,
+#             'refresh': str(refresh),
+#             'access': str(refresh.access_token),
+#         }, status=status.HTTP_201_CREATED)
+#     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
 @api_view(['POST'])
@@ -517,3 +516,9 @@ def update_calendar_source(request, calendar_id):
     elif request.method == 'DELETE':
         calendar.delete()
         return Response({'message': 'Calendrier supprimé'}, status=status.HTTP_204_NO_CONTENT)
+
+
+class UseCreateAPIView(generics.CreateAPIView):
+    queryset = User.objects.all()
+    serializer_class = UserSerializer
+    permission_classes = [AllowAny]

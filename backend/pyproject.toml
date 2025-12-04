@@ -18,4 +18,6 @@ dependencies = [
     "dj-database-url>=2.2.0",
     "whitenoise>=6.11.0",
     "psycopg2-binary>=2.9.11",
+    "mysqlclient>=2.2.7",
+    "requests>=2.32.5",
 ]

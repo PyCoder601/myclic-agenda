@@ -1,7 +1,28 @@
 from django.contrib import admin
-from .models import Task, CalDAVConfig, CalendarSource, CalendarShare
+from .models import Task, CalDAVConfig, CalendarSource, CalendarShare, User
+from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
+
 
 # Register your models here.
+@admin.register(User)
+class UserAdmin(BaseUserAdmin):
+    model = User
+    list_display = ("email", "username", "is_active", "is_staff")
+    search_fields = ("email", "username")
+    ordering = ("email",)
+
+    fieldsets = (
+        (None, {"fields": ("email", "username", "password")}),
+        ("Infos personnelles", {"fields": ("prenom", "nom", "token", "user_id")}),
+        ("Permissions", {"fields": ("is_active", "is_staff", "is_superuser", "groups", "user_permissions")}),
+    )
+
+    add_fieldsets = (
+        (None, {
+            "fields": ("email", "username", "password1", "password2")
+        }),
+    )
+
 @admin.register(Task)
 class TaskAdmin(admin.ModelAdmin):
     list_display = ('title', 'user', 'calendar_source', 'start_date', 'end_date', 'is_completed', 'caldav_uid', 'last_synced', 'created_at')

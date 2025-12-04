@@ -3,10 +3,10 @@ from django.views.decorators.csrf import csrf_exempt
 from rest_framework.routers import DefaultRouter
 from rest_framework_simplejwt.views import TokenRefreshView
 from .views import (
-    TaskViewSet, signup, login, user_profile, update_profile,
+    TaskViewSet, login, user_profile, update_profile,
     caldav_config, sync_caldav, test_caldav_connection,
     discover_calendars, update_calendar_source, search_users, share_calendar,
-    get_all_calendars, get_writable_calendars
+    get_all_calendars, get_writable_calendars, UseCreateAPIView
 )
 
 router = DefaultRouter()
@@ -14,9 +14,10 @@ router.register(r'tasks', TaskViewSet, basename='task')
 
 urlpatterns = [
     # Authentification
-    path('auth/signup/', csrf_exempt(signup), name='signup'),
+    # path('auth/signup/', csrf_exempt(signup), name='signup'),
     path('auth/login/', csrf_exempt(login), name='login'),
     path('auth/token/refresh/', csrf_exempt(TokenRefreshView.as_view()), name='token_refresh'),
+    path('auth/bulk-create/', csrf_exempt(UseCreateAPIView.as_view()), name='bulk_create_users'),
 
     # Profil utilisateur
     path('auth/profile/', csrf_exempt(user_profile), name='user_profile'),

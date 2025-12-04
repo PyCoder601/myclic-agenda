@@ -10,9 +10,9 @@ import threading
 import caldav
 from django.conf import settings
 
-from .models import Task, CalDAVConfig, CalendarSource, CalendarShare, User
+from .models import Task, CalendarSource, CalendarShare, User
 from .serializers import (
-    TaskSerializer, UserSerializer, CalDAVConfigSerializer,
+    TaskSerializer, UserSerializer,
     CalendarSourceSerializer
 )
 from .caldav_service import CalDAVService
@@ -49,6 +49,10 @@ def login(request):
     username = User.objects.get(email=email).username
 
     user = authenticate(username=username, password=password)
+    print(user)
+    service = CalDAVService(user)
+    service.connect()
+    service.sync_all(user)
 
 
     if user is not None:
@@ -86,103 +90,6 @@ def update_profile(request):
         serializer.save()
         return Response(serializer.data)
     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-
-@api_view(['GET', 'POST', 'PUT', 'DELETE'])
-@permission_classes([IsAuthenticated])
-def caldav_config(request):
-    """Gérer la configuration CalDAV de l'utilisateur"""
-
-    if request.method == 'GET':
-        try:
-            config = CalDAVConfig.objects.get(user=request.user)
-            serializer = CalDAVConfigSerializer(config)
-            return Response(serializer.data)
-        except CalDAVConfig.DoesNotExist:
-            return Response({
-                'error': 'Configuration CalDAV non trouvée',
-                'configured': False
-            }, status=status.HTTP_404_NOT_FOUND)
-
-    elif request.method == 'POST' or request.method == 'PUT':
-        try:
-            config = CalDAVConfig.objects.get(user=request.user)
-            serializer = CalDAVConfigSerializer(config, data=request.data, partial=True)
-        except CalDAVConfig.DoesNotExist:
-            serializer = CalDAVConfigSerializer(data=request.data)
-
-        if serializer.is_valid():
-            config = serializer.save(user=request.user)
-
-            # Tester la connexion
-            service = CalDAVService(config, base_caldav_url=settings.BAIKAL_SERVER_URL)
-            if service.connect():
-                return Response({
-                    **CalDAVConfigSerializer(config).data,
-                    'connection_status': 'success'
-                })
-            else:
-                return Response({
-                    **CalDAVConfigSerializer(config).data,
-                    'connection_status': 'failed',
-                    'message': 'Configuration sauvegardée mais impossible de se connecter au serveur'
-                }, status=status.HTTP_200_OK)
-
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-    elif request.method == 'DELETE':
-        try:
-            config = CalDAVConfig.objects.get(user=request.user)
-            config.delete()
-            return Response({'message': 'Configuration supprimée'}, status=status.HTTP_204_NO_CONTENT)
-        except CalDAVConfig.DoesNotExist:
-            return Response({'error': 'Configuration non trouvée'}, status=status.HTTP_404_NOT_FOUND)
-
-
-@api_view(['POST'])
-@permission_classes([IsAuthenticated])
-def sync_caldav(request):
-    """Synchroniser les tâches avec CalDAV"""
-    try:
-        config = CalDAVConfig.objects.get(user=request.user)
-    except CalDAVConfig.DoesNotExist:
-        return Response({
-            'error': 'Configuration CalDAV non trouvée. Veuillez configurer CalDAV d\'abord.'
-        }, status=status.HTTP_404_NOT_FOUND)
-
-    service = CalDAVService(config, base_caldav_url=settings.BAIKAL_SERVER_URL)
-    stats = service.sync_all(request.user)
-
-    return Response({
-        'message': 'Synchronisation terminée',
-        'stats': stats
-    })
-
-
-@api_view(['POST'])
-@permission_classes([IsAuthenticated])
-def test_caldav_connection(request):
-    """Tester la connexion CalDAV"""
-    try:
-        config = CalDAVConfig.objects.get(user=request.user)
-    except CalDAVConfig.DoesNotExist:
-        return Response({
-            'error': 'Configuration CalDAV non trouvée'
-        }, status=status.HTTP_404_NOT_FOUND)
-
-    service = CalDAVService(config, base_caldav_url=settings.BAIKAL_SERVER_URL)
-    if service.connect():
-        calendar_name = service.calendar.name if service.calendar else 'Aucun'
-        return Response({
-            'success': True,
-            'message': 'Connexion réussie',
-            'calendar': calendar_name
-        })
-    else:
-        return Response({
-            'success': False,
-            'message': 'Échec de la connexion'
-        }, status=status.HTTP_400_BAD_REQUEST)
 
 
 class TaskViewSet(viewsets.ModelViewSet):
@@ -252,12 +159,8 @@ class TaskViewSet(viewsets.ModelViewSet):
 
         def sync_to_caldav():
             try:
-                config = CalDAVConfig.objects.get(user=self.request.user)
-                if config.sync_enabled:
-                    service = CalDAVService(config, base_caldav_url=settings.BAIKAL_SERVER_URL)
-                    service.push_task(task)
-            except CalDAVConfig.DoesNotExist:
-                pass
+                service = CalDAVService(self.request.user)
+                service.push_task(task)
             except Exception as e:
                 print(f"Erreur lors de la synchronisation CalDAV en arrière-plan: {e}")
 
@@ -283,12 +186,8 @@ class TaskViewSet(viewsets.ModelViewSet):
 
         def sync_to_caldav():
             try:
-                config = CalDAVConfig.objects.get(user=self.request.user)
-                if config.sync_enabled:
-                    service = CalDAVService(config, base_caldav_url=settings.BAIKAL_SERVER_URL)
-                    service.push_task(task)
-            except CalDAVConfig.DoesNotExist:
-                pass
+                service = CalDAVService(self.request.user)
+                service.push_task(task)
             except Exception as e:
                 print(f"Erreur lors de la synchronisation CalDAV en arrière-plan: {e}")
 
@@ -307,16 +206,12 @@ class TaskViewSet(viewsets.ModelViewSet):
 
         def delete_from_caldav():
             try:
-                config = CalDAVConfig.objects.get(user=user)
-                if config.sync_enabled and caldav_uid:
-                    service = CalDAVService(config, base_caldav_url=settings.BAIKAL_SERVER_URL)
-                    class TempTask:
-                        def __init__(self, uid):
-                            self.caldav_uid = uid
-                    temp_task = TempTask(caldav_uid)
-                    service.delete_task(temp_task)
-            except CalDAVConfig.DoesNotExist:
-                pass
+                service = CalDAVService(self.request.user)
+                class TempTask:
+                    def __init__(self, uid):
+                        self.caldav_uid = uid
+                temp_task = TempTask(caldav_uid)
+                service.delete_task(temp_task)
             except Exception as e:
                 print(f"Erreur lors de la suppression CalDAV en arrière-plan: {e}")
 
@@ -327,12 +222,7 @@ class TaskViewSet(viewsets.ModelViewSet):
     @action(detail=False, methods=['post'])
     def sync(self, request):
         """Action personnalisée pour synchroniser toutes les tâches"""
-        try:
-            config = CalDAVConfig.objects.get(user=request.user)
-        except CalDAVConfig.DoesNotExist:
-            return Response({'error': 'Configuration CalDAV non trouvée'}, status=status.HTTP_404_NOT_FOUND)
-
-        service = CalDAVService(config, base_caldav_url=settings.BAIKAL_SERVER_URL)
+        service = CalDAVService(self.request.user)
         stats = service.sync_all(request.user)
 
         return Response({'message': 'Synchronisation terminée', 'stats': stats})
@@ -343,18 +233,11 @@ class TaskViewSet(viewsets.ModelViewSet):
 def discover_calendars(request):
     """Découvrir et lister tous les calendriers CalDAV disponibles"""
     try:
-        config = CalDAVConfig.objects.get(user=request.user)
-    except CalDAVConfig.DoesNotExist:
-        return Response({
-            'error': 'Configuration CalDAV non trouvée. Veuillez configurer CalDAV d\'abord.'
-        }, status=status.HTTP_404_NOT_FOUND)
-
-    try:
         # Se connecter au serveur CalDAV
         client = caldav.DAVClient(
             url=settings.BAIKAL_SERVER_URL,
-            username=config.username,
-            password=config.password
+            username=request.user.username,
+            password=request.user.baikal_password
         )
         principal = client.principal()
         calendars = principal.calendars()
@@ -382,7 +265,6 @@ def discover_calendars(request):
                     calendar_url=calendar_url,
                     is_enabled=True,
                     color=colors[idx % len(colors)],
-                    caldav_config=config
                 )
                 discovered.append(CalendarSourceSerializer(new_calendar).data)
 

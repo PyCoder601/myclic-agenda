@@ -52,12 +52,12 @@ export const login = createAsyncThunk(
 export const signup = createAsyncThunk(
     'auth/signup',
     async (
-        {username, email, password, firstName, lastName}: {
+        {username, email, password, prenom, nom}: {
             username: string;
             email: string;
             password: string;
-            firstName?: string;
-            lastName?: string;
+            prenom?: string;
+            nom?: string;
         },
         {rejectWithValue}
     ) => {
@@ -66,8 +66,8 @@ export const signup = createAsyncThunk(
                 username,
                 email,
                 password,
-                first_name: firstName,
-                last_name: lastName,
+                prenom,
+                nom,
             });
             const {user, access, refresh} = response.data;
             localStorage.setItem('access_token', access);

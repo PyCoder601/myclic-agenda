@@ -377,7 +377,7 @@ export default function DashboardPage() {
                 </h1>
                 <p className="text-xs text-slate-600 flex items-center gap-1">
                   <span className="inline-block animate-wave">👋</span>
-                  Bonjour, {user?.first_name || user?.username}
+                  Bonjour, {user?.prenom || user?.username}
                 </p>
               </div>
             </div>

@@ -1,6 +1,6 @@
 from rest_framework import serializers
 from .models import User
-from .models import Task, CalDAVConfig, CalendarSource, CalendarShare
+from .models import Task, CalendarSource, CalendarShare
 
 
 class UserSerializer(serializers.ModelSerializer):
@@ -44,36 +44,6 @@ class CalendarSourceSerializer(serializers.ModelSerializer):
         model = CalendarSource
         fields = ('id', 'user', 'name', 'calendar_url', 'is_enabled', 'color', 'created_at', 'updated_at', 'shares')
         read_only_fields = ('created_at', 'updated_at', 'shares', 'user')
-
-
-
-class CalDAVConfigSerializer(serializers.ModelSerializer):
-    calendars = CalendarSourceSerializer(many=True, read_only=True)
-
-    class Meta:
-        model = CalDAVConfig
-        fields = (
-            'id', 'username', 'password', 'calendar_name',
-            'sync_enabled', 'last_sync', 'created_at', 'updated_at', 'calendars'
-        )
-        extra_kwargs = {
-            'password': {'write_only': True},
-        }
-        read_only_fields = ('last_sync', 'created_at', 'updated_at')
-
-    def update(self, instance, validated_data):
-        # Ne pas mettre à jour le mot de passe s'il n'est pas fourni
-        password = validated_data.pop('password', None)
-        
-        # Mettre à jour les autres champs
-        for attr, value in validated_data.items():
-            setattr(instance, attr, value)
-        
-        if password:
-            instance.password = password
-            
-        instance.save()
-        return instance
 
 
 class TaskSerializer(serializers.ModelSerializer):

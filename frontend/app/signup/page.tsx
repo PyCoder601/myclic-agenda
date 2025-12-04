@@ -17,8 +17,8 @@ export default function SignupPage() {
     email: '',
     password: '',
     confirmPassword: '',
-    firstName: '',
-    lastName: '',
+    prenom: '',
+    nom: '',
   });
   const [passwordError, setPasswordError] = useState('');
 
@@ -47,8 +47,8 @@ export default function SignupPage() {
         username: formData.username,
         email: formData.email,
         password: formData.password,
-        firstName: formData.firstName,
-        lastName: formData.lastName
+        prenom: formData.prenom,
+        nom: formData.nom
     }));
   };
 
@@ -78,8 +78,8 @@ export default function SignupPage() {
                 </label>
                 <input
                   type="text"
-                  value={formData.firstName}
-                  onChange={(e) => setFormData({ ...formData, firstName: e.target.value })}
+                  value={formData.prenom}
+                  onChange={(e) => setFormData({ ...formData, prenom: e.target.value })}
                   className="w-full px-4 py-3 bg-[#001a24] border border-[#003a52] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#005f82] text-white"
                   placeholder="Votre prénom"
                 />
@@ -91,8 +91,8 @@ export default function SignupPage() {
                 </label>
                 <input
                   type="text"
-                  value={formData.lastName}
-                  onChange={(e) => setFormData({ ...formData, lastName: e.target.value })}
+                  value={formData.nom}
+                  onChange={(e) => setFormData({ ...formData, nom: e.target.value })}
                   className="w-full px-4 py-3 bg-[#001a24] border border-[#003a52] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#005f82] text-white"
                   placeholder="Votre nom"
                 />

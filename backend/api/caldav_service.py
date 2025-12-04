@@ -18,13 +18,12 @@ load_dotenv()
 class CalDAVService:
     """Service de synchronisation CalDAV"""
 
-    def __init__(self, caldav_config, base_caldav_url=None):
+    def __init__(self, caldav_config):
         """
         Initialiser le service avec la configuration CalDAV et l'URL de base du serveur.
 
         Args:
             caldav_config: Instance de CalDAVConfig (contient username/password)
-            base_caldav_url: L'URL de base du serveur CalDAV.
         """
 
         self.config = caldav_config
@@ -261,10 +260,6 @@ class CalDAVService:
                         task.save()
                         updated_tasks.append(task)
 
-            # Mettre à jour la date de dernière synchronisation
-            self.config.last_sync = timezone.now()
-            self.config.save(update_fields=['last_sync'])
-
             return updated_tasks
 
         except Exception as e:
@@ -287,10 +282,6 @@ class CalDAVService:
             'errors': []
         }
 
-        if not self.config.sync_enabled:
-            stats['errors'].append("Synchronisation désactivée")
-            return stats
-
         try:
             # Importer ici pour éviter les dépendances circulaires
             from .models import CalendarSource
@@ -306,7 +297,6 @@ class CalDAVService:
             # Récupérer tous les calendriers activés pour cet utilisateur
             calendar_sources = CalendarSource.objects.filter(
                 user=user,
-                caldav_config=self.config,
                 is_enabled=True
             )
 
@@ -364,9 +354,6 @@ class CalDAVService:
                     stats['errors'].append(f"Erreur calendrier {cal_source.name}: {str(e)}")
                     print(f"Erreur lors de la synchronisation du calendrier {cal_source.name}: {e}")
 
-            # Mettre à jour la date de dernière synchronisation
-            self.config.last_sync = timezone.now()
-            self.config.save(update_fields=['last_sync'])
 
         except Exception as e:
             stats['errors'].append(f"Erreur générale: {str(e)}")

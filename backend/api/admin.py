@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Task, CalDAVConfig, CalendarSource, CalendarShare, User
+from .models import Task, CalendarSource, CalendarShare, User
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
 
 
@@ -33,18 +33,10 @@ class TaskAdmin(admin.ModelAdmin):
     readonly_fields = ('caldav_uid', 'caldav_etag', 'last_synced', 'created_at', 'updated_at')
 
 
-@admin.register(CalDAVConfig)
-class CalDAVConfigAdmin(admin.ModelAdmin):
-    list_display = ('user', 'username', 'sync_enabled', 'last_sync', 'created_at')
-    list_filter = ('sync_enabled', 'last_sync')
-    search_fields = ('user__username', 'caldav_url', 'username')
-    readonly_fields = ('last_sync', 'created_at', 'updated_at')
-
-
 @admin.register(CalendarSource)
 class CalendarSourceAdmin(admin.ModelAdmin):
-    list_display = ('name', 'user', 'is_enabled', 'color', 'caldav_config', 'created_at')
-    list_filter = ('is_enabled', 'user', 'caldav_config')
+    list_display = ('name', 'user', 'is_enabled', 'color', 'created_at')
+    list_filter = ('is_enabled', 'user')
     search_fields = ('name', 'user__username', 'calendar_url')
     readonly_fields = ('created_at', 'updated_at')
     list_editable = ('is_enabled', 'color')
@@ -56,4 +48,3 @@ class CalendarShareAdmin(admin.ModelAdmin):
     search_fields = ('calendar_source__name', 'user__username')
     list_editable = ('permission',)
     autocomplete_fields = ('calendar_source', 'user')
-

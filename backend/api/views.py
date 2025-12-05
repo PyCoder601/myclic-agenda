@@ -46,16 +46,63 @@ def login(request):
             'error': 'Veuillez fournir un nom d\'utilisateur et un mot de passe'
         }, status=status.HTTP_400_BAD_REQUEST)
 
-    username = User.objects.get(email=email).username
+    try:
+        user_for_auth = User.objects.get(email=email)
+    except User.DoesNotExist:
+        return Response({'error': 'Identifiants invalides'}, status=status.HTTP_401_UNAUTHORIZED)
 
-    user = authenticate(username=username, password=password)
-    print(user)
-    service = CalDAVService(user)
-    service.connect()
-    service.sync_all(user)
-
+    user = authenticate(username=user_for_auth.username, password=password)
 
     if user is not None:
+        def sync_in_background(sync_user):
+            """Synchronise CalDAV en arrière-plan sans bloquer la connexion."""
+            try:
+                print(f"Début de la synchronisation CalDAV en arrière-plan pour {sync_user.username}...")
+                service = CalDAVService(sync_user)
+                if service.connect():
+                    client = caldav.DAVClient(
+                        url=settings.BAIKAL_SERVER_URL,
+                        username=sync_user.username,
+                        password=sync_user.baikal_password
+                    )
+                    principal = client.principal()
+                    calendars = principal.calendars()
+
+                    discovered = []
+                    colors = ['#005f82', '#FF6B6B', '#4ECDC4', '#45B7D1', '#FFA07A', '#98D8C8', '#F7DC6F', '#BB8FCE']
+
+                    for idx, cal in enumerate(calendars):
+                        calendar_name = cal.name or f"Calendrier {idx + 1}"
+                        calendar_url = cal.url.canonical()
+
+                        # Vérifier si ce calendrier existe déjà
+                        existing = CalendarSource.objects.filter(
+                            user=request.user,
+                            calendar_url=calendar_url
+                        ).first()
+
+                        if existing:
+                            discovered.append(CalendarSourceSerializer(existing).data)
+                        else:
+                            # Créer une nouvelle source de calendrier
+                            new_calendar = CalendarSource.objects.create(
+                                user=request.user,
+                                name=calendar_name,
+                                calendar_url=calendar_url,
+                                is_enabled=True,
+                                color=colors[idx % len(colors)],
+                            )
+                            discovered.append(CalendarSourceSerializer(new_calendar).data)
+                    # sync_all gère sa propre connexion au client CalDAV
+                    stats = service.sync_all(sync_user)
+                    print(f"Synchronisation CalDAV en arrière-plan terminée pour {sync_user.username}: {stats}")
+            except Exception as e:
+                print(f"Erreur lors de la synchronisation CalDAV pour {sync_user.username} au login: {e}")
+
+        # Lancer la synchronisation dans un thread séparé
+        thread = threading.Thread(target=sync_in_background, args=(user,), daemon=True)
+        thread.start()
+
         refresh = RefreshToken.for_user(user)
         return Response({
             'user': UserSerializer(user).data,

@@ -41,10 +41,13 @@ class CalDAVService:
             self.client = caldav.DAVClient(
                 url=os.getenv("BAIKAL_SERVER_URL"),
                 username=self.config.username,
-                password=self.config.password
+                password=self.config.baikal_password
             )
             principal = self.client.principal()
             calendars = principal.calendars()
+
+            for cal in calendars:
+                print(f"Calendrier trouvé: {cal.url.canonical()}")
 
             # Trouver ou créer le calendrier
             for cal in calendars:
@@ -290,7 +293,7 @@ class CalDAVService:
             client = caldav.DAVClient(
                 url=os.getenv("BAIKAL_SERVER_URL"),
                 username=self.config.username,
-                password=self.config.password
+                password=self.config.baikal_password
             )
             principal = client.principal()
 
@@ -308,6 +311,7 @@ class CalDAVService:
                     target_calendar = None
 
                     for cal in calendars:
+                        print(f"Calendrier trouvé: {cal.url.canonical()}")
                         if cal.url.canonical() == cal_source.calendar_url:
                             target_calendar = cal
                             break

@@ -53,6 +53,10 @@ def login(request):
 
     user = authenticate(username=user_for_auth.username, password=password)
 
+    print(f"User for auth: {user_for_auth}")
+
+    print("User", type(user.id))
+
     if user is not None:
         def sync_in_background(sync_user):
             """Synchronise CalDAV en arrière-plan sans bloquer la connexion."""
@@ -77,7 +81,7 @@ def login(request):
 
                         # Vérifier si ce calendrier existe déjà
                         existing = CalendarSource.objects.filter(
-                            user=request.user,
+                            user=sync_user,
                             calendar_url=calendar_url
                         ).first()
 
@@ -86,7 +90,7 @@ def login(request):
                         else:
                             # Créer une nouvelle source de calendrier
                             new_calendar = CalendarSource.objects.create(
-                                user=request.user,
+                                user=sync_user,
                                 name=calendar_name,
                                 calendar_url=calendar_url,
                                 is_enabled=True,
@@ -99,9 +103,7 @@ def login(request):
             except Exception as e:
                 print(f"Erreur lors de la synchronisation CalDAV pour {sync_user.username} au login: {e}")
 
-        # Lancer la synchronisation dans un thread séparé
-        thread = threading.Thread(target=sync_in_background, args=(user,), daemon=True)
-        thread.start()
+        sync_in_background(user)
 
         refresh = RefreshToken.for_user(user)
         return Response({

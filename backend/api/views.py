@@ -16,6 +16,7 @@ from .serializers import (
     CalendarSourceSerializer
 )
 from .caldav_service import CalDAVService
+from .baikal_db_service import BaikalDBService
 
 #
 # @api_view(['POST'])
@@ -58,52 +59,20 @@ def login(request):
     print("User", type(user.id))
 
     if user is not None:
-        def sync_in_background(sync_user):
-            """Synchronise CalDAV en arrière-plan sans bloquer la connexion."""
-            try:
-                print(f"Début de la synchronisation CalDAV en arrière-plan pour {sync_user.username}...")
-                service = CalDAVService(sync_user)
-                if service.connect():
-                    client = caldav.DAVClient(
-                        url=settings.BAIKAL_SERVER_URL,
-                        username=sync_user.username,
-                        password=sync_user.baikal_password
-                    )
-                    principal = client.principal()
-                    calendars = principal.calendars()
+        # Synchronisation RAPIDE : calendriers + événements avec ETags
+        # Utilise quick_sync qui ne charge que les événements modifiés
+        try:
+            print(f"🚀 Synchronisation rapide (calendriers + événements) pour {user.username}...")
 
-                    discovered = []
-                    colors = ['#005f82', '#FF6B6B', '#4ECDC4', '#45B7D1', '#FFA07A', '#98D8C8', '#F7DC6F', '#BB8FCE']
+            baikal_service = BaikalDBService()
+            stats = baikal_service.quick_sync_user_calendars(user)
 
-                    for idx, cal in enumerate(calendars):
-                        calendar_name = cal.name or f"Calendrier {idx + 1}"
-                        calendar_url = cal.url.canonical()
-
-                        # Vérifier si ce calendrier existe déjà
-                        existing = CalendarSource.objects.filter(
-                            user=sync_user,
-                            calendar_url=calendar_url
-                        ).first()
-
-                        if existing:
-                            discovered.append(CalendarSourceSerializer(existing).data)
-                        else:
-                            # Créer une nouvelle source de calendrier
-                            new_calendar = CalendarSource.objects.create(
-                                user=sync_user,
-                                name=calendar_name,
-                                calendar_url=calendar_url,
-                                is_enabled=True,
-                                color=colors[idx % len(colors)],
-                            )
-                            discovered.append(CalendarSourceSerializer(new_calendar).data)
-                    # sync_all gère sa propre connexion au client CalDAV
-                    stats = service.sync_all(sync_user)
-                    print(f"Synchronisation CalDAV en arrière-plan terminée pour {sync_user.username}: {stats}")
-            except Exception as e:
-                print(f"Erreur lors de la synchronisation CalDAV pour {sync_user.username} au login: {e}")
-
-        sync_in_background(user)
+            print(f"✅ Synchronisation terminée pour {user.username}")
+            print(f"   📊 Calendriers: {stats['calendars_synced']} créés")
+            print(f"   📊 Événements: {stats['events_created']} créés, {stats['events_updated']} modifiés, "
+                  f"{stats['events_unchanged']} inchangés")
+        except Exception as e:
+            print(f"❌ Erreur lors de la synchronisation pour {user.username}: {e}")
 
         refresh = RefreshToken.for_user(user)
         return Response({
@@ -453,3 +422,72 @@ class UseCreateAPIView(generics.CreateAPIView):
     queryset = User.objects.all()
     serializer_class = UserSerializer
     permission_classes = [AllowAny]
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def sync_events(request):
+    """
+    Synchroniser les événements de l'utilisateur depuis Baikal
+    Cette route est appelée quand l'utilisateur accède au dashboard
+    ou manuellement pour rafraîchir les données
+    """
+    try:
+        print(f"🔄 Synchronisation des événements pour {request.user.username}...")
+
+        baikal_service = BaikalDBService()
+        stats = baikal_service.quick_sync_user_calendars(request.user)
+
+        print(f"✅ Synchronisation terminée pour {request.user.username}")
+
+        return Response({
+            'success': True,
+            'message': 'Synchronisation réussie',
+            'stats': {
+                'calendars_synced': stats['calendars_synced'],
+                'events_created': stats['events_created'],
+                'events_updated': stats['events_updated'],
+                'events_unchanged': stats['events_unchanged'],
+                'errors': stats['errors']
+            }
+        })
+    except Exception as e:
+        print(f"❌ Erreur lors de la synchronisation pour {request.user.username}: {e}")
+        return Response({
+            'success': False,
+            'error': str(e)
+        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def sync_calendars_only(request):
+    """
+    Synchroniser UNIQUEMENT les calendriers (pas les événements)
+    Utilisé pour un chargement ultra-rapide au login
+    """
+    try:
+        print(f"⚡ Synchronisation rapide des calendriers pour {request.user.username}...")
+
+        baikal_service = BaikalDBService()
+        stats = baikal_service.sync_calendars_only(request.user)
+
+        print(f"✅ Synchronisation des calendriers terminée pour {request.user.username}")
+
+        return Response({
+            'success': True,
+            'message': 'Calendriers synchronisés',
+            'stats': {
+                'calendars_synced': stats['calendars_synced'],
+                'calendars_updated': stats['calendars_updated'],
+                'errors': stats['errors']
+            }
+        })
+    except Exception as e:
+        print(f"❌ Erreur lors de la synchronisation des calendriers: {e}")
+        return Response({
+            'success': False,
+            'error': str(e)
+        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+

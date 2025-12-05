@@ -5,7 +5,7 @@ from rest_framework_simplejwt.views import TokenRefreshView
 from .views import (
     TaskViewSet, login, user_profile, update_profile,
     discover_calendars, update_calendar_source, search_users, share_calendar,
-    get_all_calendars, get_writable_calendars, UseCreateAPIView
+    get_all_calendars, get_writable_calendars, UseCreateAPIView, sync_events, sync_calendars_only
 )
 
 router = DefaultRouter()
@@ -29,6 +29,10 @@ urlpatterns = [
     path('caldav/calendars/writable/', csrf_exempt(get_writable_calendars), name='get_writable_calendars'),
     path('caldav/calendars/<int:calendar_id>/', csrf_exempt(update_calendar_source), name='update_calendar_source'),
     path('caldav/calendars/<int:calendar_id>/share/', csrf_exempt(share_calendar), name='calendar-share'),
+    
+    # Synchronisation Baikal
+    path('sync/events/', csrf_exempt(sync_events), name='sync_events'),
+    path('sync/calendars/', csrf_exempt(sync_calendars_only), name='sync_calendars'),
 
     # Routes des tâches
     path('', include(router.urls)),

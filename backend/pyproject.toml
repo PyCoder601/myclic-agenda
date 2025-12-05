@@ -20,4 +20,5 @@ dependencies = [
     "psycopg2-binary>=2.9.11",
     "mysqlclient>=2.2.7",
     "requests>=2.32.5",
+    "mysql-connector-python>=9.5.0",
 ]

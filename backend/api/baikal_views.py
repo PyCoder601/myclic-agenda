@@ -35,11 +35,25 @@ class BaikalCalendarViewSet(viewsets.ModelViewSet):
         """Récupérer les calendriers de l'utilisateur"""
         user = self.request.user
         username = user.username
+
+        print(f'username: {username}')
+        i = 0
+        for cal in BaikalCalendarInstance.objects.using('baikal').filter(
+            principaluri__contains=username
+        ):
+            i += 1
+            print(f"   - {cal.displayname}")
+            if i > 10:
+                break
         
         # Récupérer tous les calendriers (personnels et partagés)
         queryset = BaikalCalendarInstance.objects.using('baikal').filter(
-            principaluri__contains=username.encode('utf-8')
+            principaluri__contains=username
         )
+
+        print(f"Calendriers trouvés: {queryset.count()}")
+        for cal in queryset:
+            print(f"   - {cal.displayname}")
         
         return queryset
 
@@ -111,7 +125,7 @@ class BaikalEventViewSet(viewsets.ModelViewSet):
         
         # 1. Récupérer les IDs des calendriers de l'utilisateur
         user_calendars = BaikalCalendarInstance.objects.using('baikal').filter(
-            principaluri__contains=username.encode('utf-8')
+            principaluri__contains=username
         ).values_list('calendarid', flat=True)
         
         # 2. Récupérer les événements de ces calendriers
@@ -135,6 +149,8 @@ class BaikalEventViewSet(viewsets.ModelViewSet):
                 )
             except:
                 pass
+
+            print(f"Événements trouvés: {queryset.count()}")
         
         return queryset.order_by('-lastmodified')
     
@@ -217,7 +233,7 @@ class BaikalEventViewSet(viewsets.ModelViewSet):
                 uid=event_uid.encode('utf-8')
             )
             
-            # Mettre à jour le synctoken du calendrier
+            # Mettre à jour le sync token du calendrier
             baikal_calendar = BaikalCalendar.objects.using('baikal').get(id=calendar_id)
             baikal_calendar.synctoken += 1
             baikal_calendar.save(using='baikal')

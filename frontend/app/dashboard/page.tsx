@@ -199,6 +199,11 @@ export default function DashboardPage() {
 
   const handleSaveTask = useCallback(async (taskData: Omit<Task, 'id' | 'created_at' | 'updated_at'>) => {
     try {
+      console.log('=== SAVE TASK DEBUG ===');
+      console.log('Task data:', taskData);
+      console.log('Selected task:', selectedTask);
+      console.log('======================');
+
       if (selectedTask) {
         // Mise à jour via Baikal API
         await baikalAPI.updateEvent(selectedTask.id, taskData);
@@ -219,8 +224,13 @@ export default function DashboardPage() {
       setSelectedTask(null);
     } catch (error) {
       console.error('Erreur lors de la sauvegarde de l\'événement:', error);
+      // Afficher les détails de l'erreur
+      if ((error as any).response) {
+        console.error('Response data:', (error as any).response.data);
+        console.error('Response status:', (error as any).response.status);
+      }
     }
-  }, [selectedTask, getMonthKey, loadCurrentMonthTasks]);
+  }, [getMonthKey, loadCurrentMonthTasks, selectedTask]);
 
   const handleDeleteTask = useCallback(async (id: number) => {
     try {

@@ -101,13 +101,18 @@ export default function TaskModal({ isOpen, onClose, onSave, onDelete, task, ini
       const end = new Date(start);
       end.setHours(hour + 1, 0, 0, 0);
 
+      // Sélectionner le premier calendrier par défaut ou 'personal' si aucun calendrier
+      const defaultCalendar = calendars.length > 0
+        ? String(calendars[0].calendarid || calendars[0].id)
+        : 'personal';
+
       setFormData({
         title: '',
         description: '',
         start_date: formatDateTimeLocal(start),
         end_date: formatDateTimeLocal(end),
         is_completed: false,
-        calendar_source: calendars.length > 0 ? String(calendars[0].calendarid || calendars[0].id) : 'personal',
+        calendar_source: defaultCalendar,
       });
     }
   }, [isOpen, task, initialDate, initialHour, calendars]);
@@ -117,15 +122,24 @@ export default function TaskModal({ isOpen, onClose, onSave, onDelete, task, ini
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
-    const calendarSourceValue = formData.calendar_source === 'personal' 
-      ? null 
+    // Convertir calendar_source en number, ne pas envoyer null si 'personal'
+    const calendarIdValue = formData.calendar_source === 'personal'
+      ? calendars.length > 0 ? Number(calendars[0].calendarid || calendars[0].id) : null
       : Number(formData.calendar_source);
 
+    console.log('=== TaskModal Submit ===');
+    console.log('calendar_source from form:', formData.calendar_source);
+    console.log('calendar_id to send:', calendarIdValue);
+    console.log('=======================');
+
     onSave({
-      ...formData,
-      calendar_source: calendarSourceValue,
+      title: formData.title,
+      description: formData.description,
       start_date: new Date(formData.start_date).toISOString(),
       end_date: new Date(formData.end_date).toISOString(),
+      is_completed: formData.is_completed,
+      calendar_id: calendarIdValue,  // Le backend attend calendar_id
+      calendar_source: calendarIdValue,  // Gardé pour compatibilité
     });
     onClose();
   };

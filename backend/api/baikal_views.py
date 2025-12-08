@@ -22,7 +22,10 @@ from .baikal_serializers import (
     BaikalEventSerializer
 )
 
+from django.utils.decorators import method_decorator
+from django.views.decorators.csrf import csrf_exempt
 
+@method_decorator(csrf_exempt, name='dispatch')
 class BaikalCalendarViewSet(viewsets.ModelViewSet):
     """
     ViewSet pour les calendriers Baikal - CRUD complet
@@ -107,7 +110,7 @@ class BaikalCalendarViewSet(viewsets.ModelViewSet):
 
         return Response(status=status.HTTP_204_NO_CONTENT)
 
-
+@method_decorator(csrf_exempt, name='dispatch')
 class BaikalEventViewSet(viewsets.ModelViewSet):
     """
     ViewSet pour les événements Baikal

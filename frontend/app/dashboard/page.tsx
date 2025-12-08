@@ -83,7 +83,7 @@ export default function DashboardPage() {
       return tasksCache.current.get(monthKey) || [];
     }
 
-    // Éviter les chargements multiples du même mois
+    // Éviter les multiples chargements du même mois
     if (loadingMonths.current.has(monthKey)) {
       return tasksCache.current.get(monthKey) || [];
     }

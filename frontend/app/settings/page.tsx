@@ -507,7 +507,7 @@ export default function SettingsPage() {
                     Calendriers de {user?.username}
                   </h3>
                   <div className="space-y-2">
-                    {calendars.filter(cal => cal.user.id === user?.id).map((calendar, index) => (
+                    {calendars.filter(cal => cal.user?.id === user?.id).map((calendar, index) => (
                       <div
                         key={calendar.id}
                         className="group flex items-center justify-between p-4 hover:bg-gradient-to-r hover:from-blue-50 hover:to-indigo-50 rounded-xl transition-all duration-300 border border-transparent hover:border-[#005f82]/20 hover:shadow-md animate-fadeIn"
@@ -554,7 +554,7 @@ export default function SettingsPage() {
                 </div>
 
                 {/* Calendriers partagés */}
-                {calendars.filter(cal => cal.user.id !== user?.id).length > 0 && (
+                {calendars.filter(cal => cal.user?.id !== user?.id).length > 0 && (
                   <div className="animate-slideInDown" style={{ animationDelay: '100ms' }}>
                     <h3 className="text-sm font-bold text-purple-700 mb-3 pb-2 border-b border-purple-200 uppercase tracking-wider flex items-center gap-2">
                       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -563,7 +563,7 @@ export default function SettingsPage() {
                       Calendriers partagés avec vous
                     </h3>
                     <div className="space-y-2">
-                      {calendars.filter(cal => cal.user.id !== user?.id).map((calendar, index) => (
+                      {calendars.filter(cal => cal.user?.id !== user?.id).map((calendar, index) => (
                         <div
                           key={calendar.id}
                           className="group flex items-center justify-between p-4 hover:bg-gradient-to-r hover:from-purple-50 hover:to-pink-50 rounded-xl transition-all duration-300 border border-transparent hover:border-purple-200 hover:shadow-md animate-fadeIn"
@@ -586,7 +586,7 @@ export default function SettingsPage() {
                                 <span className="text-slate-900 font-medium group-hover:text-purple-700 transition-colors duration-200">
                                 {calendar.name}
                                 </span>
-                                <span className="text-xs text-slate-500 ml-2">(de {calendar.user.username})</span>
+                                <span className="text-xs text-slate-500 ml-2">(de {calendar.user?.username})</span>
                             </div>
                           </div>
                           <div className="flex items-center gap-2">

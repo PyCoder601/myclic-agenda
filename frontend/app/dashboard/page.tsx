@@ -7,7 +7,7 @@ import { logout } from '@/store/authSlice';
 import { Calendar as CalendarIcon, LogOut, Plus, RefreshCw, Settings } from 'lucide-react';
 import Calendar from '@/components/Calendar';
 import TaskModal from '@/components/TaskModal';
-import api, { caldavAPI } from '@/lib/api';
+import api, { baikalAPI } from '@/lib/api';
 import { Task, ViewMode, CalendarSource } from '@/lib/types';
 
 export default function DashboardPage() {
@@ -17,7 +17,6 @@ export default function DashboardPage() {
   
   const [tasks, setTasks] = useState<Task[]>([]);
   const [calendars, setCalendars] = useState<CalendarSource[]>([]);
-  const [loading, setLoading] = useState(false); // Ne plus bloquer l'UI au démarrage
   const [viewMode, setViewMode] = useState<ViewMode>('week');
   const [mainViewMode, setMainViewMode] = useState<'personal' | 'group'>('personal');
   const [groupViewMode, setGroupViewMode] = useState<ViewMode>('week');
@@ -90,23 +89,24 @@ export default function DashboardPage() {
     }
 
     loadingMonths.current.add(monthKey);
-    setLoading(true);
 
     try {
       const { start, end } = getMonthRange(date);
-      const response = await api.get(`/tasks/?start_date=${start}&end_date=${end}`);
+      console.log(`📆 Récupération des événements du ${start} au ${end}...`);
+      // Utiliser l'API Baikal pour récupérer directement depuis MySQL
+      const response = await baikalAPI.getEvents({ start_date: start, end_date: end });
       const monthTasks = response.data;
+      console.log(`✅ ${monthTasks.length} événements récupérés`);
 
       // Mettre en cache
       tasksCache.current.set(monthKey, monthTasks);
 
       return monthTasks;
     } catch (error) {
-      console.error('Erreur lors de la récupération des événements:', error);
+      console.error('❌ Erreur lors de la récupération des événements:', error);
       return [];
     } finally {
       loadingMonths.current.delete(monthKey);
-      setLoading(false);
     }
   }, [getMonthKey, getMonthRange]);
 
@@ -135,10 +135,10 @@ export default function DashboardPage() {
 
   const fetchCalendars = useCallback(async () => {
     try {
-      const response = await caldavAPI.getAllCalendars();
+      const response = await baikalAPI.getCalendars();
       setCalendars(response.data || []);
     } catch {
-      // Pas de configuration CalDAV ou erreur
+      // Pas de configuration ou erreur
       setCalendars([]);
     }
   }, []);
@@ -166,8 +166,8 @@ export default function DashboardPage() {
         cal.id === calendar.id ? { ...cal, is_enabled: !cal.is_enabled } : cal
       ));
 
-      // Mise à jour en arrière-plan
-      await caldavAPI.updateCalendar(calendar.id, { is_enabled: !calendar.is_enabled });
+      // Mise à jour en arrière-plan via Baikal API
+      await baikalAPI.updateCalendar(calendar.id, { is_enabled: !calendar.is_enabled });
     } catch (error) {
       console.error('Erreur lors de la mise à jour du calendrier:', error);
       // Rollback en cas d'erreur
@@ -179,17 +179,18 @@ export default function DashboardPage() {
 
   // Filtrer les tâches en fonction des calendriers activés avec mémoïsation
   const filteredTasks = useMemo(() => {
-    if (viewMode === 'group') {
+    if (mainViewMode === 'group') {
       return tasks; // Ne pas filtrer les tâches en mode groupe
     }
     if (calendars.length === 0) return tasks;
 
     return tasks.filter(task => {
-      if (!task.calendar_source) return true;
-      const calendar = calendars.find(cal => cal.id === task.calendar_source);
-      return !calendar || calendar.is_enabled;
+      const calendarId = task.calendar_id ?? task.calendar_source;
+      if (!calendarId) return true;
+      const calendar = calendars.find(cal => (cal.calendarid || cal.id) === calendarId);
+      return !calendar || calendar.is_enabled !== false && calendar.display !== 0;
     });
-  }, [tasks, calendars, viewMode]);
+  }, [tasks, calendars, mainViewMode]);
 
   const handleLogout = useCallback(() => {
     dispatch(logout());
@@ -199,9 +200,11 @@ export default function DashboardPage() {
   const handleSaveTask = useCallback(async (taskData: Omit<Task, 'id' | 'created_at' | 'updated_at'>) => {
     try {
       if (selectedTask) {
-        await api.put(`/tasks/${selectedTask.id}/`, taskData);
+        // Mise à jour via Baikal API
+        await baikalAPI.updateEvent(selectedTask.id, taskData);
       } else {
-        await api.post('/tasks/', taskData);
+        // Création via Baikal API
+        await baikalAPI.createEvent(taskData);
       }
 
       // Invalider le cache du mois concerné
@@ -224,7 +227,8 @@ export default function DashboardPage() {
       // Trouver la tâche pour invalider le bon mois
       const task = tasks.find(t => t.id === id);
 
-      await api.delete(`/tasks/${id}/`);
+      // Supprimer via Baikal API
+      await baikalAPI.deleteEvent(id);
 
       // Invalider le cache du mois concerné
       if (task) {
@@ -254,32 +258,29 @@ export default function DashboardPage() {
     setIsModalOpen(true);
   }, []);
 
-  const handleSync = useCallback(async () => {
+  const handleRefresh = useCallback(async () => {
     setIsSyncing(true);
-    setSyncMessage(null);
+    setSyncMessage('Rafraîchissement...');
 
     try {
-      const response = await caldavAPI.sync();
-      setSyncMessage(`✓ ${response.data.stats.pushed} envoyées, ${response.data.stats.pulled} reçues`);
-
-      // Invalider tout le cache après sync
+      // Invalider tout le cache
       tasksCache.current.clear();
 
-      // Recharger les tâches du mois actuel
-      await loadCurrentMonthTasks();
+      // Recharger les calendriers et les tâches
+      await Promise.all([
+        fetchCalendars(),
+        loadCurrentMonthTasks()
+      ]);
 
-      setTimeout(() => setSyncMessage(null), 5000);
+      setSyncMessage('✓ Données actualisées');
+      setTimeout(() => setSyncMessage(null), 3000);
     } catch (error) {
-      if ((error as {response?: {status?: number}}).response?.status === 404) {
-        setSyncMessage('⚠ CalDAV non configuré');
-      } else {
-        setSyncMessage('✗ Erreur de synchronisation');
-      }
-      setTimeout(() => setSyncMessage(null), 5000);
+      setSyncMessage('✗ Erreur de rafraîchissement');
+      setTimeout(() => setSyncMessage(null), 3000);
     } finally {
       setIsSyncing(false);
     }
-  }, [loadCurrentMonthTasks]);
+  }, [fetchCalendars, loadCurrentMonthTasks]);
 
   const handleTaskDrop = useCallback(async (taskId: number, newDate: Date) => {
     const task = tasks.find(t => t.id === taskId);
@@ -341,11 +342,11 @@ export default function DashboardPage() {
     [calendars, user]
   );
   const sharedUserCalendars = useMemo(() => 
-    sharedCalendars.filter(cal => !cal.name.toLowerCase().includes('kubicom')),
+    sharedCalendars.filter(cal => !(cal.displayname || cal.name || '').toLowerCase().includes('kubicom')),
     [sharedCalendars]
   );
   const sharedResourceCalendars = useMemo(() =>
-    sharedCalendars.filter(cal => cal.name.toLowerCase().includes('kubicom')),
+    sharedCalendars.filter(cal => (cal.displayname || cal.name || '').toLowerCase().includes('kubicom')),
     [sharedCalendars]
   );
 
@@ -389,10 +390,10 @@ export default function DashboardPage() {
                 </div>
               )}
               <button
-                onClick={handleSync}
+                onClick={handleRefresh}
                 disabled={isSyncing}
                 className="group relative flex items-center gap-2 bg-white hover:bg-gradient-to-r hover:from-blue-50 hover:to-indigo-50 text-slate-700 px-3 py-2 rounded-xl transition-all duration-300 border border-slate-200 hover:border-[#005f82] disabled:opacity-50 disabled:cursor-not-allowed hover:shadow-md"
-                title="Synchroniser avec Baikal"
+                title="Rafraîchir les données"
               >
                 <RefreshCw className={`w-4 h-4 transition-transform duration-300 ${isSyncing ? 'animate-spin' : 'group-hover:rotate-180'}`} />
                 <span className="absolute -top-1 -right-1 w-2 h-2 bg-green-500 rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-300"></span>

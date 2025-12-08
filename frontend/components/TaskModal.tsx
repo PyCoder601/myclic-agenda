@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { X } from 'lucide-react';
 import { Task, CalendarSource } from '@/lib/types';
 import RichTextEditor from './RichTextEditor';
-import { caldavAPI } from '@/lib/api';
+import { baikalAPI } from '@/lib/api';
 
 interface TaskModalProps {
   isOpen: boolean;
@@ -28,7 +28,6 @@ const formatDateTimeLocal = (date: Date): string => {
 
 export default function TaskModal({ isOpen, onClose, onSave, onDelete, task, initialDate, initialHour }: TaskModalProps) {
   const [calendars, setCalendars] = useState<CalendarSource[]>([]);
-  const [searchTerm, setSearchTerm] = useState('');
 
   const [formData, setFormData] = useState(() => {
     if (task) {
@@ -65,48 +64,53 @@ export default function TaskModal({ isOpen, onClose, onSave, onDelete, task, ini
   // Réinitialiser le formulaire quand le modal s'ouvre ou que les props changent
   useEffect(() => {
     if (isOpen) {
-      // Charger les calendriers avec droits d'écriture
+      // Charger les calendriers Baikal
       const fetchCalendars = async () => {
         try {
-          const response = await caldavAPI.getWritableCalendars();
+          const response = await baikalAPI.getCalendars();
           setCalendars(response.data);
         } catch (error) {
           console.error("Erreur lors de la récupération des calendriers:", error);
         }
       };
       fetchCalendars();
-
-      if (task) {
-        setFormData({
-          title: task.title,
-          description: task.description || '',
-          start_date: task.start_date.slice(0, 16),
-          end_date: task.end_date.slice(0, 16),
-          is_completed: task.is_completed,
-          calendar_source: task.calendar_source || 'personal',
-        });
-      } else {
-        const baseDate = initialDate ? new Date(initialDate) : new Date();
-        const currentTime = new Date();
-        const hour = initialHour !== undefined ? initialHour : currentTime.getHours();
-
-        const start = new Date(baseDate);
-        start.setHours(hour, 0, 0, 0);
-
-        const end = new Date(start);
-        end.setHours(hour + 1, 0, 0, 0);
-
-        setFormData({
-          title: '',
-          description: '',
-          start_date: formatDateTimeLocal(start),
-          end_date: formatDateTimeLocal(end),
-          is_completed: false,
-          calendar_source: 'personal',
-        });
-      }
     }
-  }, [isOpen, task, initialDate, initialHour]);
+  }, [isOpen]);
+
+  // Mettre à jour le formulaire séparément
+  useEffect(() => {
+    if (!isOpen) return;
+
+    if (task) {
+      setFormData({
+        title: task.title,
+        description: task.description || '',
+        start_date: task.start_date.slice(0, 16),
+        end_date: task.end_date.slice(0, 16),
+        is_completed: task.is_completed,
+        calendar_source: String((task as any).calendar_id || task.calendar_source || 'personal'),
+      });
+    } else {
+      const baseDate = initialDate ? new Date(initialDate) : new Date();
+      const currentTime = new Date();
+      const hour = initialHour !== undefined ? initialHour : currentTime.getHours();
+
+      const start = new Date(baseDate);
+      start.setHours(hour, 0, 0, 0);
+
+      const end = new Date(start);
+      end.setHours(hour + 1, 0, 0, 0);
+
+      setFormData({
+        title: '',
+        description: '',
+        start_date: formatDateTimeLocal(start),
+        end_date: formatDateTimeLocal(end),
+        is_completed: false,
+        calendar_source: calendars.length > 0 ? String(calendars[0].calendarid || calendars[0].id) : 'personal',
+      });
+    }
+  }, [isOpen, task, initialDate, initialHour, calendars]);
 
   if (!isOpen) return null;
 
@@ -132,10 +136,6 @@ export default function TaskModal({ isOpen, onClose, onSave, onDelete, task, ini
       onClose();
     }
   };
-
-  const filteredCalendars = calendars.filter(c => 
-    c.name.toLowerCase().includes(searchTerm.toLowerCase())
-  );
 
   return (
     <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
@@ -177,12 +177,16 @@ export default function TaskModal({ isOpen, onClose, onSave, onDelete, task, ini
                 onChange={(e) => setFormData({ ...formData, calendar_source: e.target.value })}
                 className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#005f82] focus:border-transparent text-slate-800 font-medium transition-all appearance-none"
               >
-                <option value="personal">Personnel</option>
-                {calendars.map(cal => (
-                  <option key={cal.id} value={cal.id}>
-                    {cal.name} ({cal.user.username})
-                  </option>
-                ))}
+                {calendars.map(cal => {
+                  const calId = String(cal.calendarid || cal.id);
+                  const calName = cal.displayname || cal.name || cal.defined_name || 'Calendrier';
+                  const username = cal.username || cal.user?.username || '';
+                  return (
+                    <option key={calId} value={calId}>
+                      {calName} {username && `(${username})`}
+                    </option>
+                  );
+                })}
               </select>
             </div>
           </div>

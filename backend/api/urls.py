@@ -7,9 +7,17 @@ from .views import (
     discover_calendars, update_calendar_source, search_users, share_calendar,
     get_all_calendars, get_writable_calendars, UseCreateAPIView, sync_events, sync_calendars_only
 )
+from .baikal_views import (
+    BaikalCalendarViewSet,
+    BaikalEventViewSet
+)
 
 router = DefaultRouter()
 router.register(r'tasks', TaskViewSet, basename='task')
+
+# Nouvelles routes Baikal (accès direct MySQL - recommandé)
+router.register(r'baikal/calendars', BaikalCalendarViewSet, basename='baikal-calendar')
+router.register(r'baikal/events', BaikalEventViewSet, basename='baikal-event')
 
 urlpatterns = [
     # Authentification

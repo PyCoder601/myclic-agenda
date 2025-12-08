@@ -24,6 +24,7 @@ import {
   useDroppable,
 } from "@dnd-kit/core";
 import { Task, ViewMode, CalendarSource } from "@/lib/types";
+import { baikalAPI } from "@/lib/api";
 
 interface CalendarProps {
   tasks: Task[];
@@ -37,17 +38,35 @@ interface CalendarProps {
   calendars: CalendarSource[];
 }
 
+// Helper function to get calendar color for a task
+const getTaskColor = (task: Task, calendars: CalendarSource[]): string => {
+  if (task.calendar_source_color) return task.calendar_source_color;
+
+  const calendarId = task.calendar_id || task.calendar_source;
+  if (!calendarId) return "#005f82";
+
+  const calendar = calendars.find(cal => (cal.calendarid || cal.id) === calendarId);
+  if (calendar) {
+    // Baikal calendar color or fallback
+    return calendar.color || "#005f82";
+  }
+
+  return "#005f82";
+};
+
 const DayTasksModal = memo(
   ({
     date,
     tasks,
     onClose,
     onTaskClick,
+    calendars,
   }: {
     date: Date;
     tasks: Task[];
     onClose: () => void;
     onTaskClick: (task: Task) => void;
+    calendars: CalendarSource[];
   }) => {
     if (!date) return null;
 
@@ -80,7 +99,7 @@ const DayTasksModal = memo(
                     new Date(b.start_date).getTime(),
                 )
                 .map((task) => {
-                  const taskColor = task.calendar_source_color || "#005f82";
+                  const taskColor = getTaskColor(task, calendars);
                   return (
                     <div
                       key={task.id}
@@ -141,13 +160,15 @@ const TaskItem = ({
   onTaskClick,
   dragListeners,
   dragAttributes,
+  calendars,
 }: {
   task: Task;
   onTaskClick: (task: Task) => void;
   dragListeners?: any;
   dragAttributes?: any;
+  calendars: CalendarSource[];
 }) => {
-  const taskColor = task.calendar_source_color || "#005f82";
+  const taskColor = getTaskColor(task, calendars);
   return (
     <div
       className="text-xs p-1.5 pr-1 text-white rounded-lg flex items-center gap-1 group/item"
@@ -182,13 +203,15 @@ const WeekTaskItem = ({
   onTaskClick,
   dragListeners,
   dragAttributes,
+  calendars,
 }: {
   task: Task;
   onTaskClick: (task: Task) => void;
   dragListeners?: any;
   dragAttributes?: any;
+  calendars: CalendarSource[];
 }) => {
-  const taskColor = task.calendar_source_color || "#005f82";
+  const taskColor = getTaskColor(task, calendars);
   return (
     <div
       className="mb-0.5 p-1.5 pl-1 rounded-lg hover:shadow-md transition-all text-[10px] flex items-start gap-1 group/item"
@@ -439,6 +462,7 @@ export default function Calendar({
             onTaskClick={onTaskClick}
             dragListeners={listeners}
             dragAttributes={attributes}
+            calendars={calendars}
           />
         ) : (
           <WeekTaskItem
@@ -446,6 +470,7 @@ export default function Calendar({
             onTaskClick={onTaskClick}
             dragListeners={listeners}
             dragAttributes={attributes}
+            calendars={calendars}
           />
         )}
       </div>
@@ -764,6 +789,21 @@ export default function Calendar({
     );
   };
 
+  // Ajouter les appels API pour récupérer les calendriers et événements
+  useEffect(() => {
+    if (mainViewMode === 'group') {
+      // Récupérer les calendriers de groupe
+      baikalAPI.getCalendars().then((response) => {
+        console.log("Calendriers de groupe:", response.data);
+      });
+
+      // Récupérer les événements pour une période donnée
+      baikalAPI.getEvents({ start_date: "2025-12-01", end_date: "2025-12-31" }).then((response) => {
+        console.log("Événements de groupe:", response.data);
+      });
+    }
+  }, [mainViewMode]);
+
   return (
     <>
       <DndContext onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
@@ -810,9 +850,9 @@ export default function Calendar({
         <DragOverlay>
           {activeTask ? (
             viewMode === "month" ? (
-              <TaskItem task={activeTask} onTaskClick={onTaskClick} />
+              <TaskItem task={activeTask} onTaskClick={onTaskClick} calendars={calendars} />
             ) : (
-              <WeekTaskItem task={activeTask} onTaskClick={onTaskClick} />
+              <WeekTaskItem task={activeTask} onTaskClick={onTaskClick} calendars={calendars} />
             )
           ) : null}
         </DragOverlay>
@@ -823,6 +863,7 @@ export default function Calendar({
           tasks={getTasksForDate(dayTasksModalDate)}
           onClose={() => setDayTasksModalDate(null)}
           onTaskClick={onTaskClick}
+          calendars={calendars}
         />
       )}
     </>

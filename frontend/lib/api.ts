@@ -1,125 +1,159 @@
 import axios from 'axios';
+import {CalendarSource, Task} from "@/lib/types";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || '';
 
 const api = axios.create({
-  baseURL: API_URL,
-  headers: {
-    'Content-Type': 'application/json',
-  },
+    baseURL: API_URL,
+    headers: {
+        'Content-Type': 'application/json',
+    },
 });
 
 // Intercepteur pour ajouter le token JWT
 api.interceptors.request.use(
-  (config) => {
-    const token = localStorage.getItem('access_token');
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
+    (config) => {
+        const token = localStorage.getItem('access_token');
+        if (token) {
+            config.headers.Authorization = `Bearer ${token}`;
+        }
+        return config;
+    },
+    (error) => {
+        return Promise.reject(error);
     }
-    return config;
-  },
-  (error) => {
-    return Promise.reject(error);
-  }
 );
 
 // Intercepteur pour gérer le rafraîchissement du token
 api.interceptors.response.use(
-  (response) => response,
-  async (error) => {
-    const originalRequest = error.config;
+    (response) => response,
+    async (error) => {
+        const originalRequest = error.config;
 
-    if (error.response?.status === 401 && !originalRequest._retry) {
-      originalRequest._retry = true;
+        if (error.response?.status === 401 && !originalRequest._retry) {
+            originalRequest._retry = true;
 
-      try {
-        const refreshToken = localStorage.getItem('refresh_token');
-        const response = await axios.post(`${API_URL}/auth/token/refresh/`, {
-          refresh: refreshToken,
-        });
+            try {
+                const refreshToken = localStorage.getItem('refresh_token');
+                const response = await axios.post(`${API_URL}/auth/token/refresh/`, {
+                    refresh: refreshToken,
+                });
 
-        const { access } = response.data;
-        localStorage.setItem('access_token', access);
+                const {access} = response.data;
+                localStorage.setItem('access_token', access);
 
-        originalRequest.headers.Authorization = `Bearer ${access}`;
-        return api(originalRequest);
-      } catch (refreshError) {
-        localStorage.removeItem('access_token');
-        localStorage.removeItem('refresh_token');
-        window.location.href = '/login';
-        return Promise.reject(refreshError);
-      }
+                originalRequest.headers.Authorization = `Bearer ${access}`;
+                return api(originalRequest);
+            } catch (refreshError) {
+                localStorage.removeItem('access_token');
+                localStorage.removeItem('refresh_token');
+                window.location.href = '/login';
+                return Promise.reject(refreshError);
+            }
+        }
+
+        return Promise.reject(error);
     }
-
-    return Promise.reject(error);
-  }
 );
 
 // API CalDAV
 export const caldavAPI = {
-  // Récupérer la configuration CalDAV
-  getConfig: () => api.get('/caldav/config/'),
+    // Récupérer la configuration CalDAV
+    getConfig: () => api.get('/caldav/config/'),
 
-  // Créer ou mettre à jour la configuration CalDAV
-  saveConfig: (data: {
-    username: string;
-    password: string;
-    calendar_name?: string;
-    sync_enabled?: boolean;
-  }) => api.post('/caldav/config/', data),
+    // Créer ou mettre à jour la configuration CalDAV
+    saveConfig: (data: {
+        username: string;
+        password: string;
+        calendar_name?: string;
+        sync_enabled?: boolean;
+    }) => api.post('/caldav/config/', data),
 
-  // Mettre à jour la configuration CalDAV
-  updateConfig: (data: Partial<{
-    username: string;
-    password: string;
-    calendar_name: string;
-    sync_enabled: boolean;
-  }>) => api.put('/caldav/config/', data),
+    // Mettre à jour la configuration CalDAV
+    updateConfig: (data: Partial<{
+        username: string;
+        password: string;
+        calendar_name: string;
+        sync_enabled: boolean;
+    }>) => api.put('/caldav/config/', data),
 
-  // Supprimer la configuration CalDAV
-  deleteConfig: () => api.delete('/caldav/config/'),
+    // Supprimer la configuration CalDAV
+    deleteConfig: () => api.delete('/caldav/config/'),
 
-  // Tester la connexion CalDAV
-  testConnection: () => api.post('/caldav/test/'),
+    // Tester la connexion CalDAV
+    testConnection: () => api.post('/caldav/test/'),
 
-  // Synchroniser les tâches
-  sync: () => api.post('/caldav/sync/'),
+    // Synchroniser les tâches
+    sync: () => api.post('/caldav/sync/'),
 
-  // Synchroniser via le viewset des tâches
-  syncTasks: () => api.post('/tasks/sync/'),
+    // Synchroniser via le viewset des tâches
+    syncTasks: () => api.post('/tasks/sync/'),
 
-  // Découvrir tous les calendriers disponibles
-  discoverCalendars: () => api.get('/caldav/discover/'),
+    // Découvrir tous les calendriers disponibles
+    discoverCalendars: () => api.get('/caldav/discover/'),
 
-  // Récupérer tous les calendriers (possédés et partagés)
-  getAllCalendars: () => api.get('/caldav/calendars/all/'),
+    // Récupérer tous les calendriers (possédés et partagés)
+    getAllCalendars: () => api.get('/caldav/calendars/all/'),
 
-  // Récupérer les calendriers avec droit d'écriture
-  getWritableCalendars: () => api.get('/caldav/calendars/writable/'),
+    // Récupérer les calendriers avec droit d'écriture
+    getWritableCalendars: () => api.get('/caldav/calendars/writable/'),
 
-  // Mettre à jour un calendrier (activer/désactiver, changer couleur, etc.)
-  updateCalendar: (calendarId: number, data: Partial<{
-    name: string;
-    is_enabled: boolean;
-    color: string;
-  }>) => api.put(`/caldav/calendars/${calendarId}/`, data),
+    // Mettre à jour un calendrier (activer/désactiver, changer couleur, etc.)
+    updateCalendar: (calendarId: number, data: Partial<{
+        name: string;
+        is_enabled: boolean;
+        color: string;
+    }>) => api.put(`/caldav/calendars/${calendarId}/`, data),
 
-  // Supprimer un calendrier
-  deleteCalendar: (calendarId: number) => api.delete(`/caldav/calendars/${calendarId}/`),
+    // Supprimer un calendrier
+    deleteCalendar: (calendarId: number) => api.delete(`/caldav/calendars/${calendarId}/`),
 
-  // Rechercher des utilisateurs
-  searchUsers: (query: string) => api.get(`/users/search/?query=${query}`),
+    // Rechercher des utilisateurs
+    searchUsers: (query: string) => api.get(`/users/search/?query=${query}`),
 
-  // Partager un calendrier
-  shareCalendar: (calendarId: number, userId: number, permission = 'read') =>
-    api.post(`/caldav/calendars/${calendarId}/share/`, { user_id: userId, permission: permission }),
+    // Partager un calendrier
+    shareCalendar: (calendarId: number, userId: number, permission = 'read') =>
+        api.post(`/caldav/calendars/${calendarId}/share/`, {user_id: userId, permission: permission}),
 
-  // Révoquer le partage
-  unshareCalendar: (calendarId: number, userId: number) =>
-    api.delete(`/caldav/calendars/${calendarId}/share/`, { data: { user_id: userId } }),
+    // Révoquer le partage
+    unshareCalendar: (calendarId: number, userId: number) =>
+        api.delete(`/caldav/calendars/${calendarId}/share/`, {data: {user_id: userId}}),
+};
+
+// Ajouter les nouvelles API pour Baikal (accès direct MySQL)
+export const baikalAPI = {
+    // Récupérer les calendriers
+    getCalendars: () => api.get('/baikal/calendars/'),
+
+    // Récupérer un calendrier spécifique
+    getCalendar: (calendarId: number) => api.get(`/baikal/calendars/${calendarId}/`),
+
+    // Créer un calendrier
+    createCalendar: (data: Partial<CalendarSource>) => api.post('/baikal/calendars/', data),
+
+    // Mettre à jour un calendrier
+    updateCalendar: (calendarId: number, data: Partial<CalendarSource>) =>
+        api.patch(`/baikal/calendars/${calendarId}/`, data),
+
+    // Supprimer un calendrier
+    deleteCalendar: (calendarId: number) => api.delete(`/baikal/calendars/${calendarId}/`),
+
+    // Récupérer les événements
+    getEvents: (params?: { start_date?: string; end_date?: string }) =>
+        api.get('/baikal/events/', {params}),
+
+    // Récupérer un événement spécifique
+    getEvent: (eventId: number) => api.get(`/baikal/events/${eventId}/`),
+
+    // Créer un événement
+    createEvent: (data: Partial<Task>) => api.post('/baikal/events/', data),
+
+    // Mettre à jour un événement
+    updateEvent: (eventId: number, data: Partial<Task>) =>
+        api.patch(`/baikal/events/${eventId}/`, data),
+
+    // Supprimer un événement
+    deleteEvent: (eventId: number) => api.delete(`/baikal/events/${eventId}/`),
 };
 
 export default api;
-
-
-

@@ -117,14 +117,27 @@ WSGI_APPLICATION = 'config.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
-        'NAME': os.getenv("DB_NAME"),
-        'USER': os.getenv("DB_USER"),
-        'PASSWORD': os.getenv("DB_PASSWORD"),
-        'HOST': os.getenv("DB_HOST"),
-        'PORT': os.getenv("DB_PORT"),
+        'NAME': os.getenv('POSTGRES_DB'),
+        'USER': os.getenv('POSTGRES_USER'),
+        'PASSWORD': os.getenv('POSTGRES_PASSWORD'),
+        'HOST': os.getenv('POSTGRES_HOST'),
+        'PORT': os.getenv('POSTGRES_PORT', 5432),
     },
+    'baikal': {
+        'ENGINE': 'django.db.backends.mysql',
+        'NAME': os.getenv('BAIKAL_DB_NAME', 'baikal'),
+        'USER': os.getenv('BAIKAL_DB_USER'),
+        'PASSWORD': os.getenv('BAIKAL_DB_PASSWORD'),
+        'HOST': os.getenv('BAIKAL_DB_HOST'),
+        'PORT': os.getenv('BAIKAL_DB_PORT', 3306),
+        'OPTIONS': {
+            'charset': 'utf8mb4',
+        }
+    }
 }
 
+# Database Router pour utiliser MySQL Baikal pour les modèles Baikal
+DATABASE_ROUTERS = ['config.db_router.BaikalRouter']
 
 
 # Password validation

@@ -59,20 +59,9 @@ def login(request):
     print("User", type(user.id))
 
     if user is not None:
-        # Synchronisation RAPIDE : calendriers + événements avec ETags
-        # Utilise quick_sync qui ne charge que les événements modifiés
-        try:
-            print(f"🚀 Synchronisation rapide (calendriers + événements) pour {user.username}...")
-
-            baikal_service = BaikalDBService()
-            stats = baikal_service.quick_sync_user_calendars(user)
-
-            print(f"✅ Synchronisation terminée pour {user.username}")
-            print(f"   📊 Calendriers: {stats['calendars_synced']} créés")
-            print(f"   📊 Événements: {stats['events_created']} créés, {stats['events_updated']} modifiés, "
-                  f"{stats['events_unchanged']} inchangés")
-        except Exception as e:
-            print(f"❌ Erreur lors de la synchronisation pour {user.username}: {e}")
+        # ✅ Plus besoin de synchronisation !
+        # Les données sont lues directement depuis MySQL Baikal
+        print(f"✅ Login réussi pour {user.username} - Accès direct MySQL Baikal")
 
         refresh = RefreshToken.for_user(user)
         return Response({

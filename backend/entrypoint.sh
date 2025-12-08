@@ -12,4 +12,4 @@ python manage.py migrate
 # Lancer le serveur Gunicorn
 echo "Starting Gunicorn server..."
 
-gunicorn config.wsgi:application --workers 2 --bind 0.0.0.0:8021 --timeout 1200
+gunicorn config.wsgi:application --workers 2 --bind 0.0.0.0:8021 --timeout 1200 --access-logfile -

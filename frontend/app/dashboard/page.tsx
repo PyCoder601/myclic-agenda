@@ -37,9 +37,13 @@ export default function DashboardPage() {
   const [syncMessage, setSyncMessage] = useState<string | null>(null);
   const [isCalendarDropdownOpen, setIsCalendarDropdownOpen] = useState(false);
 
-  // Cache pour gérer les requêtes par période
-  const lastFetchPeriod = useRef<string | null>(null);
+  // Cache intelligent pour éviter les requêtes dupliquées
+  const loadedPeriods = useRef<Set<string>>(new Set());
+  const pendingFetch = useRef<AbortController | null>(null);
+  const fetchDebounceTimer = useRef<NodeJS.Timeout | null>(null);
+  const calendarsLoaded = useRef(false);
 
+  // Redirection si non authentifié
   useEffect(() => {
     if (!authLoading && !user) {
       router.push('/login');
@@ -59,36 +63,114 @@ export default function DashboardPage() {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [isCalendarDropdownOpen]);
 
-  // Charger les calendriers au montage
+  // Charger les calendriers UNE SEULE FOIS au montage
   useEffect(() => {
-    if (user) {
+    if (user && !calendarsLoaded.current) {
+      calendarsLoaded.current = true;
       dispatch(fetchCalendars());
     }
   }, [user, dispatch]);
 
-  // Charger les événements quand la date change
-  useEffect(() => {
-    if (user) {
-      const year = currentDate.getFullYear();
-      const month = currentDate.getMonth();
+  // Fonction de chargement des événements avec debounce et cancellation
+  const loadEventsForPeriod = useCallback((date: Date) => {
+    // Annuler la requête en cours si elle existe
+    if (pendingFetch.current) {
+      pendingFetch.current.abort();
+      pendingFetch.current = null;
+    }
 
-      // Début du mois - 7 jours avant
+    // Annuler le timer de debounce en cours
+    if (fetchDebounceTimer.current) {
+      clearTimeout(fetchDebounceTimer.current);
+    }
+
+    // Calculer la période
+    const year = date.getFullYear();
+    const month = date.getMonth();
+    const start = new Date(year, month, -7);
+    const end = new Date(year, month + 1, 7);
+    const periodKey = `${start.toISOString().split('T')[0]}_${end.toISOString().split('T')[0]}`;
+
+    // Vérifier si déjà chargé
+    if (loadedPeriods.current.has(periodKey)) {
+      console.log(`✅ Période ${periodKey} déjà en cache`);
+      return;
+    }
+
+    // Debounce de 300ms pour éviter les requêtes multiples
+    fetchDebounceTimer.current = setTimeout(() => {
+      console.log(`📡 Chargement de la période ${periodKey}...`);
+
+      // Marquer comme chargé immédiatement pour éviter les doublons
+      loadedPeriods.current.add(periodKey);
+
+      // Créer un AbortController pour cette requête
+      const controller = new AbortController();
+      pendingFetch.current = controller;
+
+      // Dispatcher le fetch
+      dispatch(fetchEvents({
+        start_date: start.toISOString().split('T')[0],
+        end_date: end.toISOString().split('T')[0]
+      })).finally(() => {
+        // Nettoyer le controller après la requête
+        if (pendingFetch.current === controller) {
+          pendingFetch.current = null;
+        }
+
+        // Précharger les mois adjacents en arrière-plan (non bloquant)
+        setTimeout(() => {
+          preloadAdjacentMonths(date);
+        }, 500);
+      });
+    }, 300); // Debounce de 300ms
+  }, [dispatch]);
+
+  // Précharger les mois adjacents en arrière-plan
+  const preloadAdjacentMonths = useCallback((date: Date) => {
+    const prevMonth = new Date(date.getFullYear(), date.getMonth() - 1, 1);
+    const nextMonth = new Date(date.getFullYear(), date.getMonth() + 1, 1);
+
+    [prevMonth, nextMonth].forEach(adjacentDate => {
+      const year = adjacentDate.getFullYear();
+      const month = adjacentDate.getMonth();
       const start = new Date(year, month, -7);
-      // Fin du mois + 7 jours après
       const end = new Date(year, month + 1, 7);
+      const periodKey = `${start.toISOString().split('T')[0]}_${end.toISOString().split('T')[0]}`;
 
-      const periodKey = `${start.toISOString()}-${end.toISOString()}`;
+      // Charger seulement si pas déjà chargé
+      if (!loadedPeriods.current.has(periodKey)) {
+        console.log(`🔄 Préchargement de ${periodKey}...`);
+        loadedPeriods.current.add(periodKey);
 
-      // Éviter de recharger si déjà chargé
-      if (periodKey !== lastFetchPeriod.current) {
-        lastFetchPeriod.current = periodKey;
         dispatch(fetchEvents({
           start_date: start.toISOString().split('T')[0],
           end_date: end.toISOString().split('T')[0]
-        }));
+        })).catch(() => {
+          // En cas d'erreur, retirer du cache pour réessayer plus tard
+          loadedPeriods.current.delete(periodKey);
+        });
       }
+    });
+  }, [dispatch]);
+
+  // Charger les événements quand la date change (avec debounce intégré)
+  useEffect(() => {
+    if (user) {
+      loadEventsForPeriod(currentDate);
     }
-  }, [user, currentDate, dispatch]);
+
+    // Cleanup : annuler les requêtes et timers en cours
+    return () => {
+      if (fetchDebounceTimer.current) {
+        clearTimeout(fetchDebounceTimer.current);
+      }
+      if (pendingFetch.current) {
+        pendingFetch.current.abort();
+        pendingFetch.current = null;
+      }
+    };
+  }, [user, currentDate, loadEventsForPeriod]);
 
   const handleToggleCalendar = useCallback(async (calendar: any) => {
     // Dispatch updateCalendar thunk
@@ -147,15 +229,20 @@ export default function DashboardPage() {
 
   const handleDeleteTask = useCallback(async (id: number) => {
     try {
-      // Optimistic delete
+      // Optimistic delete - suppression immédiate dans le state
       dispatch(optimisticDeleteEvent(id));
 
-      // Dispatch deleteEvent thunk
+      // Dispatch deleteEvent thunk en arrière-plan
       await dispatch(deleteEvent(id)).unwrap();
+
+      console.log(`✅ Événement ${id} supprimé`);
 
     } catch (error) {
       console.error('Erreur lors de la suppression de l\'événement:', error);
-      // En cas d'erreur, recharger les événements pour rollback
+
+      // En cas d'erreur, invalider le cache et recharger pour avoir les vraies données
+      loadedPeriods.current.clear();
+
       const year = currentDate.getFullYear();
       const month = currentDate.getMonth();
       const start = new Date(year, month, -7);
@@ -187,12 +274,25 @@ export default function DashboardPage() {
     setSyncMessage('Rafraîchissement...');
 
     try {
+      // Invalider tout le cache
+      loadedPeriods.current.clear();
+
+      // Annuler les requêtes en cours
+      if (pendingFetch.current) {
+        pendingFetch.current.abort();
+        pendingFetch.current = null;
+      }
+      if (fetchDebounceTimer.current) {
+        clearTimeout(fetchDebounceTimer.current);
+        fetchDebounceTimer.current = null;
+      }
+
       const year = currentDate.getFullYear();
       const month = currentDate.getMonth();
       const start = new Date(year, month, -7);
       const end = new Date(year, month + 1, 7);
 
-      // Recharger les calendriers et les événements via Redux
+      // Recharger calendriers et événements en parallèle
       await Promise.all([
         dispatch(fetchCalendars()).unwrap(),
         dispatch(fetchEvents({
@@ -201,9 +301,14 @@ export default function DashboardPage() {
         })).unwrap()
       ]);
 
+      // Marquer la période comme chargée
+      const periodKey = `${start.toISOString().split('T')[0]}_${end.toISOString().split('T')[0]}`;
+      loadedPeriods.current.add(periodKey);
+
       setSyncMessage('✓ Données actualisées');
       setTimeout(() => setSyncMessage(null), 3000);
     } catch (error) {
+      console.error('Erreur de rafraîchissement:', error);
       setSyncMessage('✗ Erreur de rafraîchissement');
       setTimeout(() => setSyncMessage(null), 3000);
     } finally {
@@ -221,14 +326,14 @@ export default function DashboardPage() {
 
     const newStartDate = new Date(newDate);
 
-    // If the drop is from month view, the time will be 00:00. Preserve original time.
+    // Si le drop vient de la vue mois, le temps sera 00:00. Préserver le temps original.
     if (newStartDate.getHours() === 0 && newStartDate.getMinutes() === 0) {
       newStartDate.setHours(oldStartDate.getHours(), oldStartDate.getMinutes(), oldStartDate.getSeconds());
     }
 
     const newEndDate = new Date(newStartDate.getTime() + duration);
 
-    // Optimistic update
+    // Optimistic update immédiat
     dispatch(optimisticUpdateEvent({
       id: taskId,
       data: {
@@ -238,7 +343,7 @@ export default function DashboardPage() {
     }));
 
     try {
-      // Dispatch updateEvent thunk
+      // Dispatch updateEvent thunk en arrière-plan
       await dispatch(updateEvent({
         id: taskId,
         data: {
@@ -247,9 +352,14 @@ export default function DashboardPage() {
         }
       })).unwrap();
 
+      console.log(`✅ Événement ${taskId} déplacé`);
+
     } catch (error) {
-      console.error('Erreur lors de la mise à jour de l\'événement par glisser-déposer:', error);
-      // En cas d'erreur, recharger pour rollback
+      console.error('Erreur lors du déplacement de l\'événement:', error);
+
+      // En cas d'erreur, invalider le cache et recharger
+      loadedPeriods.current.clear();
+
       const year = currentDate.getFullYear();
       const month = currentDate.getMonth();
       const start = new Date(year, month, -7);

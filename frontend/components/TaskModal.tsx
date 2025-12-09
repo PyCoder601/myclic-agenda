@@ -138,7 +138,7 @@ export default function TaskModal({ isOpen, onClose, onSave, onDelete, task, ini
       start_date: new Date(formData.start_date).toISOString(),
       end_date: new Date(formData.end_date).toISOString(),
       is_completed: formData.is_completed,
-      calendar_id: calendarIdValue,  // Le backend attend calendar_id
+      calendar_id: calendarIdValue as number,  // Le backend attend calendar_id
       calendar_source: calendarIdValue,  // Gardé pour compatibilité
     });
     onClose();

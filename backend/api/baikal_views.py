@@ -267,54 +267,37 @@ def baikal_events_list(request):
 
         print(f"✅ Événement créé avec succès!")
 
-        # Stratégie de retry pour trouver l'événement créé
+        # Stratégie de retry optimisée pour réponse rapide
         import time
-        max_retries = 5
-        retry_delay = 0.5
+        max_retries = 3  # Réduit de 5 à 3 pour réponse plus rapide
+        retry_delay = 0.3  # Réduit de 0.5 à 0.3 seconde
 
         for attempt in range(max_retries):
-            print(f"🔍 Tentative {attempt + 1}/{max_retries} de recherche de l'événement...")
+            print(f"🔍 Tentative {attempt + 1}/{max_retries}...")
 
-            # Attendre que Baikal écrive dans la base
+            # Attendre que Baikal écrive dans la base (délai optimisé)
             time.sleep(retry_delay)
 
-            # Rechercher l'événement créé - stratégie unique et efficace
-            calendar_object = None
-
-            # Stratégie : Chercher parmi les récents événements du calendrier
+            # Rechercher l'événement créé
             try:
-                # Récupérer les événements récents de ce calendrier
+                # Récupérer les 5 événements les plus récents (optimisé)
                 recent_events = BaikalCalendarObject.objects.using('baikal').filter(
                     calendarid=calendar_id,
                     componenttype=b'VEVENT'
-                ).order_by('-id')[:10]  # Les 10 derniers pour être sûr
-
-                print(f"   Trouvé {len(recent_events)} événements récents dans le calendrier")
+                ).order_by('-id')[:5]
 
                 # Chercher notre événement par UID
                 for evt in recent_events:
-                    evt_uid = evt.uid_str
-                    print(f"   Comparaison: '{evt_uid}' vs '{event_uid}'")
-                    if evt_uid == event_uid:
-                        calendar_object = evt
-                        print(f"✅ ��vénement trouvé! (id={evt.id})")
-                        break
-
-                if not calendar_object:
-                    print(f"⚠️ UID '{event_uid}' non trouvé parmi les {len(recent_events)} événements récents")
+                    if evt.uid_str == event_uid:
+                        print(f"✅ Trouvé en {(attempt + 1) * retry_delay:.1f}s!")
+                        serializer = BaikalEventSerializer(evt)
+                        return Response(serializer.data, status=status.HTTP_201_CREATED)
 
             except Exception as e:
-                print(f"⚠️ Erreur lors de la recherche: {e}")
-                import traceback
-                traceback.print_exc()
+                print(f"⚠️ Erreur: {e}")
 
-            # Si trouvé, retourner immédiatement
-            if calendar_object:
-                serializer = BaikalEventSerializer(calendar_object)
-                return Response(serializer.data, status=status.HTTP_201_CREATED)
-
-        # Après tous les essais, si toujours pas trouvé
-        print(f"⚠️ Événement créé mais non trouvé dans la DB après {max_retries} tentatives")
+        # Si non trouvé après tous les essais
+        print(f"⚠️ Non trouvé après {max_retries} tentatives")
         print(f"   L'événement devrait apparaître après un rechargement manuel")
 
         # Retourner une réponse minimale pour éviter les erreurs frontend
@@ -462,4 +445,3 @@ def baikal_event_detail(request, pk: int):
             print(f"❌ ERROR in event deletion:")
             print(traceback.format_exc())
             return Response({'error': f'Erreur lors de la suppression: {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-

@@ -4,19 +4,27 @@ import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import { logout } from '@/store/authSlice';
+import {
+  fetchCalendars,
+  fetchEvents,
+  createEvent,
+  updateEvent,
+  deleteEvent,
+  updateCalendar,
+  optimisticUpdateEvent,
+  optimisticDeleteEvent,
+} from '@/store/calendarSlice';
 import { Calendar as CalendarIcon, LogOut, Plus, RefreshCw, Settings } from 'lucide-react';
 import Calendar from '@/components/Calendar';
 import TaskModal from '@/components/TaskModal';
-import api, { baikalAPI } from '@/lib/api';
-import { Task, ViewMode, CalendarSource } from '@/lib/types';
+import { Task, ViewMode } from '@/lib/types';
 
 export default function DashboardPage() {
   const { user, loading: authLoading } = useAppSelector((state) => state.auth);
+  const { calendars, events, loading, eventsLoading } = useAppSelector((state) => state.calendar);
   const dispatch = useAppDispatch();
   const router = useRouter();
   
-  const [tasks, setTasks] = useState<Task[]>([]);
-  const [calendars, setCalendars] = useState<CalendarSource[]>([]);
   const [viewMode, setViewMode] = useState<ViewMode>('week');
   const [mainViewMode, setMainViewMode] = useState<'personal' | 'group'>('personal');
   const [groupViewMode, setGroupViewMode] = useState<ViewMode>('week');
@@ -29,10 +37,8 @@ export default function DashboardPage() {
   const [syncMessage, setSyncMessage] = useState<string | null>(null);
   const [isCalendarDropdownOpen, setIsCalendarDropdownOpen] = useState(false);
 
-  // Cache des tâches par mois
-  const tasksCache = useRef<Map<string, Task[]>>(new Map());
-  const loadingMonths = useRef<Set<string>>(new Set());
-  const [isInitialized, setIsInitialized] = useState(false);
+  // Cache pour gérer les requêtes par période
+  const lastFetchPeriod = useRef<string | null>(null);
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -53,144 +59,59 @@ export default function DashboardPage() {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [isCalendarDropdownOpen]);
 
-  // Générer une clé de cache pour un mois
-  const getMonthKey = useCallback((date: Date) => {
-    return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
-  }, []);
-
-  // Calculer les dates de début et fin d'un mois (avec marge pour les vues)
-  const getMonthRange = useCallback((date: Date) => {
-    const year = date.getFullYear();
-    const month = date.getMonth();
-
-    // Début du mois - 7 jours avant pour capturer les tâches qui commencent avant
-    const start = new Date(year, month, -7);
-    // Fin du mois + 7 jours après pour capturer les tâches qui se terminent après
-    const end = new Date(year, month + 1, 7);
-
-    return {
-      start: start.toISOString().split('T')[0],
-      end: end.toISOString().split('T')[0]
-    };
-  }, []);
-
-  // Charger les tâches d'un mois spécifique avec cache
-  const fetchTasksForMonth = useCallback(async (date: Date, force = false) => {
-    const monthKey = getMonthKey(date);
-
-    // Vérifier le cache si pas de force reload
-    if (!force && tasksCache.current.has(monthKey)) {
-      return tasksCache.current.get(monthKey) || [];
-    }
-
-    // Éviter les multiples chargements du même mois
-    if (loadingMonths.current.has(monthKey)) {
-      return tasksCache.current.get(monthKey) || [];
-    }
-
-    loadingMonths.current.add(monthKey);
-
-    try {
-      const { start, end } = getMonthRange(date);
-      console.log(`📆 Récupération des événements du ${start} au ${end}...`);
-      // Utiliser l'API Baikal pour récupérer directement depuis MySQL
-      const response = await baikalAPI.getEvents({ start_date: start, end_date: end });
-      const monthTasks = response.data;
-      console.log(`✅ ${monthTasks.length} événements récupérés`);
-
-      // Mettre en cache
-      tasksCache.current.set(monthKey, monthTasks);
-
-      return monthTasks;
-    } catch (error) {
-      console.error('❌ Erreur lors de la récupération des événements:', error);
-      return [];
-    } finally {
-      loadingMonths.current.delete(monthKey);
-    }
-  }, [getMonthKey, getMonthRange]);
-
-  // Précharger les mois adjacents en arrière-plan
-  const preloadAdjacentMonths = useCallback(async (date: Date) => {
-    const prevMonth = new Date(date.getFullYear(), date.getMonth() - 1, 1);
-    const nextMonth = new Date(date.getFullYear(), date.getMonth() + 1, 1);
-
-    // Précharger sans attendre (non bloquant)
-    Promise.all([
-      fetchTasksForMonth(prevMonth),
-      fetchTasksForMonth(nextMonth)
-    ]).catch(() => {
-      // Ignorer les erreurs de préchargement
-    });
-  }, [fetchTasksForMonth]);
-
-  // Charger les tâches pour la date actuelle et mettre à jour l'état
-  const loadCurrentMonthTasks = useCallback(async () => {
-    const monthTasks = await fetchTasksForMonth(currentDate);
-    setTasks(monthTasks);
-
-    // Précharger les mois adjacents en arrière-plan
-    preloadAdjacentMonths(currentDate);
-  }, [currentDate, fetchTasksForMonth, preloadAdjacentMonths]);
-
-  const fetchCalendars = useCallback(async () => {
-    try {
-      const response = await baikalAPI.getCalendars();
-      setCalendars(response.data || []);
-    } catch {
-      // Pas de configuration ou erreur
-      setCalendars([]);
-    }
-  }, []);
-
-  // Initialisation : charger les calendriers et les tâches du mois actuel
+  // Charger les calendriers au montage
   useEffect(() => {
-    if (user && !isInitialized) {
-      fetchCalendars();
-      loadCurrentMonthTasks();
-      setIsInitialized(true);
+    if (user) {
+      dispatch(fetchCalendars());
     }
-  }, [user, isInitialized, fetchCalendars, loadCurrentMonthTasks]);
+  }, [user, dispatch]);
 
-  // Recharger les tâches quand le mois change
+  // Charger les événements quand la date change
   useEffect(() => {
-    if (user && isInitialized) {
-      loadCurrentMonthTasks();
-    }
-  }, [currentDate, user, isInitialized, loadCurrentMonthTasks]);
+    if (user) {
+      const year = currentDate.getFullYear();
+      const month = currentDate.getMonth();
 
-  const handleToggleCalendar = useCallback(async (calendar: CalendarSource) => {
-    try {
-      // Optimisation : mise à jour immédiate de l'UI
-      setCalendars(prev => prev.map(cal =>
-        cal.id === calendar.id ? { ...cal, is_enabled: !cal.is_enabled } : cal
-      ));
+      // Début du mois - 7 jours avant
+      const start = new Date(year, month, -7);
+      // Fin du mois + 7 jours après
+      const end = new Date(year, month + 1, 7);
 
-      // Mise à jour en arrière-plan via Baikal API
-      await baikalAPI.updateCalendar(calendar.id, { is_enabled: !calendar.is_enabled });
-    } catch (error) {
-      console.error('Erreur lors de la mise à jour du calendrier:', error);
-      // Rollback en cas d'erreur
-      setCalendars(prev => prev.map(cal =>
-        cal.id === calendar.id ? { ...cal, is_enabled: !cal.is_enabled } : cal
-      ));
+      const periodKey = `${start.toISOString()}-${end.toISOString()}`;
+
+      // Éviter de recharger si déjà chargé
+      if (periodKey !== lastFetchPeriod.current) {
+        lastFetchPeriod.current = periodKey;
+        dispatch(fetchEvents({
+          start_date: start.toISOString().split('T')[0],
+          end_date: end.toISOString().split('T')[0]
+        }));
+      }
     }
-  }, []);
+  }, [user, currentDate, dispatch]);
+
+  const handleToggleCalendar = useCallback(async (calendar: any) => {
+    // Dispatch updateCalendar thunk
+    dispatch(updateCalendar({
+      id: calendar.id,
+      data: { is_enabled: !calendar.is_enabled }
+    }));
+  }, [dispatch]);
 
   // Filtrer les tâches en fonction des calendriers activés avec mémoïsation
   const filteredTasks = useMemo(() => {
     if (mainViewMode === 'group') {
-      return tasks; // Ne pas filtrer les tâches en mode groupe
+      return events; // Ne pas filtrer les tâches en mode groupe
     }
-    if (calendars.length === 0) return tasks;
+    if (calendars.length === 0) return events;
 
-    return tasks.filter(task => {
+    return events.filter(task => {
       const calendarId = task.calendar_id ?? task.calendar_source;
       if (!calendarId) return true;
       const calendar = calendars.find(cal => (cal.calendarid || cal.id) === calendarId);
       return !calendar || calendar.is_enabled !== false && calendar.display !== 0;
     });
-  }, [tasks, calendars, mainViewMode]);
+  }, [events, calendars, mainViewMode]);
 
   const handleLogout = useCallback(() => {
     dispatch(logout());
@@ -199,103 +120,53 @@ export default function DashboardPage() {
 
   const handleSaveTask = useCallback(async (taskData: Omit<Task, 'id' | 'created_at' | 'updated_at'>) => {
     try {
-      console.log('=== SAVE TASK DEBUG ===');
-      console.log('Task data:', taskData);
-      console.log('Selected task:', selectedTask);
-      console.log('======================');
-
       if (selectedTask) {
-        // Mise à jour via Baikal API
-        const response = await baikalAPI.updateEvent(selectedTask.id, taskData);
+        // Mise à jour avec optimistic update
+        dispatch(optimisticUpdateEvent({ id: selectedTask.id, data: taskData }));
 
-        // Optimistic update immédiat
-        setTasks(prevTasks => prevTasks.map(t =>
-          t.id === selectedTask.id ? { ...t, ...taskData } : t
-        ));
-
-        // Invalider le cache et recharger en arrière-plan
-        const taskDate = new Date(taskData.start_date);
-        const monthKey = getMonthKey(taskDate);
-        tasksCache.current.delete(monthKey);
-
-        // Rechargement asynchrone (non bloquant)
-        loadCurrentMonthTasks().catch(console.error);
+        // Dispatch updateEvent thunk
+        await dispatch(updateEvent({ id: selectedTask.id, data: taskData })).unwrap();
 
       } else {
-        // Création via Baikal API
-        const response = await baikalAPI.createEvent(taskData);
-
-        // ✅ OPTIMISATION : Ajouter immédiatement l'événement dans l'état local
-        if (response.status === 201 && response.data) {
-          console.log('✅ Ajout immédiat de l\'événement dans l\'interface');
-          const newEvent = response.data as Task;
-
-          // Ajouter immédiatement dans l'état (optimistic update)
-          setTasks(prevTasks => [...prevTasks, newEvent]);
-
-          console.log('✅ Événement ajouté, visible immédiatement!');
-        }
-
-        // Invalider le cache du mois concerné
-        const taskDate = new Date(taskData.start_date);
-        const monthKey = getMonthKey(taskDate);
-        tasksCache.current.delete(monthKey);
-
-        // Rechargement en arrière-plan pour synchroniser avec le serveur
-        // (non bloquant, ne retarde pas la fermeture du modal)
-        if (response.status === 202) {
-          console.log('⏳ Événement créé, rechargement en arrière-plan...');
-          // Recharger plusieurs fois en arrière-plan
-          (async () => {
-            for (let i = 0; i < 3; i++) {
-              await new Promise(resolve => setTimeout(resolve, 1000));
-              await loadCurrentMonthTasks();
-              console.log(`🔄 Rechargement arrière-plan ${i + 1}/3`);
-            }
-          })().catch(console.error);
-        } else {
-          // Rechargement simple en arrière-plan
-          loadCurrentMonthTasks().catch(console.error);
-        }
+        // Création avec optimistic update complet
+        // Le thunk createEvent gère automatiquement l'optimistic update
+        await dispatch(createEvent(taskData)).unwrap();
       }
 
-      // Fermer immédiatement le modal (ne pas attendre le rechargement)
+      // Fermer immédiatement le modal
       setIsModalOpen(false);
       setSelectedTask(null);
 
     } catch (error) {
       console.error('Erreur lors de la sauvegarde de l\'événement:', error);
-      if ((error as any).response) {
-        console.error('Response data:', (error as any).response.data);
-        console.error('Response status:', (error as any).response.status);
-      }
       // En cas d'erreur, on laisse quand même fermer le modal
       setIsModalOpen(false);
       setSelectedTask(null);
     }
-  }, [getMonthKey, loadCurrentMonthTasks, selectedTask]);
+  }, [dispatch, selectedTask]);
 
   const handleDeleteTask = useCallback(async (id: number) => {
     try {
-      // Trouver la tâche pour invalider le bon mois
-      const task = tasks.find(t => t.id === id);
+      // Optimistic delete
+      dispatch(optimisticDeleteEvent(id));
 
-      // Supprimer via Baikal API
-      await baikalAPI.deleteEvent(id);
+      // Dispatch deleteEvent thunk
+      await dispatch(deleteEvent(id)).unwrap();
 
-      // Invalider le cache du mois concerné
-      if (task) {
-        const taskDate = new Date(task.start_date);
-        const monthKey = getMonthKey(taskDate);
-        tasksCache.current.delete(monthKey);
-      }
-
-      // Recharger les tâches du mois actuel
-      await loadCurrentMonthTasks();
     } catch (error) {
       console.error('Erreur lors de la suppression de l\'événement:', error);
+      // En cas d'erreur, recharger les événements pour rollback
+      const year = currentDate.getFullYear();
+      const month = currentDate.getMonth();
+      const start = new Date(year, month, -7);
+      const end = new Date(year, month + 1, 7);
+
+      dispatch(fetchEvents({
+        start_date: start.toISOString().split('T')[0],
+        end_date: end.toISOString().split('T')[0]
+      }));
     }
-  }, [tasks, getMonthKey, loadCurrentMonthTasks]);
+  }, [dispatch, currentDate]);
 
   const handleTaskClick = useCallback((task: Task) => {
     setSelectedTask(task);
@@ -316,13 +187,18 @@ export default function DashboardPage() {
     setSyncMessage('Rafraîchissement...');
 
     try {
-      // Invalider tout le cache
-      tasksCache.current.clear();
+      const year = currentDate.getFullYear();
+      const month = currentDate.getMonth();
+      const start = new Date(year, month, -7);
+      const end = new Date(year, month + 1, 7);
 
-      // Recharger les calendriers et les tâches
+      // Recharger les calendriers et les événements via Redux
       await Promise.all([
-        fetchCalendars(),
-        loadCurrentMonthTasks()
+        dispatch(fetchCalendars()).unwrap(),
+        dispatch(fetchEvents({
+          start_date: start.toISOString().split('T')[0],
+          end_date: end.toISOString().split('T')[0]
+        })).unwrap()
       ]);
 
       setSyncMessage('✓ Données actualisées');
@@ -333,10 +209,10 @@ export default function DashboardPage() {
     } finally {
       setIsSyncing(false);
     }
-  }, [fetchCalendars, loadCurrentMonthTasks]);
+  }, [dispatch, currentDate]);
 
   const handleTaskDrop = useCallback(async (taskId: number, newDate: Date) => {
-    const task = tasks.find(t => t.id === taskId);
+    const task = events.find(t => t.id === taskId);
     if (!task) return;
 
     const oldStartDate = new Date(task.start_date);
@@ -352,38 +228,39 @@ export default function DashboardPage() {
 
     const newEndDate = new Date(newStartDate.getTime() + duration);
 
-    const updatedTask = {
-      ...task,
-      start_date: newStartDate.toISOString(),
-      end_date: newEndDate.toISOString(),
-    };
-
-    // Optimistic UI update
-    setTasks(prevTasks => prevTasks.map(t => t.id === taskId ? updatedTask : t));
-
-    try {
-      // Utiliser l'API Baikal pour la mise à jour
-      await baikalAPI.updateEvent(taskId, {
+    // Optimistic update
+    dispatch(optimisticUpdateEvent({
+      id: taskId,
+      data: {
         start_date: newStartDate.toISOString(),
         end_date: newEndDate.toISOString(),
-      });
-
-      // Invalidate cache for old and new month
-      const oldMonthKey = getMonthKey(oldStartDate);
-      const newMonthKey = getMonthKey(newStartDate);
-      tasksCache.current.delete(oldMonthKey);
-      if (oldMonthKey !== newMonthKey) {
-        tasksCache.current.delete(newMonthKey);
       }
+    }));
 
-      await loadCurrentMonthTasks();
+    try {
+      // Dispatch updateEvent thunk
+      await dispatch(updateEvent({
+        id: taskId,
+        data: {
+          start_date: newStartDate.toISOString(),
+          end_date: newEndDate.toISOString(),
+        }
+      })).unwrap();
 
     } catch (error) {
       console.error('Erreur lors de la mise à jour de l\'événement par glisser-déposer:', error);
-      // Rollback on error
-      setTasks(prevTasks => prevTasks.map(t => t.id === taskId ? task : t));
+      // En cas d'erreur, recharger pour rollback
+      const year = currentDate.getFullYear();
+      const month = currentDate.getMonth();
+      const start = new Date(year, month, -7);
+      const end = new Date(year, month + 1, 7);
+
+      dispatch(fetchEvents({
+        start_date: start.toISOString().split('T')[0],
+        end_date: end.toISOString().split('T')[0]
+      }));
     }
-  }, [tasks, getMonthKey, loadCurrentMonthTasks]);
+  }, [events, dispatch, currentDate]);
 
   // Séparation des calendriers pour l'affichage
   const ownedCalendars = useMemo(() => 

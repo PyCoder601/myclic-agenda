@@ -42,6 +42,7 @@ export default function DashboardPage() {
   const pendingFetch = useRef<AbortController | null>(null);
   const fetchDebounceTimer = useRef<NodeJS.Timeout | null>(null);
   const calendarsLoaded = useRef(false);
+  const isPreloading = useRef(false);  // Flag pour éviter les préchargements concurrents
 
   // Redirection si non authentifié
   useEffect(() => {
@@ -97,6 +98,16 @@ export default function DashboardPage() {
       return;
     }
 
+    // Nettoyage du cache : garder seulement les 5 dernières périodes
+    if (loadedPeriods.current.size >= 5) {
+      const periodsArray = Array.from(loadedPeriods.current);
+      // Garder les 3 dernières périodes
+      const toKeep = periodsArray.slice(-3);
+      loadedPeriods.current.clear();
+      toKeep.forEach(key => loadedPeriods.current.add(key));
+      console.log(`🧹 Cache nettoyé, gardé ${toKeep.length} périodes`);
+    }
+
     // Debounce de 300ms pour éviter les requêtes multiples
     fetchDebounceTimer.current = setTimeout(() => {
       console.log(`📡 Chargement de la période ${periodKey}...`);
@@ -122,16 +133,27 @@ export default function DashboardPage() {
         setTimeout(() => {
           preloadAdjacentMonths(date);
         }, 500);
+      }).catch((error) => {
+        // En cas d'erreur, retirer du cache
+        console.error('Erreur chargement:', error);
+        loadedPeriods.current.delete(periodKey);
       });
     }, 300); // Debounce de 300ms
   }, [dispatch]);
 
   // Précharger les mois adjacents en arrière-plan
   const preloadAdjacentMonths = useCallback((date: Date) => {
+    // Ne pas précharger si une requête principale est en cours
+    if (pendingFetch.current || isPreloading.current) {
+      return;
+    }
+
+    isPreloading.current = true;
+
     const prevMonth = new Date(date.getFullYear(), date.getMonth() - 1, 1);
     const nextMonth = new Date(date.getFullYear(), date.getMonth() + 1, 1);
 
-    [prevMonth, nextMonth].forEach(adjacentDate => {
+    const preloadPromises = [prevMonth, nextMonth].map(adjacentDate => {
       const year = adjacentDate.getFullYear();
       const month = adjacentDate.getMonth();
       const start = new Date(year, month, -7);
@@ -143,14 +165,21 @@ export default function DashboardPage() {
         console.log(`🔄 Préchargement de ${periodKey}...`);
         loadedPeriods.current.add(periodKey);
 
-        dispatch(fetchEvents({
+        return dispatch(fetchEvents({
           start_date: start.toISOString().split('T')[0],
           end_date: end.toISOString().split('T')[0]
-        })).catch(() => {
+        })).unwrap().catch((error) => {
           // En cas d'erreur, retirer du cache pour réessayer plus tard
+          console.error(`Erreur préchargement ${periodKey}:`, error);
           loadedPeriods.current.delete(periodKey);
         });
       }
+      return Promise.resolve();
+    });
+
+    // Attendre que tous les préchargements soient terminés
+    Promise.all(preloadPromises).finally(() => {
+      isPreloading.current = false;
     });
   }, [dispatch]);
 
@@ -286,6 +315,9 @@ export default function DashboardPage() {
         clearTimeout(fetchDebounceTimer.current);
         fetchDebounceTimer.current = null;
       }
+
+      // Reset le flag de préchargement
+      isPreloading.current = false;
 
       const year = currentDate.getFullYear();
       const month = currentDate.getMonth();

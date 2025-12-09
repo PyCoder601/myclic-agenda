@@ -190,7 +190,20 @@ const calendarSlice = createSlice({
         });
         builder.addCase(fetchEvents.fulfilled, (state, action) => {
             state.eventsLoading = false;
-            state.events = action.payload;
+
+            // ✅ FUSION INTELLIGENTE au lieu de remplacement
+            const newEvents = action.payload;
+
+            // Créer un Map des événements existants pour accès rapide
+            const existingEventsMap = new Map(state.events.map(e => [e.id, e]));
+
+            // Ajouter/Mettre à jour les nouveaux événements
+            newEvents.forEach((newEvent: Task) => {
+                existingEventsMap.set(newEvent.id, newEvent);
+            });
+
+            // Convertir le Map en array
+            state.events = Array.from(existingEventsMap.values());
             state.lastFetch = Date.now();
         });
         builder.addCase(fetchEvents.rejected, (state, action) => {

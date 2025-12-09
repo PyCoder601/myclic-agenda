@@ -56,7 +56,13 @@ api.interceptors.response.use(
     }
 );
 
-// API CalDAV
+// ============================================================================
+// API CalDAV (Ancienne API - Conservation pour compatibilité)
+// ============================================================================
+// ⚠️ NOTE: Cette API est conservée pour la configuration et les anciennes
+// fonctionnalités. Pour les opérations CRUD sur les événements et calendriers,
+// utilisez baikalAPI ci-dessous.
+// ============================================================================
 export const caldavAPI = {
     // Récupérer la configuration CalDAV
     getConfig: () => api.get('/caldav/config/'),
@@ -120,7 +126,14 @@ export const caldavAPI = {
         api.delete(`/caldav/calendars/${calendarId}/share/`, {data: {user_id: userId}}),
 };
 
-// Ajouter les nouvelles API pour Baikal (accès direct MySQL)
+// ============================================================================
+// API Baikal (API Principale - Accès direct MySQL + CalDAV pour écritures)
+// ============================================================================
+// ✅ Architecture:
+//    - Lectures: Directement depuis MySQL de Baikal (rapide, pas de locks)
+//    - Écritures: Via CalDAV (évite les conflits de locks MySQL)
+// ✅ Utilisation: Pour tous les CRUD sur événements et calendriers
+// ============================================================================
 export const baikalAPI = {
     // Récupérer les calendriers
     getCalendars: () => api.get('/baikal/calendars/'),

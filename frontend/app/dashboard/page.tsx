@@ -206,29 +206,72 @@ export default function DashboardPage() {
 
       if (selectedTask) {
         // Mise à jour via Baikal API
-        await baikalAPI.updateEvent(selectedTask.id, taskData);
+        const response = await baikalAPI.updateEvent(selectedTask.id, taskData);
+
+        // Optimistic update immédiat
+        setTasks(prevTasks => prevTasks.map(t =>
+          t.id === selectedTask.id ? { ...t, ...taskData } : t
+        ));
+
+        // Invalider le cache et recharger en arrière-plan
+        const taskDate = new Date(taskData.start_date);
+        const monthKey = getMonthKey(taskDate);
+        tasksCache.current.delete(monthKey);
+
+        // Rechargement asynchrone (non bloquant)
+        loadCurrentMonthTasks().catch(console.error);
+
       } else {
         // Création via Baikal API
-        await baikalAPI.createEvent(taskData);
+        const response = await baikalAPI.createEvent(taskData);
+
+        // ✅ OPTIMISATION : Ajouter immédiatement l'événement dans l'état local
+        if (response.status === 201 && response.data) {
+          console.log('✅ Ajout immédiat de l\'événement dans l\'interface');
+          const newEvent = response.data as Task;
+
+          // Ajouter immédiatement dans l'état (optimistic update)
+          setTasks(prevTasks => [...prevTasks, newEvent]);
+
+          console.log('✅ Événement ajouté, visible immédiatement!');
+        }
+
+        // Invalider le cache du mois concerné
+        const taskDate = new Date(taskData.start_date);
+        const monthKey = getMonthKey(taskDate);
+        tasksCache.current.delete(monthKey);
+
+        // Rechargement en arrière-plan pour synchroniser avec le serveur
+        // (non bloquant, ne retarde pas la fermeture du modal)
+        if (response.status === 202) {
+          console.log('⏳ Événement créé, rechargement en arrière-plan...');
+          // Recharger plusieurs fois en arrière-plan
+          (async () => {
+            for (let i = 0; i < 3; i++) {
+              await new Promise(resolve => setTimeout(resolve, 1000));
+              await loadCurrentMonthTasks();
+              console.log(`🔄 Rechargement arrière-plan ${i + 1}/3`);
+            }
+          })().catch(console.error);
+        } else {
+          // Rechargement simple en arrière-plan
+          loadCurrentMonthTasks().catch(console.error);
+        }
       }
 
-      // Invalider le cache du mois concerné
-      const taskDate = new Date(taskData.start_date);
-      const monthKey = getMonthKey(taskDate);
-      tasksCache.current.delete(monthKey);
-
-      // Recharger les tâches du mois actuel
-      await loadCurrentMonthTasks();
-
+      // Fermer immédiatement le modal (ne pas attendre le rechargement)
       setIsModalOpen(false);
       setSelectedTask(null);
+
     } catch (error) {
       console.error('Erreur lors de la sauvegarde de l\'événement:', error);
-      // Afficher les détails de l'erreur
       if ((error as any).response) {
         console.error('Response data:', (error as any).response.data);
         console.error('Response status:', (error as any).response.status);
       }
+      // En cas d'erreur, on laisse quand même fermer le modal
+      setIsModalOpen(false);
+      setSelectedTask(null);
     }
   }, [getMonthKey, loadCurrentMonthTasks, selectedTask]);
 
@@ -319,8 +362,8 @@ export default function DashboardPage() {
     setTasks(prevTasks => prevTasks.map(t => t.id === taskId ? updatedTask : t));
 
     try {
-      await api.put(`/tasks/${taskId}/`, {
-        ...task,
+      // Utiliser l'API Baikal pour la mise à jour
+      await baikalAPI.updateEvent(taskId, {
         start_date: newStartDate.toISOString(),
         end_date: newEndDate.toISOString(),
       });

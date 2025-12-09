@@ -1,34 +1,85 @@
 """
-Vues pour interagir directement avec la base MySQL Baikal
-Plus besoin de synchronisation - lecture/écriture directe !
+Vues pour interagir avec Baikal via CalDAV et lecture directe MySQL
+- Lecture depuis MySQL (rapide)
+- Écriture via CalDAV (garantit la cohérence)
 CRUD complet pour calendriers et événements.
 """
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from django.db.models import Q
-from icalendar import Calendar as iCalendar, Event as iEvent
+from django.conf import settings
 from datetime import datetime
-import pytz
 import uuid
+import caldav
 
 from .baikal_models import (
     BaikalCalendarInstance,
     BaikalCalendarObject,
-    BaikalCalendar,
 )
 from .baikal_serializers import (
     BaikalCalendarSerializer,
     BaikalEventSerializer
 )
+from .caldav_service import CalDAVService
 
-from django.views.decorators.csrf import csrf_exempt
 from rest_framework.decorators import api_view, permission_classes
+
+# -----------------------------
+# Helper Functions
+# -----------------------------
+def get_caldav_calendar_for_id(user, calendar_id):
+    """
+    Obtenir l'objet Calendar CalDAV pour un calendar_id donné
+
+    Args:
+        user: L'utilisateur Django
+        calendar_id: ID du calendrier (calendarid de BaikalCalendarInstance)
+
+    Returns:
+        tuple: (client, calendar) ou (None, None) en cas d'erreur
+    """
+    try:
+        # Récupérer l'instance du calendrier
+        calendar_instance = BaikalCalendarInstance.objects.using('baikal').get(
+            calendarid=calendar_id,
+            principaluri__contains=user.username
+        )
+
+        # Connexion au serveur CalDAV
+        client = caldav.DAVClient(
+            url=settings.BAIKAL_SERVER_URL,
+            username=user.username,
+            password=user.baikal_password
+        )
+
+        # Récupérer le principal et ses calendriers
+        principal = client.principal()
+        calendars = principal.calendars()
+
+        # Construire l'URL du calendrier
+        calendar_uri = calendar_instance.uri_str
+
+        # Trouver le calendrier correspondant
+        for cal in calendars:
+            cal_url = str(cal.url.canonical())  # Convertir URL en string
+            if calendar_uri in cal_url:
+                return client, cal
+
+        # Si non trouvé, utiliser le premier calendrier
+        if calendars:
+            return client, calendars[0]
+
+        return None, None
+    except Exception as e:
+        print(f"❌ Erreur connexion CalDAV: {e}")
+        import traceback
+        traceback.print_exc()
+        return None, None
 
 # -----------------------------
 # Calendars - List / Create
 # -----------------------------
-@csrf_exempt
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def baikal_calendars_list(request):
@@ -46,7 +97,6 @@ def baikal_calendars_list(request):
 # -----------------------------
 # Calendars - Detail / Update / Delete
 # -----------------------------
-@csrf_exempt
 @api_view(['GET', 'PATCH', 'DELETE'])
 @permission_classes([IsAuthenticated])
 def baikal_calendar_detail(request, pk: int):
@@ -62,39 +112,82 @@ def baikal_calendar_detail(request, pk: int):
 
     if request.method == 'PATCH':
         data = request.data
-        # Mettre à jour les champs autorisés
-        if 'displayname' in data:
-            instance.displayname = data['displayname']
-        if 'calendarcolor' in data:
-            instance.calendarcolor = data['calendarcolor'].encode('utf-8')
-        if 'description' in data:
-            instance.description = data['description']
-        if 'display' in data:
-            instance.display = data['display']
-        if 'is_enabled' in data:
-            instance.display = 1 if data['is_enabled'] else 0
 
-        instance.save(using='baikal')
-        serializer = BaikalCalendarSerializer(instance)
-        return Response(serializer.data)
+        # Toutes les mises à jour passent par CalDAV pour éviter les locks MySQL
+        try:
+            client, caldav_calendar = get_caldav_calendar_for_id(request.user, instance.calendarid)
+            if not caldav_calendar:
+                return Response(
+                    {'error': 'Impossible de se connecter au calendrier CalDAV'},
+                    status=status.HTTP_500_INTERNAL_SERVER_ERROR
+                )
+
+            # Update via CalDAV (supporte displayname, description, color)
+            # Note: 'display' et 'is_enabled' ne sont pas des propriétés CalDAV standard
+            # donc on les ignore pour éviter les problèmes de lock
+            displayname = data.get('displayname')
+            description = data.get('description')
+            color = data.get('calendarcolor')
+
+            success = CalDAVService.update_calendar(
+                calendar=caldav_calendar,
+                displayname=displayname,
+                description=description,
+                color=color
+            )
+
+            if not success:
+                return Response(
+                    {'error': 'Erreur lors de la mise à jour du calendrier via CalDAV'},
+                    status=status.HTTP_500_INTERNAL_SERVER_ERROR
+                )
+
+            # Attendre que Baikal traite la modification CalDAV
+            import time
+            time.sleep(0.5)
+
+            # Relire depuis la base pour obtenir les données mises à jour
+            instance.refresh_from_db(using='baikal')
+            serializer = BaikalCalendarSerializer(instance)
+            return Response(serializer.data)
+
+        except Exception as e:
+            import traceback
+            print(f"❌ ERROR in calendar update:")
+            print(traceback.format_exc())
+            return Response({'error': f'Erreur lors de la mise à jour: {str(e)}'},
+                            status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
 
     if request.method == 'DELETE':
         # Protéger contre suppression si pas propriétaire
         if not instance.principaluri_str.endswith(request.user.username):
             return Response({'error': 'Vous ne pouvez pas supprimer ce calendrier'}, status=status.HTTP_403_FORBIDDEN)
 
-        # Supprimer tous les événements du calendrier
-        BaikalCalendarObject.objects.using('baikal').filter(
-            calendarid=instance.calendarid
-        ).delete()
+        try:
+            # Supprimer via CalDAV
+            client, caldav_calendar = get_caldav_calendar_for_id(request.user, instance.calendarid)
+            if not caldav_calendar:
+                return Response(
+                    {'error': 'Impossible de se connecter au calendrier CalDAV'},
+                    status=status.HTTP_500_INTERNAL_SERVER_ERROR
+                )
 
-        instance.delete(using='baikal')
-        return Response(status=status.HTTP_204_NO_CONTENT)
+            # Supprimer le calendrier via CalDAV
+            caldav_calendar.delete()
+            print(f"✅ Calendrier supprimé via CalDAV")
+
+            return Response(status=status.HTTP_204_NO_CONTENT)
+
+        except Exception as e:
+            import traceback
+            print(f"❌ ERROR in calendar deletion:")
+            print(traceback.format_exc())
+            return Response({'error': f'Erreur lors de la suppression: {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 # -----------------------------
 # Events - List / Create
 # -----------------------------
-@csrf_exempt
 @api_view(['GET', 'POST'])
 @permission_classes([IsAuthenticated])
 def baikal_events_list(request):
@@ -126,69 +219,122 @@ def baikal_events_list(request):
         serializer = BaikalEventSerializer(queryset, many=True)
         return Response(serializer.data)
 
-    # POST - création
+    # POST - création via CalDAV
     data = request.data
-    print("=== CREATE EVENT DEBUG ===")
-    print(f"User: {user.username}")
-    print(f"Data received: {data}")
-    print(f"calendar_id in data: {data.get('calendar_id')}")
-    print("=========================")
-
     calendar_id = data.get('calendar_id')
     if not calendar_id:
-        return Response({'error': 'calendar_id est requis', 'data_received': dict(data)}, status=status.HTTP_400_BAD_REQUEST)
+        return Response({'error': 'calendar_id est requis'}, status=status.HTTP_400_BAD_REQUEST)
 
-    # Vérifier accès au calendrier
-    try:
-        BaikalCalendarInstance.objects.using('baikal').get(
-            calendarid=calendar_id,
-            principaluri__contains=user.username.encode('utf-8')
-        )
-    except BaikalCalendarInstance.DoesNotExist:
-        return Response({'error': 'Calendrier non trouvé ou accès refusé'}, status=status.HTTP_404_NOT_FOUND)
+    print(f"=== CREATE EVENT VIA CALDAV ===")
+    print(f"User: {user.username}")
+    print(f"Calendar ID: {calendar_id}")
+    print(f"Data: {dict(data)}")
 
     try:
-        cal = iCalendar()
-        event = iEvent()
+        # Obtenir le calendrier CalDAV
+        client, caldav_calendar = get_caldav_calendar_for_id(user, calendar_id)
+        if not caldav_calendar:
+            return Response(
+                {'error': 'Impossible de se connecter au calendrier CalDAV'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+        # Générer un UID unique
         event_uid = str(uuid.uuid4())
-        event.add('uid', event_uid)
-        event.add('summary', data.get('title', 'Sans titre'))
-        if data.get('description'):
-            event.add('description', data['description'])
+
+        # Parser les dates
         start_date = datetime.fromisoformat(data['start_date'].replace('Z', '+00:00'))
         end_date = datetime.fromisoformat(data['end_date'].replace('Z', '+00:00'))
-        event.add('dtstart', start_date)
-        event.add('dtend', end_date)
-        event.add('status', 'CONFIRMED')
-        event.add('dtstamp', datetime.now(pytz.UTC))
-        cal.add_component(event)
-        ical_string = cal.to_ical().decode('utf-8')
-        event_uri = f"{event_uid}.ics"
-        now_ts = int(datetime.now().timestamp())
-        calendar_object = BaikalCalendarObject.objects.using('baikal').create(
-            calendardata=ical_string.encode('utf-8'),
-            uri=event_uri.encode('utf-8'),
-            calendarid=calendar_id,
-            lastmodified=now_ts,
-            etag=f'"{event_uid}"'.encode('utf-8'),
-            size=len(ical_string),
-            componenttype=b'VEVENT',
-            firstoccurence=int(start_date.timestamp()),
-            lastoccurence=int(end_date.timestamp()),
-            uid=event_uid.encode('utf-8')
+
+        # Créer l'événement iCalendar via CalDAVService
+        ical_string = CalDAVService.create_ical_event(
+            uid=event_uid,
+            title=data.get('title', 'Sans titre'),
+            description=data.get('description', ''),
+            start_date=start_date,
+            end_date=end_date,
+            is_completed=data.get('is_completed', False)
         )
-        baikal_calendar = BaikalCalendar.objects.using('baikal').get(id=calendar_id)
-        baikal_calendar.synctoken += 1
-        baikal_calendar.save(using='baikal')
-        serializer = BaikalEventSerializer(calendar_object)
-        return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+        # Envoyer via CalDAV en utilisant CalDAVService
+        success = CalDAVService.save_event_to_calendar(caldav_calendar, ical_string)
+
+        if not success:
+            return Response(
+                {'error': 'Erreur lors de la création de l\'événement'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+        print(f"✅ Événement créé avec succès!")
+
+        # Stratégie de retry pour trouver l'événement créé
+        import time
+        max_retries = 5
+        retry_delay = 0.5
+
+        for attempt in range(max_retries):
+            print(f"🔍 Tentative {attempt + 1}/{max_retries} de recherche de l'événement...")
+
+            # Attendre que Baikal écrive dans la base
+            time.sleep(retry_delay)
+
+            # Rechercher l'événement créé - stratégie unique et efficace
+            calendar_object = None
+
+            # Stratégie : Chercher parmi les récents événements du calendrier
+            try:
+                # Récupérer les événements récents de ce calendrier
+                recent_events = BaikalCalendarObject.objects.using('baikal').filter(
+                    calendarid=calendar_id,
+                    componenttype=b'VEVENT'
+                ).order_by('-id')[:10]  # Les 10 derniers pour être sûr
+
+                print(f"   Trouvé {len(recent_events)} événements récents dans le calendrier")
+
+                # Chercher notre événement par UID
+                for evt in recent_events:
+                    evt_uid = evt.uid_str
+                    print(f"   Comparaison: '{evt_uid}' vs '{event_uid}'")
+                    if evt_uid == event_uid:
+                        calendar_object = evt
+                        print(f"✅ ��vénement trouvé! (id={evt.id})")
+                        break
+
+                if not calendar_object:
+                    print(f"⚠️ UID '{event_uid}' non trouvé parmi les {len(recent_events)} événements récents")
+
+            except Exception as e:
+                print(f"⚠️ Erreur lors de la recherche: {e}")
+                import traceback
+                traceback.print_exc()
+
+            # Si trouvé, retourner immédiatement
+            if calendar_object:
+                serializer = BaikalEventSerializer(calendar_object)
+                return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+        # Après tous les essais, si toujours pas trouvé
+        print(f"⚠️ Événement créé mais non trouvé dans la DB après {max_retries} tentatives")
+        print(f"   L'événement devrait apparaître après un rechargement manuel")
+
+        # Retourner une réponse minimale pour éviter les erreurs frontend
+        # Le frontend devra recharger pour voir l'événement
+        return Response({
+            'success': True,
+            'message': 'Événement créé avec succès. Rechargez pour le voir.',
+            'uid': event_uid,
+            'calendar_id': calendar_id
+        }, status=status.HTTP_202_ACCEPTED)  # 202 = Accepted (processing)
+
     except Exception as e:
+        import traceback
+        print(f"❌ ERROR in event creation:")
+        print(traceback.format_exc())
         return Response({'error': f'Erreur lors de la création: {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 # -----------------------------
 # Events - Detail / Update / Delete
 # -----------------------------
-@csrf_exempt
 @api_view(['GET', 'PUT', 'PATCH', 'DELETE'])
 @permission_classes([IsAuthenticated])
 def baikal_event_detail(request, pk: int):
@@ -206,7 +352,7 @@ def baikal_event_detail(request, pk: int):
     user = request.user
     has_access = BaikalCalendarInstance.objects.using('baikal').filter(
         calendarid=instance.calendarid,
-        principaluri__contains=user.username.encode('utf-8')
+        principaluri__contains=user.username
     ).exists()
     if not has_access:
         return Response({'error': 'Accès refusé'}, status=status.HTTP_403_FORBIDDEN)
@@ -214,46 +360,106 @@ def baikal_event_detail(request, pk: int):
     if request.method in ['PUT', 'PATCH']:
         data = request.data
         try:
-            ical_data = instance.calendardata_str
-            cal = iCalendar.from_ical(ical_data)
-            for component in cal.walk():
-                if component.name == 'VEVENT':
-                    if 'title' in data:
-                        component['summary'] = data['title']
-                    if 'description' in data:
-                        component['description'] = data['description']
-                    if 'start_date' in data:
-                        start_date = datetime.fromisoformat(data['start_date'].replace('Z', '+00:00'))
-                        component['dtstart'] = start_date
-                        instance.firstoccurence = int(start_date.timestamp())
-                    if 'end_date' in data:
-                        end_date = datetime.fromisoformat(data['end_date'].replace('Z', '+00:00'))
-                        component['dtend'] = end_date
-                        instance.lastoccurence = int(end_date.timestamp())
-                    if 'is_completed' in data:
-                        component['status'] = 'COMPLETED' if data['is_completed'] else 'CONFIRMED'
-                    component['dtstamp'] = datetime.now(pytz.UTC)
-            ical_string = cal.to_ical().decode('utf-8')
-            instance.calendardata = ical_string.encode('utf-8')
-            instance.size = len(ical_string)
-            instance.lastmodified = int(datetime.now().timestamp())
-            instance.etag = f'"{uuid.uuid4()}"'.encode('utf-8')
-            instance.save(using='baikal')
-            baikal_calendar = BaikalCalendar.objects.using('baikal').get(id=instance.calendarid)
-            baikal_calendar.synctoken += 1
-            baikal_calendar.save(using='baikal')
+            print(f"=== UPDATE EVENT VIA CALDAV ===")
+            print(f"Event ID: {pk}")
+            print(f"Data: {dict(data)}")
+
+            # Obtenir le calendrier CalDAV
+            client, caldav_calendar = get_caldav_calendar_for_id(user, instance.calendarid)
+            if not caldav_calendar:
+                return Response(
+                    {'error': 'Impossible de se connecter au calendrier CalDAV'},
+                    status=status.HTTP_500_INTERNAL_SERVER_ERROR
+                )
+
+            # Récupérer l'événement existant via CalDAV
+            event_uri = instance.uri_str
+            target_event = CalDAVService.find_event_by_uri(caldav_calendar, event_uri)
+
+            if not target_event:
+                return Response(
+                    {'error': 'Événement non trouvé sur le serveur CalDAV'},
+                    status=status.HTTP_404_NOT_FOUND
+                )
+
+            # Préparer les nouvelles valeurs
+            title = data.get('title')
+            description = data.get('description')
+            start_date = None
+            end_date = None
+            is_completed = None
+
+            if 'start_date' in data:
+                start_date = datetime.fromisoformat(data['start_date'].replace('Z', '+00:00'))
+            if 'end_date' in data:
+                end_date = datetime.fromisoformat(data['end_date'].replace('Z', '+00:00'))
+            if 'is_completed' in data:
+                is_completed = data['is_completed']
+
+            # Mettre à jour l'événement via CalDAVService
+            success = CalDAVService.update_event(
+                event=target_event,
+                title=title,
+                description=description,
+                start_date=start_date,
+                end_date=end_date,
+                is_completed=is_completed
+            )
+
+            if not success:
+                return Response(
+                    {'error': 'Erreur lors de la mise à jour de l\'événement'},
+                    status=status.HTTP_500_INTERNAL_SERVER_ERROR
+                )
+
+            print(f"✅ Événement mis à jour via CalDAV")
+
+            # Attendre un peu pour que la base soit mise à jour
+            import time
+            time.sleep(0.5)
+
+            # Relire depuis la base
+            instance.refresh_from_db(using='baikal')
             serializer = BaikalEventSerializer(instance)
             return Response(serializer.data)
+
         except Exception as e:
+            import traceback
+            print(f"❌ ERROR in event update:")
+            print(traceback.format_exc())
             return Response({'error': f'Erreur lors de la mise à jour: {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     if request.method == 'DELETE':
-        calendar_id = instance.calendarid
-        instance.delete(using='baikal')
         try:
-            baikal_calendar = BaikalCalendar.objects.using('baikal').get(id=calendar_id)
-            baikal_calendar.synctoken += 1
-            baikal_calendar.save(using='baikal')
-        except Exception:
-            pass
-        return Response(status=status.HTTP_204_NO_CONTENT)
+            print(f"=== DELETE EVENT VIA CALDAV ===")
+            print(f"Event ID: {pk}")
+
+            # Obtenir le calendrier CalDAV
+            client, caldav_calendar = get_caldav_calendar_for_id(user, instance.calendarid)
+            if not caldav_calendar:
+                return Response(
+                    {'error': 'Impossible de se connecter au calendrier CalDAV'},
+                    status=status.HTTP_500_INTERNAL_SERVER_ERROR
+                )
+
+            # Récupérer l'événement existant via CalDAV
+            event_uri = instance.uri_str
+            target_event = CalDAVService.find_event_by_uri(caldav_calendar, event_uri)
+
+            if target_event:
+                success = CalDAVService.delete_event(target_event)
+                if not success:
+                    return Response(
+                        {'error': 'Erreur lors de la suppression de l\'événement'},
+                        status=status.HTTP_500_INTERNAL_SERVER_ERROR
+                    )
+                print(f"✅ Événement supprimé via CalDAV")
+
+            return Response(status=status.HTTP_204_NO_CONTENT)
+
+        except Exception as e:
+            import traceback
+            print(f"❌ ERROR in event deletion:")
+            print(traceback.format_exc())
+            return Response({'error': f'Erreur lors de la suppression: {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+

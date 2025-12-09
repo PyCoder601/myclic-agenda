@@ -31,193 +31,254 @@ class CalDAVService:
         self.client = None
         self.calendar = None
 
-    def connect(self):
-        """Établir la connexion avec le serveur CalDAV"""
-        if not self.base_caldav_url:
-            print("Erreur: base_caldav_url non fourni pour CalDAVService.")
-            return False
-        
-        try:
-            self.client = caldav.DAVClient(
-                url=os.getenv("BAIKAL_SERVER_URL"),
-                username=self.config.username,
-                password=self.config.baikal_password
-            )
-            principal = self.client.principal()
-            calendars = principal.calendars()
-
-            for cal in calendars:
-                print(f"Calendrier trouvé: {cal.url.canonical()}")
-
-            # Trouver ou créer le calendrier
-            for cal in calendars:
-                if cal.name == self.config.calendar_name:
-                    self.calendar = cal
-                    break
-
-            if not self.calendar and calendars:
-                # Utiliser le premier calendrier disponible
-                self.calendar = calendars[0]
-                self.config.calendar_name = self.calendar.name
-                self.config.save()
-
-            return True
-        except Exception as e:
-            print(f"Erreur de connexion CalDAV: {e}")
-            return False
-
-    def task_to_ical(self, task):
+    @staticmethod
+    def get_caldav_client(username, password):
         """
-        Convertir une tâche Django en événement iCalendar
+        Créer un client CalDAV simple
 
         Args:
-            task: Instance de Task
+            username: Nom d'utilisateur
+            password: Mot de passe Baikal
 
         Returns:
-            str: Événement au format iCalendar
+            tuple: (client, principal) ou (None, None) en cas d'erreur
+        """
+        try:
+            client = caldav.DAVClient(
+                url=os.getenv("BAIKAL_SERVER_URL"),
+                username=username,
+                password=password
+            )
+            principal = client.principal()
+            return client, principal
+        except Exception as e:
+            print(f"❌ Erreur connexion CalDAV: {e}")
+            import traceback
+            traceback.print_exc()
+            return None, None
+
+    @staticmethod
+    def get_calendar_by_url(principal, calendar_url):
+        """
+        Récupérer un calendrier par son URL
+
+        Args:
+            principal: Principal CalDAV
+            calendar_url: URL du calendrier ou URI
+
+        Returns:
+            Calendar ou None
+        """
+        try:
+            calendars = principal.calendars()
+            for cal in calendars:
+                cal_url = str(cal.url.canonical())  # Convertir URL en string
+                if calendar_url in cal_url or cal_url.endswith(calendar_url):
+                    return cal
+            return None
+        except Exception as e:
+            print(f"❌ Erreur récupération calendrier: {e}")
+            return None
+
+    @staticmethod
+    def create_ical_event(uid, title, description, start_date, end_date, is_completed=False):
+        """
+        Créer un événement iCalendar
+
+        Args:
+            uid: UID unique de l'événement
+            title: Titre
+            description: Description
+            start_date: Date de début (datetime)
+            end_date: Date de fin (datetime)
+            is_completed: Statut complété
+
+        Returns:
+            str: Chaîne iCalendar
         """
         cal = Calendar()
-        cal.add('prodid', '-//Agenda App//CalDAV Sync//FR')
+        cal.add('prodid', '-//Agenda App//Baikal Direct//FR')
         cal.add('version', '2.0')
 
         event = Event()
-
-        # UID unique
-        if task.caldav_uid:
-            event.add('uid', task.caldav_uid)
-        else:
-            event.add('uid', f'task-{task.id}-{task.user.id}@agenda-app')
-
-        event.add('summary', task.title)
-        event.add('description', task.description)
-        event.add('dtstart', task.start_date)
-        event.add('dtend', task.end_date)
-        event.add('dtstamp', timezone.now())
-
-        if task.is_completed:
-            event.add('status', 'COMPLETED')
-        else:
-            event.add('status', 'CONFIRMED')
+        event.add('uid', uid)
+        event.add('summary', title)
+        if description:
+            event.add('description', description)
+        event.add('dtstart', start_date)
+        event.add('dtend', end_date)
+        event.add('status', 'COMPLETED' if is_completed else 'CONFIRMED')
+        event.add('dtstamp', datetime.now(pytz.UTC))
 
         cal.add_component(event)
         return cal.to_ical().decode('utf-8')
 
-    def ical_to_task(self, ical_str, user):
+    @staticmethod
+    def save_event_to_calendar(calendar, ical_string):
         """
-        Convertir un événement iCalendar en tâche Django
+        Sauvegarder un événement sur un calendrier
 
         Args:
-            ical_str: Chaîne iCalendar
-            user: Utilisateur Django
+            calendar: Objet Calendar CalDAV
+            ical_string: Chaîne iCalendar
 
         Returns:
-            dict: Données de la tâche
+            bool: Succès
         """
-        cal = Calendar.from_ical(ical_str)
-
-        for component in cal.walk():
-            if component.name == "VEVENT":
-                uid = str(component.get('uid'))
-                title = str(component.get('summary', 'Sans titre'))
-                description = str(component.get('description', ''))
-
-                start_date = component.get('dtstart').dt
-                end_date = component.get('dtend').dt
-
-                # Convertir en datetime si c'est une date
-                if not isinstance(start_date, datetime):
-                    start_date = datetime.combine(start_date, datetime.min.time())
-                    start_date = pytz.UTC.localize(start_date)
-
-                if not isinstance(end_date, datetime):
-                    end_date = datetime.combine(end_date, datetime.min.time())
-                    end_date = pytz.UTC.localize(end_date)
-
-                # Assurer que les dates ont un timezone
-                if timezone.is_naive(start_date):
-                    start_date = timezone.make_aware(start_date)
-                if timezone.is_naive(end_date):
-                    end_date = timezone.make_aware(end_date)
-
-                status = component.get('status', 'CONFIRMED')
-                is_completed = status == 'COMPLETED'
-
-                return {
-                    'caldav_uid': uid,
-                    'title': title,
-                    'description': description,
-                    'start_date': start_date,
-                    'end_date': end_date,
-                    'is_completed': is_completed,
-                    'user': user
-                }
-
-        return None
-
-    def push_task(self, task):
-        """
-        Envoyer une tâche vers le serveur CalDAV
-
-        Args:
-            task: Instance de Task
-
-        Returns:
-            bool: Succès de l'opération
-        """
-        if not self.calendar:
-            if not self.connect():
-                return False
-
         try:
-            ical_data = self.task_to_ical(task)
-
-            if task.caldav_uid and task.caldav_etag:
-                # Mise à jour d'un événement existant
-                events = self.calendar.events()
-                for event in events:
-                    try:
-                        # Utiliser icalendar au lieu de vobject
-                        event_cal = Calendar.from_ical(event.data)
-                        for component in event_cal.walk():
-                            if component.name == "VEVENT":
-                                event_uid = str(component.get('uid'))
-                                if event_uid == task.caldav_uid:
-                                    event.data = ical_data
-                                    event.save()
-                                    if hasattr(event, 'props'):
-                                        task.caldav_etag = event.props.get(dav.GetEtag())
-                                    task.last_synced = timezone.now()
-                                    task.save(update_fields=['caldav_etag', 'last_synced'])
-                                    return True
-                    except Exception as e:
-                        print(f"Erreur lors de la lecture de l'événement: {e}")
-                        continue
-
-            # Création d'un nouvel événement
-            event = self.calendar.save_event(ical_data)
-
-            # Récupérer l'UID et l'ETag
-            cal = Calendar.from_ical(ical_data)
-            for component in cal.walk():
-                if component.name == "VEVENT":
-                    task.caldav_uid = str(component.get('uid'))
-                    break
-
-            if hasattr(event, 'props'):
-                task.caldav_etag = event.props.get(dav.GetEtag())
-
-            task.last_synced = timezone.now()
-            task.save(update_fields=['caldav_uid', 'caldav_etag', 'last_synced'])
-
+            calendar.save_event(ical_string)
             return True
-
         except Exception as e:
-            print(f"Erreur lors de l'envoi de la tâche: {e}")
+            print(f"❌ Erreur sauvegarde événement: {e}")
+            import traceback
+            traceback.print_exc()
             return False
 
-    def pull_tasks(self, user):
+    @staticmethod
+    def find_event_by_uri(calendar, event_uri):
         """
-        Récupérer les tâches depuis le serveur CalDAV
+        Trouver un événement par son URI
+
+        Args:
+            calendar: Objet Calendar CalDAV
+            event_uri: URI de l'événement
+
+        Returns:
+            Event CalDAV ou None
+        """
+        try:
+            events = calendar.events()
+            for event in events:
+                event_url = str(event.url.canonical())  # Convertir URL en string
+                if event_uri in event_url:
+                    return event
+            return None
+        except Exception as e:
+            print(f"❌ Erreur recherche événement: {e}")
+            import traceback
+            traceback.print_exc()
+            return None
+
+    @staticmethod
+    def update_event(event, title=None, description=None, start_date=None, end_date=None, is_completed=None):
+        """
+        Mettre à jour un événement existant
+
+        Args:
+            event: Objet Event CalDAV
+            title: Nouveau titre (optionnel)
+            description: Nouvelle description (optionnel)
+            start_date: Nouvelle date de début (optionnel)
+            end_date: Nouvelle date de fin (optionnel)
+            is_completed: Nouveau statut (optionnel)
+
+        Returns:
+            bool: Succès
+        """
+        try:
+            ical_data = event.data
+            cal = Calendar.from_ical(ical_data)
+
+            for component in cal.walk():
+                if component.name == 'VEVENT':
+                    # Mettre à jour les propriétés en supprimant d'abord l'ancienne valeur
+                    if title is not None:
+                        if 'summary' in component:
+                            del component['summary']
+                        component.add('summary', title)
+
+                    if description is not None:
+                        if 'description' in component:
+                            del component['description']
+                        component.add('description', description)
+
+                    if start_date is not None:
+                        if 'dtstart' in component:
+                            del component['dtstart']
+                        component.add('dtstart', start_date)
+
+                    if end_date is not None:
+                        if 'dtend' in component:
+                            del component['dtend']
+                        component.add('dtend', end_date)
+
+                    if is_completed is not None:
+                        status = 'COMPLETED' if is_completed else 'CONFIRMED'
+                        if 'status' in component:
+                            del component['status']
+                        component.add('status', status)
+
+                    # Mettre à jour le timestamp
+                    if 'dtstamp' in component:
+                        del component['dtstamp']
+                    component.add('dtstamp', datetime.now(pytz.UTC))
+
+            ical_string = cal.to_ical()
+            event.data = ical_string
+            event.save()
+            return True
+        except Exception as e:
+            print(f"❌ Erreur mise à jour événement: {e}")
+            import traceback
+            traceback.print_exc()
+            return False
+
+    @staticmethod
+    def delete_event(event):
+        """
+        Supprimer un événement
+
+        Args:
+            event: Objet Event CalDAV
+
+        Returns:
+            bool: Succès
+        """
+        try:
+            event.delete()
+            return True
+        except Exception as e:
+            print(f"❌ Erreur suppression événement: {e}")
+            return False
+
+    @staticmethod
+    def update_calendar(calendar, displayname=None, description=None, color=None):
+        """
+        Mettre à jour les propriétés d'un calendrier via CalDAV.
+
+        Args:
+            calendar: Objet caldav.Calendar
+            displayname (str, optional): Nouveau nom d'affichage.
+            description (str, optional): Nouvelle description.
+            color (str, optional): Nouvelle couleur (#RRGGBB).
+
+        Returns:
+            bool: True si succès, False sinon.
+        """
+        try:
+            properties_to_set = []
+            if displayname is not None:
+                properties_to_set.append(dav.DisplayName.from_string(displayname))
+            if description is not None:
+                from caldav.elements import cdav
+                properties_to_set.append(cdav.CalendarDescription.from_string(description))
+            if color is not None:
+                from caldav.elements import apple
+                properties_to_set.append(apple.CalendarColor.from_string(color))
+
+            if properties_to_set:
+                calendar.set_properties(properties_to_set)
+
+            return True
+        except Exception as e:
+            print(f"❌ Erreur mise à jour calendrier CalDAV: {e}")
+            import traceback
+            traceback.print_exc()
+            return False
+
+    def fetch_tasks_from_caldav(self, user):
+        """
+        Récupérer les tâches depuis CalDAV et les synchroniser
 
         Args:
             user: Utilisateur Django
@@ -225,49 +286,8 @@ class CalDAVService:
         Returns:
             list: Liste des tâches créées/mises à jour
         """
-        if not self.calendar:
-            if not self.connect():
-                return []
-
-        try:
-            events = self.calendar.events()
-            updated_tasks = []
-
-            for event in events:
-                ical_str = event.data
-                task_data = self.ical_to_task(ical_str, user)
-
-                if task_data:
-                    # Vérifier si la tâche existe déjà
-                    existing_task = Task.objects.filter(
-                        caldav_uid=task_data['caldav_uid']
-                    ).first()
-
-                    if existing_task:
-                        # Mettre à jour la tâche existante
-                        for key, value in task_data.items():
-                            if key != 'user':
-                                setattr(existing_task, key, value)
-
-                        if hasattr(event, 'props'):
-                            existing_task.caldav_etag = event.props.get(dav.GetEtag())
-                        existing_task.last_synced = timezone.now()
-                        existing_task.save()
-                        updated_tasks.append(existing_task)
-                    else:
-                        # Créer une nouvelle tâche
-                        task = Task.objects.create(**task_data)
-                        if hasattr(event, 'props'):
-                            task.caldav_etag = event.props.get(dav.GetEtag())
-                        task.last_synced = timezone.now()
-                        task.save()
-                        updated_tasks.append(task)
-
-            return updated_tasks
-
-        except Exception as e:
-            print(f"Erreur lors de la récupération des tâches: {e}")
-            return []
+        # Méthode non implémentée pour le moment
+        return []
 
     def sync_all(self, user):
         """
@@ -311,8 +331,9 @@ class CalDAVService:
                     target_calendar = None
 
                     for cal in calendars:
-                        print(f"Calendrier trouvé: {cal.url.canonical()}")
-                        if cal.url.canonical() == cal_source.calendar_url:
+                        cal_url = str(cal.url.canonical())  # Convertir URL en string
+                        print(f"Calendrier trouvé: {cal_url}")
+                        if cal_url == cal_source.calendar_url:
                             target_calendar = cal
                             break
 

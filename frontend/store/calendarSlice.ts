@@ -95,9 +95,19 @@ export const createEvent = createAsyncThunk(
 // Mettre à jour un événement
 export const updateEvent = createAsyncThunk(
     'calendar/updateEvent',
-    async ({id, data}: { id: number; data: Partial<Task> }, {rejectWithValue}) => {
+    async ({id, data}: { id: number; data: Partial<Task> }, {rejectWithValue, getState}) => {
         try {
-            const response = await baikalAPI.updateEvent(id, data);
+            // ✅ Récupérer l'événement existant pour obtenir son URL
+            const state = getState() as { calendar: CalendarState };
+            const existingEvent = state.calendar.events.find(e => e.id === id);
+
+            // ✅ Inclure l'URL dans les données envoyées
+            const dataWithUrl = {
+                ...data,
+                url: existingEvent?.url || data.url
+            };
+
+            const response = await baikalAPI.updateEvent(id, dataWithUrl);
             return response.data;
         } catch (error: any) {
             return rejectWithValue(error.response?.data || 'Erreur lors de la mise à jour de l\'événement');
@@ -108,9 +118,13 @@ export const updateEvent = createAsyncThunk(
 // Supprimer un événement
 export const deleteEvent = createAsyncThunk(
     'calendar/deleteEvent',
-    async (id: number, {rejectWithValue}) => {
+    async (id: number, {rejectWithValue, getState}) => {
         try {
-            await baikalAPI.deleteEvent(id);
+            // ✅ Récupérer l'événement existant pour obtenir son URL
+            const state = getState() as { calendar: CalendarState };
+            const existingEvent = state.calendar.events.find(e => e.id === id);
+
+            await baikalAPI.deleteEvent(id, existingEvent?.url);
             return id;
         } catch (error: any) {
             return rejectWithValue(error.response?.data || 'Erreur lors de la suppression de l\'événement');

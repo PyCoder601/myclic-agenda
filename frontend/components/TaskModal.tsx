@@ -36,7 +36,7 @@ export default function TaskModal({ isOpen, onClose, onSave, onDelete, task, ini
         description: task.description || '',
         start_date: task.start_date.slice(0, 16),
         end_date: task.end_date.slice(0, 16),
-        is_completed: task.is_completed,
+        is_completed: task.is_completed ?? false,
         calendar_source: task.calendar_source || 'personal',
       };
     }
@@ -87,7 +87,7 @@ export default function TaskModal({ isOpen, onClose, onSave, onDelete, task, ini
         description: task.description || '',
         start_date: task.start_date.slice(0, 16),
         end_date: task.end_date.slice(0, 16),
-        is_completed: task.is_completed,
+        is_completed: task.is_completed ?? false,
         calendar_source: String((task as any).calendar_id || task.calendar_source || 'personal'),
       });
     } else {

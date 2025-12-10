@@ -56,6 +56,7 @@ export interface Task {
     uid?: string;
     etag?: string;
     uri?: string;
+    url?: string; // ✅ URL complète CalDAV pour PATCH/DELETE
     lastmodified?: number;
 }
 

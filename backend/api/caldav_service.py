@@ -1,435 +1,656 @@
-"""
-Service pour gérer la synchronisation avec le serveur CalDAV (Baikal)
-"""
-import os
+import logging
+from caldav import DAVClient
+from caldav.objects import Calendar
+from datetime import datetime, timedelta, timezone
+import niquests
+from niquests.auth import HTTPDigestAuth
+from typing import List, Optional, Dict, Any
 
-import caldav
-from caldav.elements import dav
-from icalendar import Calendar, Event
-from datetime import datetime
-import pytz
-from django.utils import timezone
-from .models import Task
-
-from dotenv import load_dotenv
-load_dotenv()
+# Configuration du logging
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+logger = logging.getLogger(__name__)
 
 
-class CalDAVService:
-    """Service de synchronisation CalDAV"""
+class BaikalCalDAVClient:
+    """Client CalDAV complet pour Baïkal"""
 
-    def __init__(self, caldav_config):
-        """
-        Initialiser le service avec la configuration CalDAV et l'URL de base du serveur.
+    def __init__(self, base_url: str, username: str, password: str):
+        self.base_url = base_url.rstrip('/') + '/'
+        self.username = username
+        self.password = password
 
-        Args:
-            caldav_config: Instance de CalDAVConfig (contient username/password)
-        """
+        # Session avec authentification Digest
+        self._session = niquests.Session()
+        self._session.auth = HTTPDigestAuth(username, password)
 
-        self.config = caldav_config
-        self.base_caldav_url = os.getenv("BAIKAL_SERVER_URL")
-        self.client = None
-        self.calendar = None
+        # Client DAV avec notre session
+        self.client = DAVClient(url=self.base_url)
+        self.client.session = self._session
 
-    @staticmethod
-    def get_caldav_client(username, password):
-        """
-        Créer un client CalDAV simple
+        # Principal
+        self.principal = self.client.principal()
+        logger.info(f"Connecté à Baïkal: {self.username}")
 
-        Args:
-            username: Nom d'utilisateur
-            password: Mot de passe Baikal
+    def list_calendars(self, details: bool = False) -> List[Dict[str, Any]]:
+        """Liste tous les calendriers avec option pour plus de détails"""
+        calendars = self.principal.calendars()
 
-        Returns:
-            tuple: (client, principal) ou (None, None) en cas d'erreur
-        """
-        try:
-            client = caldav.DAVClient(
-                url=os.getenv("BAIKAL_SERVER_URL"),
-                username=username,
-                password=password
-            )
-            principal = client.principal()
-            return client, principal
-        except Exception as e:
-            print(f"❌ Erreur connexion CalDAV: {e}")
-            import traceback
-            traceback.print_exc()
-            return None, None
+        result = []
+        for cal in calendars:
+            cal_info = {
+                'name': cal.name,
+                'url': str(cal.url),
+                'id': str(cal.url).split('/')[-2] if len(str(cal.url).split('/')) >= 2 else 'unknown'
+            }
 
-    @staticmethod
-    def get_calendar_by_url(principal, calendar_url):
-        """
-        Récupérer un calendrier par son URL
-
-        Args:
-            principal: Principal CalDAV
-            calendar_url: URL du calendrier ou URI
-
-        Returns:
-            Calendar ou None
-        """
-        try:
-            calendars = principal.calendars()
-            for cal in calendars:
-                cal_url = str(cal.url.canonical())  # Convertir URL en string
-                if calendar_url in cal_url or cal_url.endswith(calendar_url):
-                    return cal
-            return None
-        except Exception as e:
-            print(f"❌ Erreur récupération calendrier: {e}")
-            return None
-
-    @staticmethod
-    def create_ical_event(uid, title, description, start_date, end_date, is_completed=False):
-        """
-        Créer un événement iCalendar
-
-        Args:
-            uid: UID unique de l'événement
-            title: Titre
-            description: Description
-            start_date: Date de début (datetime)
-            end_date: Date de fin (datetime)
-            is_completed: Statut complété
-
-        Returns:
-            str: Chaîne iCalendar
-        """
-        cal = Calendar()
-        cal.add('prodid', '-//Agenda App//Baikal Direct//FR')
-        cal.add('version', '2.0')
-
-        event = Event()
-        event.add('uid', uid)
-        event.add('summary', title)
-        if description:
-            event.add('description', description)
-        event.add('dtstart', start_date)
-        event.add('dtend', end_date)
-        event.add('status', 'COMPLETED' if is_completed else 'CONFIRMED')
-        event.add('dtstamp', datetime.now(pytz.UTC))
-
-        cal.add_component(event)
-        return cal.to_ical().decode('utf-8')
-
-    @staticmethod
-    def save_event_to_calendar(calendar, ical_string):
-        """
-        Sauvegarder un événement sur un calendrier
-
-        Args:
-            calendar: Objet Calendar CalDAV
-            ical_string: Chaîne iCalendar
-
-        Returns:
-            bool: Succès
-        """
-        try:
-            calendar.save_event(ical_string)
-            return True
-        except Exception as e:
-            print(f"❌ Erreur sauvegarde événement: {e}")
-            import traceback
-            traceback.print_exc()
-            return False
-
-    @staticmethod
-    def find_event_by_uri(calendar, event_uri):
-        """
-        Trouver un événement par son URI
-
-        Args:
-            calendar: Objet Calendar CalDAV
-            event_uri: URI de l'événement
-
-        Returns:
-            Event CalDAV ou None
-        """
-        try:
-            events = calendar.events()
-            for event in events:
-                event_url = str(event.url.canonical())  # Convertir URL en string
-                if event_uri in event_url:
-                    return event
-            return None
-        except Exception as e:
-            print(f"❌ Erreur recherche événement: {e}")
-            import traceback
-            traceback.print_exc()
-            return None
-
-    @staticmethod
-    def update_event(event, title=None, description=None, start_date=None, end_date=None, is_completed=None):
-        """
-        Mettre à jour un événement existant
-
-        Args:
-            event: Objet Event CalDAV
-            title: Nouveau titre (optionnel)
-            description: Nouvelle description (optionnel)
-            start_date: Nouvelle date de début (optionnel)
-            end_date: Nouvelle date de fin (optionnel)
-            is_completed: Nouveau statut (optionnel)
-
-        Returns:
-            bool: Succès
-        """
-        try:
-            ical_data = event.data
-            cal = Calendar.from_ical(ical_data)
-
-            for component in cal.walk():
-                if component.name == 'VEVENT':
-                    # Mettre à jour les propriétés en supprimant d'abord l'ancienne valeur
-                    if title is not None:
-                        if 'summary' in component:
-                            del component['summary']
-                        component.add('summary', title)
-
-                    if description is not None:
-                        if 'description' in component:
-                            del component['description']
-                        component.add('description', description)
-
-                    if start_date is not None:
-                        if 'dtstart' in component:
-                            del component['dtstart']
-                        component.add('dtstart', start_date)
-
-                    if end_date is not None:
-                        if 'dtend' in component:
-                            del component['dtend']
-                        component.add('dtend', end_date)
-
-                    if is_completed is not None:
-                        status = 'COMPLETED' if is_completed else 'CONFIRMED'
-                        if 'status' in component:
-                            del component['status']
-                        component.add('status', status)
-
-                    # Mettre à jour le timestamp
-                    if 'dtstamp' in component:
-                        del component['dtstamp']
-                    component.add('dtstamp', datetime.now(pytz.UTC))
-
-            ical_string = cal.to_ical()
-            event.data = ical_string
-            event.save()
-            return True
-        except Exception as e:
-            print(f"❌ Erreur mise à jour événement: {e}")
-            import traceback
-            traceback.print_exc()
-            return False
-
-    @staticmethod
-    def delete_event(event):
-        """
-        Supprimer un événement
-
-        Args:
-            event: Objet Event CalDAV
-
-        Returns:
-            bool: Succès
-        """
-        try:
-            event.delete()
-            return True
-        except Exception as e:
-            print(f"❌ Erreur suppression événement: {e}")
-            return False
-
-    @staticmethod
-    def update_calendar(calendar, displayname=None, description=None, color=None):
-        """
-        Mettre à jour les propriétés d'un calendrier via CalDAV.
-
-        Args:
-            calendar: Objet caldav.Calendar
-            displayname (str, optional): Nouveau nom d'affichage.
-            description (str, optional): Nouvelle description.
-            color (str, optional): Nouvelle couleur (#RRGGBB).
-
-        Returns:
-            bool: True si succès, False sinon.
-        """
-        try:
-            properties_to_set = []
-            if displayname is not None:
-                properties_to_set.append(dav.DisplayName.from_string(displayname))
-            if description is not None:
-                from caldav.elements import cdav
-                properties_to_set.append(cdav.CalendarDescription.from_string(description))
-            if color is not None:
-                from caldav.elements import apple
-                properties_to_set.append(apple.CalendarColor.from_string(color))
-
-            if properties_to_set:
-                calendar.set_properties(properties_to_set)
-
-            return True
-        except Exception as e:
-            print(f"❌ Erreur mise à jour calendrier CalDAV: {e}")
-            import traceback
-            traceback.print_exc()
-            return False
-
-    def fetch_tasks_from_caldav(self, user):
-        """
-        Récupérer les tâches depuis CalDAV et les synchroniser
-
-        Args:
-            user: Utilisateur Django
-
-        Returns:
-            list: Liste des tâches créées/mises à jour
-        """
-        # Méthode non implémentée pour le moment
-        return []
-
-    def sync_all(self, user):
-        """
-        Synchronisation bidirectionnelle complète avec tous les calendriers activés
-
-        Args:
-            user: Utilisateur Django
-
-        Returns:
-            dict: Statistiques de synchronisation
-        """
-        stats = {
-            'pushed': 0,
-            'pulled': 0,
-            'errors': []
-        }
-
-        try:
-            # Importer ici pour éviter les dépendances circulaires
-            from .models import CalendarSource
-
-            # Se connecter au serveur CalDAV
-            client = caldav.DAVClient(
-                url=os.getenv("BAIKAL_SERVER_URL"),
-                username=self.config.username,
-                password=self.config.baikal_password
-            )
-            principal = client.principal()
-
-            # Récupérer tous les calendriers activés pour cet utilisateur
-            calendar_sources = CalendarSource.objects.filter(
-                user=user,
-                is_enabled=True
-            )
-
-            # Synchroniser chaque calendrier activé
-            for cal_source in calendar_sources:
+            if details:
                 try:
-                    # Trouver le calendrier CalDAV correspondant
-                    calendars = principal.calendars()
-                    target_calendar = None
+                    # Récupérer les propriétés détaillées
+                    props = cal.get_properties(['{DAV:}displayname', '{DAV:}resourcetype'])
+                    cal_info['properties'] = dict(props)
+                except:
+                    cal_info['properties'] = {}
 
-                    for cal in calendars:
-                        cal_url = str(cal.url.canonical())  # Convertir URL en string
-                        print(f"Calendrier trouvé: {cal_url}")
-                        if cal_url == cal_source.calendar_url:
-                            target_calendar = cal
+            result.append(cal_info)
+
+        logger.info(f"Trouvé {len(result)} calendrier(s)")
+        return result
+
+    def get_calendar_by_name(self, name: str) -> Optional[Calendar]:
+        """Récupère un calendrier spécifique par son nom exact"""
+        for cal in self.principal.calendars():
+            if cal.name == name:
+                return cal
+        return None
+
+    def get_events(self, calendar_name: str, start_date: datetime = None,
+                   end_date: datetime = None) -> List[Dict[str, Any]]:
+        """
+        Récupère les événements d'un calendrier avec des filtres
+
+        Args:
+            calendar_name: Nom du calendrier
+            start_date: Date de début (défaut: aujourd'hui - 7 jours)
+            end_date: Date de fin (défaut: aujourd'hui + 30 jours)
+            limit: Nombre maximum d'événements à retourner
+
+        Returns:
+            Liste d'événements formatés
+        """
+        calendar = self.get_calendar_by_name(calendar_name)
+        if not calendar:
+            logger.error(f"Calendrier '{calendar_name}' non trouvé")
+            return []
+
+        # Dates par défaut
+        if not start_date:
+            start_date = datetime.now() - timedelta(days=7)
+        if not end_date:
+            end_date = datetime.now() + timedelta(days=30)
+
+        try:
+            # Recherche des événements avec la nouvelle API
+            events = calendar.search(start=start_date, end=end_date, event=True, expand=True)
+            logger.info(f"Trouvé {len(events)} événement(s) dans '{calendar_name}'")
+
+            # Formater les événements
+            formatted_events = []
+            for event in events:  # Limiter le nombre
+                try:
+                    cal = event.icalendar_instance
+                    vevent = None
+
+                    # Trouver le composant VEVENT
+                    for component in cal.walk():
+                        if component.name == "VEVENT":
+                            vevent = component
                             break
 
-                    if not target_calendar:
+                    if not vevent:
                         continue
 
-                    # Récupérer les événements de ce calendrier
-                    events = target_calendar.events()
-
-                    for event in events:
-                        ical_str = event.data
-                        task_data = self.ical_to_task(ical_str, user)
-
-                        if task_data:
-                            # Vérifier si la tâche existe déjà
-                            existing_task = Task.objects.filter(
-                                caldav_uid=task_data['caldav_uid']
-                            ).first()
-
-                            if existing_task:
-                                # Mettre à jour la tâche existante
-                                for key, value in task_data.items():
-                                    if key != 'user':
-                                        setattr(existing_task, key, value)
-
-                                if hasattr(event, 'props'):
-                                    existing_task.caldav_etag = event.props.get(dav.GetEtag())
-                                existing_task.last_synced = timezone.now()
-                                existing_task.calendar_source = cal_source
-                                existing_task.save()
-                                stats['pulled'] += 1
-                            else:
-                                # Créer une nouvelle tâche
-                                task = Task.objects.create(**task_data)
-                                if hasattr(event, 'props'):
-                                    task.caldav_etag = event.props.get(dav.GetEtag())
-                                task.last_synced = timezone.now()
-                                task.calendar_source = cal_source
-                                task.save()
-                                stats['pulled'] += 1
-
+                    formatted_event = {
+                        'id': str(vevent.get('uid', event.url)),
+                        'summary': str(vevent.get('summary', 'Sans titre')),
+                        'description': str(vevent.get('description', '')),
+                        'location': str(vevent.get('location', '')),
+                        'start': self._parse_ical_date(vevent.get('dtstart')) if vevent.get('dtstart') else None,
+                        'end': self._parse_ical_date(vevent.get('dtend')) if vevent.get('dtend') else None,
+                        'last_modified': self._parse_ical_date(vevent.get('last-modified')) if vevent.get('last-modified') else None,
+                        'url': str(event.url),
+                        'calendar': calendar_name
+                    }
+                    formatted_events.append(formatted_event)
                 except Exception as e:
-                    stats['errors'].append(f"Erreur calendrier {cal_source.name}: {str(e)}")
-                    print(f"Erreur lors de la synchronisation du calendrier {cal_source.name}: {e}")
+                    logger.warning(f"Erreur formatage événement: {e}")
+                    continue
 
+            return formatted_events
 
         except Exception as e:
-            stats['errors'].append(f"Erreur générale: {str(e)}")
-            print(f"Erreur lors de la synchronisation: {e}")
+            logger.error(f"Erreur récupération événements: {e}")
+            return []
 
-        return stats
+    def _parse_ical_date(self, ical_date):
+        """Parse une date iCalendar en datetime Python"""
+        if ical_date is None:
+            return None
 
-    def delete_task(self, task):
+        # Si c'est déjà un datetime
+        if isinstance(ical_date, datetime):
+            return ical_date
+
+        # Si c'est un objet vDDDTypes d'icalendar
+        if hasattr(ical_date, 'dt'):
+            return ical_date.dt
+
+        return ical_date
+
+    def create_event(self, calendar_name: str, event_data: Dict[str, Any]) -> Dict[str, Any]:
         """
-        Supprimer une tâche du serveur CalDAV
+        Crée un nouvel événement
 
         Args:
-            task: Instance de Task ou objet avec caldav_uid
+            calendar_name: Nom du calendrier
+            event_data: Données de l'événement (summary, start, end, description, location)
 
         Returns:
-            bool: Succès de l'opération
+            Informations sur l'événement créé ou erreur
+        """
+        calendar = self.get_calendar_by_name(calendar_name)
+        if not calendar:
+            return {'error': f"Calendrier '{calendar_name}' non trouvé", 'success': False}
+
+        try:
+            # Validation des données requises
+            required_fields = ['summary', 'start', 'end']
+            for field in required_fields:
+                if field not in event_data:
+                    return {'error': f"Champ requis manquant: {field}", 'success': False}
+
+            # Générer un UID unique
+            uid = f"{datetime.now().timestamp()}_{hash(calendar_name)}@baikal"
+
+            # Gérer les dates (support datetime et timestamp)
+            start_date = event_data['start']
+            end_date = event_data['end']
+
+            if isinstance(start_date, (int, float)):
+                start_date = datetime.fromtimestamp(start_date)
+            if isinstance(end_date, (int, float)):
+                end_date = datetime.fromtimestamp(end_date)
+
+            # Construire le contenu iCalendar
+            ical_content = f"""BEGIN:VCALENDAR
+VERSION:2.0
+PRODID:-//Baïkal Python Client//FR
+BEGIN:VEVENT
+UID:{uid}
+DTSTAMP:{datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%SZ')}
+DTSTART:{self._format_ical_date(start_date)}
+DTEND:{self._format_ical_date(end_date)}
+SUMMARY:{event_data.get('summary', 'Nouvel événement')}
+DESCRIPTION:{event_data.get('description', '')}
+LOCATION:{event_data.get('location', '')}
+STATUS:CONFIRMED
+END:VEVENT
+END:VCALENDAR"""
+
+            # Sauvegarder l'événement
+            calendar.save_event(ical_content)
+
+            logger.info(f"Événement créé: {event_data.get('summary')} dans '{calendar_name}'")
+
+            return {
+                'success': True,
+                'uid': uid,
+                'message': f"Événement créé dans '{calendar_name}'",
+                'summary': event_data.get('summary'),
+                'start': start_date.isoformat() if hasattr(start_date, 'isoformat') else str(start_date),
+                'end': end_date.isoformat() if hasattr(end_date, 'isoformat') else str(end_date)
+            }
+
+        except Exception as e:
+            logger.error(f"Erreur création événement: {e}", exc_info=True)
+            return {'error': str(e), 'success': False}
+
+    def _format_ical_date(self, date_value):
+        """
+        Format une date pour iCalendar
+        Supporte: datetime, timestamp, string ISO
+        """
+        if isinstance(date_value, datetime):
+            # Si la date a un timezone, la convertir en UTC
+            if date_value.tzinfo is not None:
+                date_value = date_value.astimezone(tz=None).replace(tzinfo=None)
+            return date_value.strftime('%Y%m%dT%H%M%S')
+        elif isinstance(date_value, (int, float)):
+            # Timestamp UNIX
+            dt = datetime.fromtimestamp(date_value)
+            return dt.strftime('%Y%m%dT%H%M%S')
+        elif isinstance(date_value, str):
+            # Essayer de parser la string ISO
+            try:
+                dt = datetime.fromisoformat(date_value.replace('Z', '+00:00'))
+                if dt.tzinfo is not None:
+                    dt = dt.astimezone(tz=None).replace(tzinfo=None)
+                return dt.strftime('%Y%m%dT%H%M%S')
+            except:
+                return date_value
+        return str(date_value)
+
+    def delete_event(self, event_url: str) -> Dict[str, Any]:
+        """
+        Supprime un événement par son URL
+
+        Args:
+            event_url: URL complète de l'événement (format: base_url/calendars/user/cal_uri/event_uri.ics)
+
+        Returns:
+            Dictionnaire avec le résultat de la suppression
         """
         try:
-            if not hasattr(task, 'caldav_uid') or not task.caldav_uid:
-                return True  # Pas sur CalDAV, rien à supprimer
+            # Essayer de récupérer l'événement d'abord pour vérifier qu'il existe
+            get_response = self._session.get(event_url)
 
-            if not self.calendar:
-                if not self.connect():
-                    return False
+            if get_response.status_code == 404:
+                return {
+                    'success': True,
+                    'message': 'Événement déjà supprimé',
+                    'event_url': event_url,
+                    'already_deleted': True
+                }
 
+            # Sauvegarder quelques infos avant suppression
+            event_info = {'url': event_url}
+            if get_response.status_code == 200:
+                try:
+                    from icalendar import Calendar as iCalendar
+                    cal = iCalendar.from_ical(get_response.content)
+                    for component in cal.walk():
+                        if component.name == "VEVENT":
+                            event_info['summary'] = str(component.get('summary', ''))
+                            event_info['uid'] = str(component.get('uid', ''))
+                            break
+                except:
+                    pass
+
+            # Supprimer l'événement via HTTP DELETE
+            response = self._session.delete(event_url)
+
+            if response.status_code in [200, 204]:
+                logger.info(f"Événement supprimé: {event_url}")
+                return {
+                    'success': True,
+                    'message': 'Événement supprimé avec succès',
+                    'event_url': event_url,
+                    'event_info': event_info
+                }
+            elif response.status_code == 404:
+                return {
+                    'success': True,
+                    'message': 'Événement déjà supprimé',
+                    'event_url': event_url,
+                    'already_deleted': True
+                }
+            else:
+                logger.error(f"Erreur suppression événement: HTTP {response.status_code}")
+                return {
+                    'success': False,
+                    'error': f'Erreur HTTP {response.status_code}',
+                    'event_url': event_url
+                }
+
+        except Exception as e:
+            logger.error(f"Erreur suppression événement: {e}")
+            return {
+                'success': False,
+                'error': str(e),
+                'event_url': event_url
+            }
+
+    def update_event(self, event_url: str, event_data: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Met à jour un événement existant
+
+        Args:
+            event_url: URL complète de l'événement
+            event_data: Nouvelles données de l'événement (summary, description, location, start, end)
+
+        Returns:
+            Résultat de la mise à jour avec ancien et nouvel état
+        """
+        try:
+            # Récupérer l'événement existant
+            response = self._session.get(event_url)
+
+            if response.status_code != 200:
+                return {
+                    'success': False,
+                    'error': f'Événement non trouvé: HTTP {response.status_code}',
+                    'event_url': event_url
+                }
+
+            # Parser l'iCalendar existant
+            from icalendar import Calendar as iCalendar
+            cal = iCalendar.from_ical(response.content)
+
+            # Trouver le VEVENT
+            vevent = None
+            for component in cal.walk():
+                if component.name == "VEVENT":
+                    vevent = component
+                    break
+
+            if not vevent:
+                return {
+                    'success': False,
+                    'error': 'Composant VEVENT non trouvé',
+                    'event_url': event_url
+                }
+
+            # Sauvegarder l'ancien état
+            old_state = {
+                'summary': str(vevent.get('summary', '')),
+                'description': str(vevent.get('description', '')),
+                'location': str(vevent.get('location', '')),
+                'start': self._parse_ical_date(vevent.get('dtstart')) if vevent.get('dtstart') else None,
+                'end': self._parse_ical_date(vevent.get('dtend')) if vevent.get('dtend') else None
+            }
+
+            # Appliquer les modifications
+            if 'summary' in event_data:
+                vevent['summary'] = event_data['summary']
+
+            if 'description' in event_data:
+                vevent['description'] = event_data['description']
+
+            if 'location' in event_data:
+                vevent['location'] = event_data['location']
+
+            if 'start' in event_data:
+                start_date = event_data['start']
+                if isinstance(start_date, str):
+                    start_date = datetime.fromisoformat(start_date.replace('Z', '+00:00'))
+                elif isinstance(start_date, (int, float)):
+                    start_date = datetime.fromtimestamp(start_date)
+                vevent['dtstart'].dt = start_date
+
+            if 'end' in event_data:
+                end_date = event_data['end']
+                if isinstance(end_date, str):
+                    end_date = datetime.fromisoformat(end_date.replace('Z', '+00:00'))
+                elif isinstance(end_date, (int, float)):
+                    end_date = datetime.fromtimestamp(end_date)
+                vevent['dtend'].dt = end_date
+
+            # Mettre à jour LAST-MODIFIED et DTSTAMP
+            from icalendar import vDatetime
+            now = datetime.now(timezone.utc)
+            vevent['last-modified'] = vDatetime(now)
+            vevent['dtstamp'] = vDatetime(now)
+
+            # Nouvel état
+            new_state = {
+                'summary': str(vevent.get('summary', '')),
+                'description': str(vevent.get('description', '')),
+                'location': str(vevent.get('location', '')),
+                'start': self._parse_ical_date(vevent.get('dtstart')) if vevent.get('dtstart') else None,
+                'end': self._parse_ical_date(vevent.get('dtend')) if vevent.get('dtend') else None
+            }
+
+            # Envoyer la mise à jour via PUT
+            headers = {'Content-Type': 'text/calendar; charset=utf-8'}
+            put_response = self._session.put(event_url, data=cal.to_ical(), headers=headers)
+
+            if put_response.status_code in [200, 204]:
+                logger.info(f"Événement mis à jour: {event_url}")
+                return {
+                    'success': True,
+                    'message': 'Événement mis à jour avec succès',
+                    'event_url': event_url,
+                    'old_state': old_state,
+                    'new_state': new_state
+                }
+            else:
+                return {
+                    'success': False,
+                    'error': f'Erreur HTTP {put_response.status_code}',
+                    'event_url': event_url
+                }
+
+        except Exception as e:
+            logger.error(f"Erreur mise à jour événement: {e}", exc_info=True)
+            return {
+                'success': False,
+                'error': str(e),
+                'event_url': event_url
+            }
+
+    def search_events(self, query: str, calendar_names: List[str] = None) -> List[Dict[str, Any]]:
+        """Recherche des événements par mot-clé"""
+        all_events = []
+
+        # Déterminer quels calendriers rechercher
+        calendars_to_search = []
+        if calendar_names:
+            for name in calendar_names:
+                cal = self.get_calendar_by_name(name)
+                if cal:
+                    calendars_to_search.append(cal)
+        else:
+            calendars_to_search = self.principal.calendars()
+
+        # Rechercher dans chaque calendrier
+        for calendar in calendars_to_search:
             try:
-                events = self.calendar.events()
+                # Récupérer tous les événements (sans filtre de date)
+                events = calendar.events()
+
                 for event in events:
                     try:
-                        # Utiliser icalendar au lieu de vobject
-                        event_cal = Calendar.from_ical(event.data)
-                        for component in event_cal.walk():
-                            if component.name == "VEVENT":
-                                event_uid = str(component.get('uid'))
-                                if event_uid == task.caldav_uid:
-                                    event.delete()
-                                    print(f"Tâche supprimée du serveur CalDAV: {task.caldav_uid}")
-                                    return True
-                    except Exception as e:
-                        print(f"Erreur lors de la lecture de l'événement pour suppression: {e}")
+                        vevent = event.instance.vevent
+                        summary = vevent.summary.value if hasattr(vevent, 'summary') else ''
+                        description = vevent.description.value if hasattr(vevent, 'description') else ''
+
+                        # Rechercher dans le titre et la description
+                        if query.lower() in summary.lower() or query.lower() in description.lower():
+                            formatted_event = {
+                                'summary': summary,
+                                'description': description,
+                                'calendar': calendar.name,
+                                'url': str(event.url),
+                                'start': self._parse_ical_date(vevent.dtstart.value) if hasattr(vevent,
+                                                                                                'dtstart') else None,
+                                'end': self._parse_ical_date(vevent.dtend.value) if hasattr(vevent, 'dtend') else None
+                            }
+                            all_events.append(formatted_event)
+                    except:
                         continue
 
-                print(f"Tâche non trouvée sur le serveur CalDAV: {task.caldav_uid}")
-                return True  # Considéré comme succès si non trouvé
             except Exception as e:
-                print(f"Erreur lors de la récupération des événements: {e}")
-                return False
+                logger.warning(f"Erreur recherche dans {calendar.name}: {e}")
+                continue
+
+        return all_events
+
+    def get_event_by_uid(self, calendar_name: str, event_uid: str) -> Optional[Dict[str, Any]]:
+        """
+        Récupère un événement spécifique par son UID
+
+        Args:
+            calendar_name: Nom du calendrier
+            event_uid: UID de l'événement
+
+        Returns:
+            Événement formaté ou None
+        """
+        calendar = self.get_calendar_by_name(calendar_name)
+        if not calendar:
+            logger.error(f"Calendrier '{calendar_name}' non trouvé")
+            return None
+
+        try:
+            # Récupérer tous les événements du calendrier
+            events = calendar.events()
+
+            for event in events:
+                try:
+                    vevent = event.instance.vevent
+                    if hasattr(vevent, 'uid') and vevent.uid.value == event_uid:
+                        formatted_event = {
+                            'id': vevent.uid.value,
+                            'summary': vevent.summary.value if hasattr(vevent, 'summary') else 'Sans titre',
+                            'description': vevent.description.value if hasattr(vevent, 'description') else '',
+                            'location': vevent.location.value if hasattr(vevent, 'location') else '',
+                            'start': self._parse_ical_date(vevent.dtstart.value) if hasattr(vevent, 'dtstart') else None,
+                            'end': self._parse_ical_date(vevent.dtend.value) if hasattr(vevent, 'dtend') else None,
+                            'url': str(event.url),
+                            'calendar': calendar_name
+                        }
+                        return formatted_event
+                except Exception as e:
+                    logger.warning(f"Erreur parsing événement: {e}")
+                    continue
+
+            logger.warning(f"Événement avec UID '{event_uid}' non trouvé dans '{calendar_name}'")
+            return None
+
         except Exception as e:
-            print(f"Erreur générale lors de la suppression: {e}")
-            return False
+            logger.error(f"Erreur récupération événement: {e}")
+            return None
+
+    def get_event_by_url(self, event_url: str) -> Optional[Dict[str, Any]]:
+        """
+        Récupère un événement spécifique par son URL
+
+        Args:
+            event_url: URL complète de l'événement
+
+        Returns:
+            Événement formaté ou None
+        """
+        try:
+            # Récupérer l'événement via HTTP GET
+            response = self._session.get(event_url)
+
+            if response.status_code != 200:
+                logger.error(f"Événement non trouvé: HTTP {response.status_code}")
+                return None
+
+            # Parser l'iCalendar
+            from icalendar import Calendar as iCalendar
+            cal = iCalendar.from_ical(response.content)
+
+            # Trouver le VEVENT
+            vevent = None
+            for component in cal.walk():
+                if component.name == "VEVENT":
+                    vevent = component
+                    break
+
+            if not vevent:
+                logger.error("Composant VEVENT non trouvé")
+                return None
+
+            # Formater l'événement
+            formatted_event = {
+                'id': str(vevent.get('uid', '')),
+                'uid': str(vevent.get('uid', '')),
+                'summary': str(vevent.get('summary', 'Sans titre')),
+                'description': str(vevent.get('description', '')),
+                'location': str(vevent.get('location', '')),
+                'start': self._parse_ical_date(vevent.get('dtstart')) if vevent.get('dtstart') else None,
+                'end': self._parse_ical_date(vevent.get('dtend')) if vevent.get('dtend') else None,
+                'last_modified': self._parse_ical_date(vevent.get('last-modified')) if vevent.get('last-modified') else None,
+                'url': event_url,
+                'etag': response.headers.get('ETag', '')
+            }
+
+            return formatted_event
+
+        except Exception as e:
+            logger.error(f"Erreur récupération événement par URL: {e}", exc_info=True)
+            return None
 
 
+# Exemple d'utilisation détaillée
+def main():
+    """Exemple d'utilisation complète du client"""
+    # Configuration
+    BASE_URL = "https://www.myclic.fr/baikal/html/dav.php/"
+    USERNAME = "romeomanoela18@gmail.com"
+    PASSWORD = "1918171615"
+
+    try:
+        # 1. Initialisation
+        print("=" * 60)
+        print("INITIALISATION DU CLIENT BAIKAL")
+        print("=" * 60)
+        baikal = BaikalCalDAVClient(BASE_URL, USERNAME, PASSWORD)
+
+        # 2. Lister les calendriers
+        print("\n📅 LISTE DES CALENDRIERS DISPONIBLES:")
+        print("-" * 40)
+        calendars = baikal.list_calendars(details=False)
+        for i, cal in enumerate(calendars, 1):
+            print(f"  {i}. {cal['name']}")
+
+        # 3. Récupérer les événements d'un calendrier spécifique
+        if calendars:
+            target_calendar = calendars[0]['name']  # Premier calendrier
+            print(f"\n📝 ÉVÉNEMENTS DANS '{target_calendar}':")
+            print("-" * 40)
+
+            events = baikal.get_events(
+                calendar_name=target_calendar,
+                start_date=datetime.now() - timedelta(days=30),
+                end_date=datetime.now() + timedelta(days=30)
+            )
+
+            if events:
+                for event in events:
+                    start_str = event['start'].strftime('%d/%m/%Y %H:%M') if event['start'] else 'N/A'
+                    end_str = event['end'].strftime('%d/%m/%Y %H:%M') if event['end'] else 'N/A'
+                    print(f"  • {event['summary']}")
+                    print(f"    📍 {event['location'] or 'Non spécifié'}")
+                    print(f"    ⏰ {start_str} → {end_str}")
+                    print(f"    📝 {event['description'][:50]}{'...' if len(event['description']) > 50 else ''}")
+                    print()
+            else:
+                print("  Aucun événement trouvé pour cette période.")
+
+        # 4. Exemple de création d'événement
+        print("\n➕ EXEMPLE DE CRÉATION D'ÉVÉNEMENT:")
+        print("-" * 40)
+
+        new_event_data = {
+            'summary': 'Réunion Python CalDAV',
+            'description': 'Test d\'intégration CalDAV avec Baïkal',
+            'location': 'Bureau virtuel',
+            'start': datetime.now() + timedelta(days=2, hours=10),
+            'end': datetime.now() + timedelta(days=2, hours=12)
+        }
+
+        if calendars:
+            result = baikal.create_event(calendars[0]['name'], new_event_data)
+            if result.get('success'):
+                print(f"✅ {result['message']}")
+                print(f"   Titre: {result['summary']}")
+                print(f"   UID: {result['uid']}")
+            else:
+                print(f"❌ Erreur: {result.get('error')}")
+
+        print("\n" + "=" * 60)
+        print("✅ CONNEXION ET OPÉRATIONS RÉUSSIES !")
+        print("=" * 60)
+
+    except Exception as e:
+        print(f"\n❌ ERREUR CRITIQUE: {type(e).__name__}")
+        print(f"   Détails: {e}")
+        import traceback
+        traceback.print_exc()
 
 
+if __name__ == "__main__":
+    main()

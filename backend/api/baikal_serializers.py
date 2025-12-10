@@ -6,8 +6,6 @@ from rest_framework import serializers
 from .baikal_models import (
     BaikalCalendarInstance,
     BaikalCalendarObject,
-    BaikalUser,
-    BaikalPrincipal
 )
 from icalendar import Calendar
 from datetime import datetime

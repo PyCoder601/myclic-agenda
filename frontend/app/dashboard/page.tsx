@@ -73,42 +73,6 @@ export default function DashboardPage() {
     }
   }, [user, dispatch]);
 
-  // Fonction de chargement des événements avec debounce
-  const loadEventsForPeriod = useCallback((date: Date) => {
-    // Annuler le timer de debounce en cours
-    if (fetchDebounceTimer.current) {
-      clearTimeout(fetchDebounceTimer.current);
-    }
-
-    // Calculer la période
-    const year = date.getFullYear();
-    const month = date.getMonth();
-    const start = new Date(year, month, -7);
-    const end = new Date(year, month + 1, 7);
-    const periodKey = `${start.toISOString().split('T')[0]}_${end.toISOString().split('T')[0]}`;
-
-    // ✅ Le cache est maintenant géré dans le Redux store
-    // Pas besoin de vérifier manuellement ici
-
-    // Debounce de 300ms pour éviter les requêtes multiples
-    fetchDebounceTimer.current = setTimeout(() => {
-      console.log(`📡 Dispatch fetchEvents pour ${periodKey}...`);
-
-      // Dispatcher le fetch
-      dispatch(fetchEvents({
-        start_date: start.toISOString().split('T')[0],
-        end_date: end.toISOString().split('T')[0]
-      })).then(() => {
-        // Précharger les mois adjacents en arrière-plan (non bloquant)
-        setTimeout(() => {
-          preloadAdjacentMonths(date);
-        }, 500);
-      }).catch((error) => {
-        console.error('Erreur chargement:', error);
-      });
-    }, 300);
-  }, [dispatch, preloadAdjacentMonths]);
-
   // Précharger les mois adjacents en arrière-plan
   const preloadAdjacentMonths = useCallback((date: Date) => {
     // Ne pas précharger si une requête principale est en cours
@@ -150,6 +114,42 @@ export default function DashboardPage() {
       isPreloading.current = false;
     });
   }, [dispatch]);
+
+  // Fonction de chargement des événements avec debounce
+  const loadEventsForPeriod = useCallback((date: Date) => {
+    // Annuler le timer de debounce en cours
+    if (fetchDebounceTimer.current) {
+      clearTimeout(fetchDebounceTimer.current);
+    }
+
+    // Calculer la période
+    const year = date.getFullYear();
+    const month = date.getMonth();
+    const start = new Date(year, month, -7);
+    const end = new Date(year, month + 1, 7);
+    const periodKey = `${start.toISOString().split('T')[0]}_${end.toISOString().split('T')[0]}`;
+
+    // ✅ Le cache est maintenant géré dans le Redux store
+    // Pas besoin de vérifier manuellement ici
+
+    // Debounce de 300ms pour éviter les requêtes multiples
+    fetchDebounceTimer.current = setTimeout(() => {
+      console.log(`📡 Dispatch fetchEvents pour ${periodKey}...`);
+
+      // Dispatcher le fetch
+      dispatch(fetchEvents({
+        start_date: start.toISOString().split('T')[0],
+        end_date: end.toISOString().split('T')[0]
+      })).then(() => {
+        // Précharger les mois adjacents en arrière-plan (non bloquant)
+        setTimeout(() => {
+          preloadAdjacentMonths(date);
+        }, 500);
+      }).catch((error) => {
+        console.error('Erreur chargement:', error);
+      });
+    }, 300);
+  }, [dispatch, preloadAdjacentMonths]);
 
   // Charger les événements quand la date change (avec debounce intégré)
   useEffect(() => {

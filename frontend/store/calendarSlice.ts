@@ -10,6 +10,10 @@ interface CalendarState {
     error: string | null;
     lastFetch: number | null;
     optimisticEvents: { [key: string]: Task }; // Événements en attente de confirmation
+    // ✅ Cache intelligent
+    cachedPeriods: { [key: string]: number }; // Clé: "start_end", Valeur: timestamp du fetch
+    calendarsLastFetch: number | null; // Timestamp du dernier fetch des calendriers
+    eventsByDate: { [key: string]: number[] }; // Index des événements par date
 }
 
 const initialState: CalendarState = {
@@ -20,6 +24,9 @@ const initialState: CalendarState = {
     error: null,
     lastFetch: null,
     optimisticEvents: {},
+    cachedPeriods: {},
+    calendarsLastFetch: null,
+    eventsByDate: {},
 };
 
 // Thunks
@@ -27,8 +34,22 @@ const initialState: CalendarState = {
 // Récupérer les calendriers
 export const fetchCalendars = createAsyncThunk(
     'calendar/fetchCalendars',
-    async (_, {rejectWithValue}) => {
+    async (forceRefresh: boolean = false, {rejectWithValue, getState}) => {
         try {
+            // ✅ Vérifier le cache (5 minutes)
+            const state = getState() as { calendar: CalendarState };
+            const now = Date.now();
+            const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
+
+            if (!forceRefresh &&
+                state.calendar.calendarsLastFetch &&
+                state.calendar.calendars.length > 0 &&
+                (now - state.calendar.calendarsLastFetch) < CACHE_DURATION) {
+                console.log('✅ Calendriers déjà en cache, pas de requête');
+                return state.calendar.calendars; // Retourner depuis le cache
+            }
+
+            console.log('🔄 Fetch calendriers depuis l\'API');
             const response = await baikalAPI.getCalendars();
             return response.data;
         } catch (error: any) {
@@ -40,10 +61,38 @@ export const fetchCalendars = createAsyncThunk(
 // Récupérer les événements
 export const fetchEvents = createAsyncThunk(
     'calendar/fetchEvents',
-    async (params: { start_date: string; end_date: string }, {rejectWithValue}) => {
+    async (params: { start_date: string; end_date: string; forceRefresh?: boolean }, {rejectWithValue, getState}) => {
         try {
-            const response = await baikalAPI.getEvents(params);
-            return response.data;
+            // ✅ Vérifier le cache par période (2 minutes)
+            const state = getState() as { calendar: CalendarState };
+            const now = Date.now();
+            const CACHE_DURATION = 2 * 60 * 1000; // 2 minutes
+            const periodKey = `${params.start_date}_${params.end_date}`;
+
+            if (!params.forceRefresh && state.calendar.cachedPeriods[periodKey]) {
+                const lastFetch = state.calendar.cachedPeriods[periodKey];
+                if ((now - lastFetch) < CACHE_DURATION) {
+                    console.log(`✅ Période ${periodKey} déjà en cache, pas de requête`);
+                    // Retourner les événements existants pour cette période
+                    return {
+                        events: state.calendar.events,
+                        periodKey,
+                        fromCache: true
+                    };
+                }
+            }
+
+            console.log(`🔄 Fetch événements pour ${periodKey}`);
+            const response = await baikalAPI.getEvents({
+                start_date: params.start_date,
+                end_date: params.end_date
+            });
+
+            return {
+                events: response.data,
+                periodKey,
+                fromCache: false
+            };
         } catch (error: any) {
             return rejectWithValue(error.response?.data || 'Erreur lors de la récupération des événements');
         }
@@ -191,6 +240,7 @@ const calendarSlice = createSlice({
         builder.addCase(fetchCalendars.fulfilled, (state, action) => {
             state.loading = false;
             state.calendars = action.payload;
+            state.calendarsLastFetch = Date.now(); // ✅ Timestamp du cache
         });
         builder.addCase(fetchCalendars.rejected, (state, action) => {
             state.loading = false;
@@ -205,19 +255,26 @@ const calendarSlice = createSlice({
         builder.addCase(fetchEvents.fulfilled, (state, action) => {
             state.eventsLoading = false;
 
-            // ✅ FUSION INTELLIGENTE au lieu de remplacement
-            const newEvents = action.payload;
+            // ✅ Gestion intelligente du cache
+            if (action.payload.fromCache) {
+                // Déjà en cache, pas de changement
+                console.log('✅ Événements depuis le cache');
+            } else {
+                // Nouveaux événements depuis l'API
+                const newEvents = action.payload.events;
 
-            // Créer un Map des événements existants pour accès rapide
-            const existingEventsMap = new Map(state.events.map(e => [e.id, e]));
+                // Fusionner les événements sans doublons (par ID)
+                const existingIds = new Set(state.events.map(e => e.id));
+                const eventsToAdd = newEvents.filter((e: Task) => !existingIds.has(e.id));
 
-            // Ajouter/Mettre à jour les nouveaux événements
-            newEvents.forEach((newEvent: Task) => {
-                existingEventsMap.set(newEvent.id, newEvent);
-            });
+                state.events = [...state.events, ...eventsToAdd];
 
-            // Convertir le Map en array
-            state.events = Array.from(existingEventsMap.values());
+                // Mettre à jour le cache de la période
+                state.cachedPeriods[action.payload.periodKey] = Date.now();
+
+                console.log(`✅ ${eventsToAdd.length} nouveaux événements ajoutés, total: ${state.events.length}`);
+            }
+
             state.lastFetch = Date.now();
         });
         builder.addCase(fetchEvents.rejected, (state, action) => {

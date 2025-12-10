@@ -2,9 +2,10 @@
 
 import { useState, useEffect } from 'react';
 import { X } from 'lucide-react';
-import { Task, CalendarSource } from '@/lib/types';
+import { Task } from '@/lib/types';
 import RichTextEditor from './RichTextEditor';
-import { baikalAPI } from '@/lib/api';
+import { useAppSelector, useAppDispatch } from '@/store/hooks';
+import { fetchCalendars } from '@/store/calendarSlice';
 
 interface TaskModalProps {
   isOpen: boolean;
@@ -27,9 +28,12 @@ const formatDateTimeLocal = (date: Date): string => {
 };
 
 export default function TaskModal({ isOpen, onClose, onSave, onDelete, task, initialDate, initialHour }: TaskModalProps) {
-  const [calendars, setCalendars] = useState<CalendarSource[]>([]);
+  // ✅ Utiliser les calendriers depuis le store Redux
+  const dispatch = useAppDispatch();
+  const { calendars } = useAppSelector((state) => state.calendar);
 
-  const [formData, setFormData] = useState(() => {
+  // Calculer les valeurs initiales du formulaire
+  const getInitialFormData = () => {
     if (task) {
       return {
         title: task.title,
@@ -37,7 +41,7 @@ export default function TaskModal({ isOpen, onClose, onSave, onDelete, task, ini
         start_date: task.start_date.slice(0, 16),
         end_date: task.end_date.slice(0, 16),
         is_completed: task.is_completed ?? false,
-        calendar_source: task.calendar_source || 'personal',
+        calendar_source: String(task.calendar_id || task.calendar_source || 'personal'),
       };
     }
     
@@ -59,63 +63,33 @@ export default function TaskModal({ isOpen, onClose, onSave, onDelete, task, ini
       is_completed: false,
       calendar_source: 'personal',
     };
-  });
+  };
+
+  const [formData, setFormData] = useState(getInitialFormData);
 
   // Réinitialiser le formulaire quand le modal s'ouvre ou que les props changent
   useEffect(() => {
     if (isOpen) {
-      // Charger les calendriers Baikal
-      const fetchCalendars = async () => {
-        try {
-          const response = await baikalAPI.getCalendars();
-          setCalendars(response.data);
-        } catch (error) {
-          console.error("Erreur lors de la récupération des calendriers:", error);
-        }
-      };
-      fetchCalendars();
+      // ✅ Charger les calendriers depuis le store (avec cache)
+      if (calendars.length === 0) {
+        console.log('📅 Chargement des calendriers depuis le store');
+        dispatch(fetchCalendars(false)); // ✅ Paramètre par défaut explicite
+      } else {
+        console.log('✅ Calendriers déjà en cache:', calendars.length);
+      }
+
+      // ✅ Réinitialiser le formulaire quand le modal s'ouvre
+      const newFormData = getInitialFormData();
+
+      // Si pas de task et que nous avons des calendriers, utiliser le premier par défaut
+      if (!task && calendars.length > 0) {
+        newFormData.calendar_source = String(calendars[0].calendarid || calendars[0].id);
+      }
+
+      setFormData(newFormData);
     }
-  }, [isOpen]);
-
-  // Mettre à jour le formulaire séparément
-  useEffect(() => {
-    if (!isOpen) return;
-
-    if (task) {
-      setFormData({
-        title: task.title,
-        description: task.description || '',
-        start_date: task.start_date.slice(0, 16),
-        end_date: task.end_date.slice(0, 16),
-        is_completed: task.is_completed ?? false,
-        calendar_source: String((task as any).calendar_id || task.calendar_source || 'personal'),
-      });
-    } else {
-      const baseDate = initialDate ? new Date(initialDate) : new Date();
-      const currentTime = new Date();
-      const hour = initialHour !== undefined ? initialHour : currentTime.getHours();
-
-      const start = new Date(baseDate);
-      start.setHours(hour, 0, 0, 0);
-
-      const end = new Date(start);
-      end.setHours(hour + 1, 0, 0, 0);
-
-      // Sélectionner le premier calendrier par défaut ou 'personal' si aucun calendrier
-      const defaultCalendar = calendars.length > 0
-        ? String(calendars[0].calendarid || calendars[0].id)
-        : 'personal';
-
-      setFormData({
-        title: '',
-        description: '',
-        start_date: formatDateTimeLocal(start),
-        end_date: formatDateTimeLocal(end),
-        is_completed: false,
-        calendar_source: defaultCalendar,
-      });
-    }
-  }, [isOpen, task, initialDate, initialHour, calendars]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen, task, initialDate, initialHour]);
 
   if (!isOpen) return null;
 

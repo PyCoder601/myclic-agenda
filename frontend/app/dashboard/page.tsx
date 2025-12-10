@@ -17,11 +17,11 @@ import {
 import { Calendar as CalendarIcon, LogOut, Plus, RefreshCw, Settings } from 'lucide-react';
 import Calendar from '@/components/Calendar';
 import TaskModal from '@/components/TaskModal';
-import { Task, ViewMode } from '@/lib/types';
+import { Task, ViewMode, CalendarSource } from '@/lib/types';
 
 export default function DashboardPage() {
   const { user, loading: authLoading } = useAppSelector((state) => state.auth);
-  const { calendars, events, loading, eventsLoading } = useAppSelector((state) => state.calendar);
+  const { calendars, events } = useAppSelector((state) => state.calendar);
   const dispatch = useAppDispatch();
   const router = useRouter();
   
@@ -68,18 +68,13 @@ export default function DashboardPage() {
   useEffect(() => {
     if (user && !calendarsLoaded.current) {
       calendarsLoaded.current = true;
-      dispatch(fetchCalendars());
+      console.log('📅 Chargement initial des calendriers');
+      dispatch(fetchCalendars(false)); // ✅ Utilise le cache automatiquement
     }
   }, [user, dispatch]);
 
-  // Fonction de chargement des événements avec debounce et cancellation
+  // Fonction de chargement des événements avec debounce
   const loadEventsForPeriod = useCallback((date: Date) => {
-    // Annuler la requête en cours si elle existe
-    if (pendingFetch.current) {
-      pendingFetch.current.abort();
-      pendingFetch.current = null;
-    }
-
     // Annuler le timer de debounce en cours
     if (fetchDebounceTimer.current) {
       clearTimeout(fetchDebounceTimer.current);
@@ -92,54 +87,27 @@ export default function DashboardPage() {
     const end = new Date(year, month + 1, 7);
     const periodKey = `${start.toISOString().split('T')[0]}_${end.toISOString().split('T')[0]}`;
 
-    // Vérifier si déjà chargé
-    if (loadedPeriods.current.has(periodKey)) {
-      console.log(`✅ Période ${periodKey} déjà en cache`);
-      return;
-    }
-
-    // Nettoyage du cache : garder seulement les 5 dernières périodes
-    if (loadedPeriods.current.size >= 5) {
-      const periodsArray = Array.from(loadedPeriods.current);
-      // Garder les 3 dernières périodes
-      const toKeep = periodsArray.slice(-3);
-      loadedPeriods.current.clear();
-      toKeep.forEach(key => loadedPeriods.current.add(key));
-      console.log(`🧹 Cache nettoyé, gardé ${toKeep.length} périodes`);
-    }
+    // ✅ Le cache est maintenant géré dans le Redux store
+    // Pas besoin de vérifier manuellement ici
 
     // Debounce de 300ms pour éviter les requêtes multiples
     fetchDebounceTimer.current = setTimeout(() => {
-      console.log(`📡 Chargement de la période ${periodKey}...`);
-
-      // Marquer comme chargé immédiatement pour éviter les doublons
-      loadedPeriods.current.add(periodKey);
-
-      // Créer un AbortController pour cette requête
-      const controller = new AbortController();
-      pendingFetch.current = controller;
+      console.log(`📡 Dispatch fetchEvents pour ${periodKey}...`);
 
       // Dispatcher le fetch
       dispatch(fetchEvents({
         start_date: start.toISOString().split('T')[0],
         end_date: end.toISOString().split('T')[0]
-      })).finally(() => {
-        // Nettoyer le controller après la requête
-        if (pendingFetch.current === controller) {
-          pendingFetch.current = null;
-        }
-
+      })).then(() => {
         // Précharger les mois adjacents en arrière-plan (non bloquant)
         setTimeout(() => {
           preloadAdjacentMonths(date);
         }, 500);
       }).catch((error) => {
-        // En cas d'erreur, retirer du cache
         console.error('Erreur chargement:', error);
-        loadedPeriods.current.delete(periodKey);
       });
-    }, 300); // Debounce de 300ms
-  }, [dispatch]);
+    }, 300);
+  }, [dispatch, preloadAdjacentMonths]);
 
   // Précharger les mois adjacents en arrière-plan
   const preloadAdjacentMonths = useCallback((date: Date) => {
@@ -201,7 +169,7 @@ export default function DashboardPage() {
     };
   }, [user, currentDate, loadEventsForPeriod]);
 
-  const handleToggleCalendar = useCallback(async (calendar: any) => {
+  const handleToggleCalendar = useCallback(async (calendar: CalendarSource) => {
     // Dispatch updateCalendar thunk
     dispatch(updateCalendar({
       id: calendar.id,
@@ -326,7 +294,7 @@ export default function DashboardPage() {
 
       // Recharger calendriers et événements en parallèle
       await Promise.all([
-        dispatch(fetchCalendars()).unwrap(),
+        dispatch(fetchCalendars(false)).unwrap(),
         dispatch(fetchEvents({
           start_date: start.toISOString().split('T')[0],
           end_date: end.toISOString().split('T')[0]

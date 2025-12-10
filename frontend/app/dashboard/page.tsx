@@ -188,7 +188,15 @@ export default function DashboardPage() {
       const calendarId = task.calendar_id ?? task.calendar_source;
       if (!calendarId) return true;
       const calendar = calendars.find(cal => (cal.calendarid || cal.id) === calendarId);
-      return !calendar || calendar.is_enabled !== false && calendar.display !== 0;
+      if (!calendar) return true;
+
+      // En mode "Mes agendas", ne pas montrer les événements des calendriers dont le nom contient des parenthèses
+      const calendarName = calendar.name || calendar.displayname || '';
+      if (calendarName.includes('(') || calendarName.includes(')')) {
+        return false;
+      }
+
+      return calendar.is_enabled !== false && calendar.display !== 0;
     });
   }, [events, calendars, mainViewMode]);
 

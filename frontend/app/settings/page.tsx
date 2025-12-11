@@ -132,11 +132,12 @@ export default function SettingsPage() {
     setMessage(null);
 
     try {
-      const response = await caldavAPI.discoverCalendars();
-      setCalendars(response.data.calendars || []);
+      const response = await baikalAPI.getCalendars();
+      const calendarsData = response.data || [];
+      setCalendars(calendarsData);
       setMessage({
         type: 'success',
-        text: `${response.data.count} calendrier(s) découvert(s) !`
+        text: `${calendarsData.length} calendrier(s) découvert(s) !`
       });
     } catch (error: any) {
       setMessage({ type: 'error', text: error.response?.data?.error || 'Erreur lors de la découverte des calendriers' });

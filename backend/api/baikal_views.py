@@ -3,6 +3,7 @@ Vues pour l'API Baikal
 Architecture CalDAV pure: Toutes les opérations via le client CalDAV
 """
 import logging
+import hashlib
 from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
@@ -13,6 +14,14 @@ from .caldav_service import BaikalCalDAVClient
 from .models import BaikalCalendarPreference
 
 logger = logging.getLogger(__name__)
+
+
+def generate_calendar_id(calendar_uri: str) -> int:
+    """Génère un ID stable basé sur l'URI du calendrier"""
+    # Créer un hash de l'URI et prendre les 8 premiers caractères en hexadécimal
+    hash_obj = hashlib.md5(calendar_uri.encode())
+    # Convertir en entier positif
+    return abs(int(hash_obj.hexdigest()[:8], 16))
 
 
 class BaikalCalendarViewSet(viewsets.ViewSet):
@@ -66,6 +75,9 @@ class BaikalCalendarViewSet(viewsets.ViewSet):
                 calendar_uri = cal['id']
                 calendar_name = cal['name']
                 
+                # Générer un ID stable basé sur l'URI
+                calendar_id = generate_calendar_id(calendar_uri)
+                
                 # Vérifier si des préférences existent pour ce calendrier
                 if calendar_uri in preferences:
                     # Utiliser les préférences existantes
@@ -89,8 +101,8 @@ class BaikalCalendarViewSet(viewsets.ViewSet):
                     )
                 
                 formatted_cal = {
-                    'id': idx + 1,  # ID temporaire basé sur l'index
-                    'calendarid': idx + 1,
+                    'id': calendar_id,  # ID stable basé sur l'URI
+                    'calendarid': calendar_id,
                     'principaluri': f'principals/{request.user.email}',
                     'username': request.user.email,
                     'access': 1,  # Propriétaire
@@ -184,12 +196,18 @@ class BaikalCalendarViewSet(viewsets.ViewSet):
             
             calendars = client.list_calendars(details=True)
             
-            # Convertir pk en index (pk - 1)
+            # Trouver le calendrier par ID basé sur le hash de l'URI
             try:
-                idx = int(pk) - 1
-                if 0 <= idx < len(calendars):
-                    cal = calendars[idx]
-                    calendar_uri = cal['id']
+                calendar_id = int(pk)
+                calendar_found = None
+                
+                for idx, cal in enumerate(calendars):
+                    if generate_calendar_id(cal['id']) == calendar_id:
+                        calendar_found = cal
+                        break
+                
+                if calendar_found:
+                    calendar_uri = calendar_found['id']
                     
                     # Mettre à jour ou créer la préférence
                     preference, created = BaikalCalendarPreference.objects.get_or_create(
@@ -211,13 +229,13 @@ class BaikalCalendarViewSet(viewsets.ViewSet):
                     
                     # Retourner le calendrier mis à jour
                     return Response({
-                        'id': int(pk),
-                        'calendarid': int(pk),
+                        'id': calendar_id,
+                        'calendarid': calendar_id,
                         'principaluri': f'principals/{request.user.email}',
                         'username': request.user.email,
                         'access': 1,
-                        'displayname': cal['name'],
-                        'name': cal['name'],
+                        'displayname': calendar_found['name'],
+                        'name': calendar_found['name'],
                         'uri': calendar_uri,
                         'description': '',
                         'calendarorder': idx,
@@ -232,7 +250,7 @@ class BaikalCalendarViewSet(viewsets.ViewSet):
                         {'error': 'Calendrier non trouvé'},
                         status=status.HTTP_404_NOT_FOUND
                     )
-            except (ValueError, IndexError) as e:
+            except (ValueError, TypeError) as e:
                 return Response(
                     {'error': f'ID de calendrier invalide: {str(e)}'},
                     status=status.HTTP_400_BAD_REQUEST

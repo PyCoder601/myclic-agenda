@@ -114,6 +114,25 @@ class CalendarSource(models.Model):
         return f"{self.name} ({self.user.username})"
 
 
+class BaikalCalendarPreference(models.Model):
+    """Préférences utilisateur pour les calendriers Baikal (CalDAV)"""
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='baikal_calendar_preferences')
+    calendar_uri = models.CharField(max_length=500, help_text="URI du calendrier Baikal")
+    is_enabled = models.BooleanField(default=True, help_text="Afficher ce calendrier")
+    color = models.CharField(max_length=7, default='#005f82', help_text="Couleur d'affichage")
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['calendar_uri']
+        unique_together = ['user', 'calendar_uri']
+        verbose_name = "Préférence de calendrier Baikal"
+        verbose_name_plural = "Préférences de calendriers Baikal"
+
+    def __str__(self):
+        return f"{self.user.username} - {self.calendar_uri} ({'activé' if self.is_enabled else 'désactivé'})"
+
+
 class Task(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='tasks')
     title = models.CharField(max_length=200)

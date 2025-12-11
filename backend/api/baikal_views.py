@@ -10,6 +10,7 @@ from rest_framework.permissions import IsAuthenticated
 from django.conf import settings
 from datetime import datetime, timedelta
 from .caldav_service import BaikalCalDAVClient
+from .models import BaikalCalendarPreference
 
 logger = logging.getLogger(__name__)
 
@@ -39,7 +40,7 @@ class BaikalCalendarViewSet(viewsets.ViewSet):
         )
 
     def list(self, request):
-        """Liste tous les calendriers de l'utilisateur via CalDAV"""
+        """Liste tous les calendriers de l'utilisateur via CalDAV avec leurs préférences"""
         client = self._get_caldav_client()
         if not client:
             return Response(
@@ -51,24 +52,57 @@ class BaikalCalendarViewSet(viewsets.ViewSet):
             # Récupérer la liste des calendriers avec détails
             calendars = client.list_calendars(details=True)
 
+            # Charger les préférences utilisateur pour tous les calendriers
+            preferences = {}
+            for pref in BaikalCalendarPreference.objects.filter(user=request.user):
+                preferences[pref.calendar_uri] = {
+                    'is_enabled': pref.is_enabled,
+                    'color': pref.color
+                }
+
             # Formater pour correspondre au format attendu par le frontend
             formatted_calendars = []
             for idx, cal in enumerate(calendars):
+                calendar_uri = cal['id']
+                calendar_name = cal['name']
+                
+                # Vérifier si des préférences existent pour ce calendrier
+                if calendar_uri in preferences:
+                    # Utiliser les préférences existantes
+                    is_enabled = preferences[calendar_uri]['is_enabled']
+                    color = preferences[calendar_uri]['color']
+                else:
+                    # Définir les valeurs par défaut
+                    # Calendriers avec parenthèses sont désactivés par défaut
+                    has_parentheses = '(' in calendar_name or ')' in calendar_name
+                    is_enabled = not has_parentheses
+                    color = '#005f82'
+                    
+                    # Créer la préférence pour la prochaine fois
+                    BaikalCalendarPreference.objects.get_or_create(
+                        user=request.user,
+                        calendar_uri=calendar_uri,
+                        defaults={
+                            'is_enabled': is_enabled,
+                            'color': color
+                        }
+                    )
+                
                 formatted_cal = {
                     'id': idx + 1,  # ID temporaire basé sur l'index
                     'calendarid': idx + 1,
                     'principaluri': f'principals/{request.user.email}',
                     'username': request.user.email,
                     'access': 1,  # Propriétaire
-                    'displayname': cal['name'],
-                    'name': cal['name'],
-                    'uri': cal['id'],
+                    'displayname': calendar_name,
+                    'name': calendar_name,
+                    'uri': calendar_uri,
                     'description': '',
                     'calendarorder': idx,
-                    'color': '#005f82',  # Couleur par défaut
-                    'display': True,
-                    'is_enabled': True,
-                    'defined_name': cal['id'],
+                    'color': color,
+                    'display': 1 if is_enabled else 0,  # Pour compatibilité
+                    'is_enabled': is_enabled,
+                    'defined_name': calendar_uri,
                     'user_id': request.user.id
                 }
                 formatted_calendars.append(formatted_cal)
@@ -137,19 +171,81 @@ class BaikalCalendarViewSet(viewsets.ViewSet):
 
     def update(self, request, pk=None):
         """
-        Met à jour un calendrier
-        Note: Les propriétés sont en lecture seule via CalDAV standard
+        Met à jour les préférences d'un calendrier (is_enabled, color)
         """
-        return Response(
-            {
-                'message': 'Mise à jour de calendrier non supportée',
-                'note': 'Les propriétés de calendrier sont gérées par le serveur Baikal'
-            },
-            status=status.HTTP_200_OK
-        )
+        try:
+            # Récupérer tous les calendriers pour trouver le bon URI
+            client = self._get_caldav_client()
+            if not client:
+                return Response(
+                    {'error': 'Client CalDAV non disponible'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            
+            calendars = client.list_calendars(details=True)
+            
+            # Convertir pk en index (pk - 1)
+            try:
+                idx = int(pk) - 1
+                if 0 <= idx < len(calendars):
+                    cal = calendars[idx]
+                    calendar_uri = cal['id']
+                    
+                    # Mettre à jour ou créer la préférence
+                    preference, created = BaikalCalendarPreference.objects.get_or_create(
+                        user=request.user,
+                        calendar_uri=calendar_uri,
+                        defaults={
+                            'is_enabled': True,
+                            'color': '#005f82'
+                        }
+                    )
+                    
+                    # Mettre à jour les champs fournis
+                    if 'is_enabled' in request.data:
+                        preference.is_enabled = request.data['is_enabled']
+                    if 'color' in request.data:
+                        preference.color = request.data['color']
+                    
+                    preference.save()
+                    
+                    # Retourner le calendrier mis à jour
+                    return Response({
+                        'id': int(pk),
+                        'calendarid': int(pk),
+                        'principaluri': f'principals/{request.user.email}',
+                        'username': request.user.email,
+                        'access': 1,
+                        'displayname': cal['name'],
+                        'name': cal['name'],
+                        'uri': calendar_uri,
+                        'description': '',
+                        'calendarorder': idx,
+                        'color': preference.color,
+                        'display': 1 if preference.is_enabled else 0,
+                        'is_enabled': preference.is_enabled,
+                        'defined_name': calendar_uri,
+                        'user_id': request.user.id
+                    })
+                else:
+                    return Response(
+                        {'error': 'Calendrier non trouvé'},
+                        status=status.HTTP_404_NOT_FOUND
+                    )
+            except (ValueError, IndexError) as e:
+                return Response(
+                    {'error': f'ID de calendrier invalide: {str(e)}'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+        except Exception as e:
+            logger.error(f"Erreur mise à jour calendrier {pk}: {e}", exc_info=True)
+            return Response(
+                {'error': str(e)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
 
     def partial_update(self, request, pk=None):
-        """Mise à jour partielle"""
+        """Mise à jour partielle - même comportement que update"""
         return self.update(request, pk)
 
     @action(detail=False, methods=['post'])

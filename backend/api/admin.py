@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Task, CalendarSource, CalendarShare, User
+from .models import Task, CalendarSource, CalendarShare, User, BaikalCalendarPreference
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
 
 
@@ -48,3 +48,11 @@ class CalendarShareAdmin(admin.ModelAdmin):
     search_fields = ('calendar_source__name', 'user__username')
     list_editable = ('permission',)
     autocomplete_fields = ('calendar_source', 'user')
+
+@admin.register(BaikalCalendarPreference)
+class BaikalCalendarPreferenceAdmin(admin.ModelAdmin):
+    list_display = ('user', 'calendar_uri', 'is_enabled', 'color', 'updated_at')
+    list_filter = ('is_enabled', 'user')
+    search_fields = ('user__username', 'calendar_uri')
+    readonly_fields = ('created_at', 'updated_at')
+    list_editable = ('is_enabled', 'color')

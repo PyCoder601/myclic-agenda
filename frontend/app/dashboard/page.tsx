@@ -190,12 +190,7 @@ export default function DashboardPage() {
       const calendar = calendars.find(cal => (cal.calendarid || cal.id) === calendarId);
       if (!calendar) return true;
 
-      // En mode "Mes agendas", ne pas montrer les événements des calendriers dont le nom contient des parenthèses
-      const calendarName = calendar.name || calendar.displayname || '';
-      if (calendarName.includes('(') || calendarName.includes(')')) {
-        return false;
-      }
-
+      // Filtrer uniquement selon l'état is_enabled du calendrier
       return calendar.is_enabled !== false && calendar.display !== 0;
     });
   }, [events, calendars, mainViewMode]);

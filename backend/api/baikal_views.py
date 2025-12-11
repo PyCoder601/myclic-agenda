@@ -18,8 +18,8 @@ logger = logging.getLogger(__name__)
 
 def generate_calendar_id(calendar_uri: str) -> int:
     """Génère un ID stable basé sur l'URI du calendrier"""
-    # Créer un hash de l'URI et prendre les 8 premiers caractères en hexadécimal
-    hash_obj = hashlib.md5(calendar_uri.encode())
+    # Créer un hash SHA-256 de l'URI et prendre les 8 premiers caractères en hexadécimal
+    hash_obj = hashlib.sha256(calendar_uri.encode())
     # Convertir en entier positif
     return abs(int(hash_obj.hexdigest()[:8], 16))
 
@@ -200,10 +200,12 @@ class BaikalCalendarViewSet(viewsets.ViewSet):
             try:
                 calendar_id = int(pk)
                 calendar_found = None
+                calendar_index = 0
                 
                 for idx, cal in enumerate(calendars):
                     if generate_calendar_id(cal['id']) == calendar_id:
                         calendar_found = cal
+                        calendar_index = idx
                         break
                 
                 if calendar_found:
@@ -238,7 +240,7 @@ class BaikalCalendarViewSet(viewsets.ViewSet):
                         'name': calendar_found['name'],
                         'uri': calendar_uri,
                         'description': '',
-                        'calendarorder': idx,
+                        'calendarorder': calendar_index,
                         'color': preference.color,
                         'display': 1 if preference.is_enabled else 0,
                         'is_enabled': preference.is_enabled,
@@ -250,7 +252,7 @@ class BaikalCalendarViewSet(viewsets.ViewSet):
                         {'error': 'Calendrier non trouvé'},
                         status=status.HTTP_404_NOT_FOUND
                     )
-            except (ValueError, TypeError) as e:
+            except ValueError as e:
                 return Response(
                     {'error': f'ID de calendrier invalide: {str(e)}'},
                     status=status.HTTP_400_BAD_REQUEST

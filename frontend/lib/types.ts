@@ -31,7 +31,7 @@ export interface CalendarSource {
     uri?: string;
     description?: string;
     calendarorder?: number;
-    display?: number;
+    display?: boolean;
     defined_name?: string;
     user_id?: number;
 }

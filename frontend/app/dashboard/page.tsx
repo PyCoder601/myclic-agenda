@@ -10,14 +10,14 @@ import {
   createEvent,
   updateEvent,
   deleteEvent,
-  updateCalendar,
   optimisticUpdateEvent,
   optimisticDeleteEvent,
+  setCalendarsEnabledByMode, toggleCalendarEnabled,
 } from '@/store/calendarSlice';
 import { Calendar as CalendarIcon, LogOut, Plus, RefreshCw, Settings } from 'lucide-react';
 import Calendar from '@/components/Calendar';
 import TaskModal from '@/components/TaskModal';
-import { Task, ViewMode, CalendarSource } from '@/lib/types';
+import { Task, ViewMode } from '@/lib/types';
 
 export default function DashboardPage() {
   const { user, loading: authLoading } = useAppSelector((state) => state.auth);
@@ -37,12 +37,7 @@ export default function DashboardPage() {
   const [syncMessage, setSyncMessage] = useState<string | null>(null);
   const [isCalendarDropdownOpen, setIsCalendarDropdownOpen] = useState(false);
 
-  // Cache intelligent pour éviter les requêtes dupliquées
-  const loadedPeriods = useRef<Set<string>>(new Set());
-  const pendingFetch = useRef<AbortController | null>(null);
-  const fetchDebounceTimer = useRef<NodeJS.Timeout | null>(null);
   const calendarsLoaded = useRef(false);
-  const isPreloading = useRef(false);  // Flag pour éviter les préchargements concurrents
 
   // Redirection si non authentifié
   useEffect(() => {
@@ -73,130 +68,58 @@ export default function DashboardPage() {
     }
   }, [user, dispatch]);
 
-  // Précharger les mois adjacents en arrière-plan
-  const preloadAdjacentMonths = useCallback((date: Date) => {
-    // Ne pas précharger si une requête principale est en cours
-    if (pendingFetch.current || isPreloading.current) {
-      return;
+  // ✅ Activer/désactiver les calendriers selon le mode de vue (seulement quand le mode change)
+  const previousMainViewMode = useRef<'personal' | 'group'>(mainViewMode);
+  useEffect(() => {
+    if (calendars.length > 0 && previousMainViewMode.current !== mainViewMode) {
+      console.log(`🔄 Changement de mode de vue: ${previousMainViewMode.current} → ${mainViewMode}`);
+      dispatch(setCalendarsEnabledByMode(mainViewMode));
+      previousMainViewMode.current = mainViewMode;
     }
+  }, [mainViewMode, calendars.length, dispatch]);
 
-    isPreloading.current = true;
-
-    const prevMonth = new Date(date.getFullYear(), date.getMonth() - 1, 1);
-    const nextMonth = new Date(date.getFullYear(), date.getMonth() + 1, 1);
-
-    const preloadPromises = [prevMonth, nextMonth].map(adjacentDate => {
-      const year = adjacentDate.getFullYear();
-      const month = adjacentDate.getMonth();
-      const start = new Date(year, month, -7);
-      const end = new Date(year, month + 1, 7);
-      const periodKey = `${start.toISOString().split('T')[0]}_${end.toISOString().split('T')[0]}`;
-
-      // Charger seulement si pas déjà chargé
-      if (!loadedPeriods.current.has(periodKey)) {
-        console.log(`🔄 Préchargement de ${periodKey}...`);
-        loadedPeriods.current.add(periodKey);
-
-        return dispatch(fetchEvents({
-          start_date: start.toISOString().split('T')[0],
-          end_date: end.toISOString().split('T')[0]
-        })).unwrap().catch((error) => {
-          // En cas d'erreur, retirer du cache pour réessayer plus tard
-          console.error(`Erreur préchargement ${periodKey}:`, error);
-          loadedPeriods.current.delete(periodKey);
-        });
-      }
-      return Promise.resolve();
-    });
-
-    // Attendre que tous les préchargements soient terminés
-    Promise.all(preloadPromises).finally(() => {
-      isPreloading.current = false;
-    });
-  }, [dispatch]);
-
-  // Fonction de chargement des événements avec debounce
+  // Fonction de chargement des événements
   const loadEventsForPeriod = useCallback((date: Date) => {
-    // Annuler le timer de debounce en cours
-    if (fetchDebounceTimer.current) {
-      clearTimeout(fetchDebounceTimer.current);
-    }
-
-    // Calculer la période
     const year = date.getFullYear();
     const month = date.getMonth();
     const start = new Date(year, month, -7);
     const end = new Date(year, month + 1, 7);
-    const periodKey = `${start.toISOString().split('T')[0]}_${end.toISOString().split('T')[0]}`;
 
-    // ✅ Le cache est maintenant géré dans le Redux store
-    // Pas besoin de vérifier manuellement ici
+    console.log(`📡 Chargement des événements...`);
 
-    // Debounce de 300ms pour éviter les requêtes multiples
-    fetchDebounceTimer.current = setTimeout(() => {
-      console.log(`📡 Dispatch fetchEvents pour ${periodKey}...`);
+    dispatch(fetchEvents({
+      start_date: start.toISOString().split('T')[0],
+      end_date: end.toISOString().split('T')[0]
+    }));
+  }, [dispatch]);
 
-      // Dispatcher le fetch
-      dispatch(fetchEvents({
-        start_date: start.toISOString().split('T')[0],
-        end_date: end.toISOString().split('T')[0]
-      })).then(() => {
-        // Précharger les mois adjacents en arrière-plan (non bloquant)
-        setTimeout(() => {
-          preloadAdjacentMonths(date);
-        }, 500);
-      }).catch((error) => {
-        console.error('Erreur chargement:', error);
-      });
-    }, 300);
-  }, [dispatch, preloadAdjacentMonths]);
-
-  // Charger les événements quand la date change (avec debounce intégré)
+  // Charger les événements quand la date change
   useEffect(() => {
     if (user) {
       loadEventsForPeriod(currentDate);
     }
-
-    // Cleanup : annuler les requêtes et timers en cours
-    return () => {
-      if (fetchDebounceTimer.current) {
-        clearTimeout(fetchDebounceTimer.current);
-      }
-      if (pendingFetch.current) {
-        pendingFetch.current.abort();
-        pendingFetch.current = null;
-      }
-    };
   }, [user, currentDate, loadEventsForPeriod]);
-
-  const handleToggleCalendar = useCallback(async (calendar: CalendarSource) => {
-    // Dispatch updateCalendar thunk
-    dispatch(updateCalendar({
-      id: calendar.id,
-      data: { is_enabled: !calendar.is_enabled }
-    }));
-  }, [dispatch]);
 
   // Filtrer les tâches en fonction des calendriers activés avec mémoïsation
   const filteredTasks = useMemo(() => {
-    if (mainViewMode === 'group') {
-      return events; // Ne pas filtrer les tâches en mode groupe
-    }
     if (calendars.length === 0) return events;
 
     return events.filter(task => {
-      const calendarId = task.calendar_id ?? task.calendar_source;
-      if (!calendarId) return true;
-      const calendar = calendars.find(cal => (cal.calendarid || cal.id) === calendarId);
+      // On identifie le calendrier par son displayname, qui correspond à calendar_source_name côté événements
+      const calendarName = task.calendar_source_name || '';
+      if (!calendarName) return true; // si pas d'info, on n'exclut pas
+
+      const calendar = calendars.find(cal => (cal.displayname || cal.name) === calendarName);
       if (!calendar) return true;
 
-      // En mode "Mes agendas", ne pas montrer les événements des calendriers dont le nom contient des parenthèses
-      const calendarName = calendar.name || calendar.displayname || '';
-      if (calendarName.includes('(') || calendarName.includes(')')) {
-        return false;
+      // En mode "Agenda de groupe", on affiche tous les événements visibles (display !== 0)
+      // L'utilisateur peut toujours toggler is_enabled pour cacher/afficher
+      if (mainViewMode === 'group') {
+        return true
       }
 
-      return calendar.is_enabled !== false && calendar.display !== 0;
+      // En mode "Mes calendriers", on respecte is_enabled (toggle utilisateur) et display
+      return calendar.display
     });
   }, [events, calendars, mainViewMode]);
 
@@ -216,7 +139,7 @@ export default function DashboardPage() {
 
       } else {
         // Création avec optimistic update complet
-        // Le thunk createEvent gère automatiquement l'optimistic update
+        // Le thunk createEvent gère automatiquement optimistic update
         await dispatch(createEvent(taskData)).unwrap();
       }
 
@@ -245,9 +168,7 @@ export default function DashboardPage() {
     } catch (error) {
       console.error('Erreur lors de la suppression de l\'événement:', error);
 
-      // En cas d'erreur, invalider le cache et recharger pour avoir les vraies données
-      loadedPeriods.current.clear();
-
+      // En cas d'erreur, recharger pour avoir les vraies données
       const year = currentDate.getFullYear();
       const month = currentDate.getMonth();
       const start = new Date(year, month, -7);
@@ -279,22 +200,6 @@ export default function DashboardPage() {
     setSyncMessage('Rafraîchissement...');
 
     try {
-      // Invalider tout le cache
-      loadedPeriods.current.clear();
-
-      // Annuler les requêtes en cours
-      if (pendingFetch.current) {
-        pendingFetch.current.abort();
-        pendingFetch.current = null;
-      }
-      if (fetchDebounceTimer.current) {
-        clearTimeout(fetchDebounceTimer.current);
-        fetchDebounceTimer.current = null;
-      }
-
-      // Reset le flag de préchargement
-      isPreloading.current = false;
-
       const year = currentDate.getFullYear();
       const month = currentDate.getMonth();
       const start = new Date(year, month, -7);
@@ -302,16 +207,13 @@ export default function DashboardPage() {
 
       // Recharger calendriers et événements en parallèle
       await Promise.all([
-        dispatch(fetchCalendars(false)).unwrap(),
+        dispatch(fetchCalendars(true)).unwrap(),
         dispatch(fetchEvents({
           start_date: start.toISOString().split('T')[0],
           end_date: end.toISOString().split('T')[0]
         })).unwrap()
       ]);
 
-      // Marquer la période comme chargée
-      const periodKey = `${start.toISOString().split('T')[0]}_${end.toISOString().split('T')[0]}`;
-      loadedPeriods.current.add(periodKey);
 
       setSyncMessage('✓ Données actualisées');
       setTimeout(() => setSyncMessage(null), 3000);
@@ -365,9 +267,7 @@ export default function DashboardPage() {
     } catch (error) {
       console.error('Erreur lors du déplacement de l\'événement:', error);
 
-      // En cas d'erreur, invalider le cache et recharger
-      loadedPeriods.current.clear();
-
+      // En cas d'erreur, recharger
       const year = currentDate.getFullYear();
       const month = currentDate.getMonth();
       const start = new Date(year, month, -7);
@@ -400,7 +300,7 @@ export default function DashboardPage() {
 
   if (authLoading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
+      <div className="flex min-h-screen items-center justify-center bg-linear-to-br from-slate-50 via-blue-50 to-indigo-50">
         <div className="text-center">
           <CalendarIcon className="w-16 h-16 text-[#005f82] mx-auto mb-4 animate-pulse" />
           <h1 className="text-2xl font-semibold text-gray-800">Chargement...</h1>
@@ -411,17 +311,17 @@ export default function DashboardPage() {
 
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
+    <div className="min-h-screen bg-linear-to-br from-slate-50 via-blue-50 to-indigo-50">
       {/* Header */}
       <header className="bg-white/90 backdrop-blur-xl border-b border-slate-200/50 shadow-sm sticky top-0 z-50 transition-all duration-300">
         <div className="max-w-[1920px] mx-auto px-6 py-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3 group">
-              <div className="bg-gradient-to-br from-[#005f82] to-[#007ba8] p-2.5 rounded-xl shadow-lg transform transition-all duration-300 group-hover:scale-110 group-hover:rotate-3">
+              <div className="bg-linear-to-br from-[#005f82] to-[#007ba8] p-2.5 rounded-xl shadow-lg transform transition-all duration-300 group-hover:scale-110 group-hover:rotate-3">
                 <CalendarIcon className="w-5 h-5 text-white" />
               </div>
               <div>
-                <h1 className="text-xl font-bold bg-gradient-to-r from-[#005f82] to-[#007ba8] bg-clip-text text-transparent">
+                <h1 className="text-xl font-bold bg-linear-to-r from-[#005f82] to-[#007ba8] bg-clip-text text-transparent">
                   Mon Agenda
                 </h1>
                 <p className="text-xs text-slate-600 flex items-center gap-1">
@@ -440,7 +340,7 @@ export default function DashboardPage() {
               <button
                 onClick={handleRefresh}
                 disabled={isSyncing}
-                className="group relative flex items-center gap-2 bg-white hover:bg-gradient-to-r hover:from-blue-50 hover:to-indigo-50 text-slate-700 px-3 py-2 rounded-xl transition-all duration-300 border border-slate-200 hover:border-[#005f82] disabled:opacity-50 disabled:cursor-not-allowed hover:shadow-md"
+                className="group relative flex items-center gap-2 bg-white hover:bg-linear-to-r hover:from-blue-50 hover:to-indigo-50 text-slate-700 px-3 py-2 rounded-xl transition-all duration-300 border border-slate-200 hover:border-[#005f82] disabled:opacity-50 disabled:cursor-not-allowed hover:shadow-md"
                 title="Rafraîchir les données"
               >
                 <RefreshCw className={`w-4 h-4 transition-transform duration-300 ${isSyncing ? 'animate-spin' : 'group-hover:rotate-180'}`} />
@@ -448,7 +348,7 @@ export default function DashboardPage() {
               </button>
               <button
                 onClick={() => router.push('/settings')}
-                className="group relative flex items-center gap-2 bg-white hover:bg-gradient-to-r hover:from-purple-50 hover:to-pink-50 text-slate-700 px-3 py-2 rounded-xl transition-all duration-300 border border-slate-200 hover:border-purple-300 hover:shadow-md"
+                className="group relative flex items-center gap-2 bg-white hover:bg-linear-to-r hover:from-purple-50 hover:to-pink-50 text-slate-700 px-3 py-2 rounded-xl transition-all duration-300 border border-slate-200 hover:border-purple-300 hover:shadow-md"
                 title="Paramètres"
               >
                 <Settings className="w-4 h-4 transition-transform duration-300 group-hover:rotate-90" />
@@ -460,12 +360,12 @@ export default function DashboardPage() {
                   setModalInitialHour(undefined);
                   setIsModalOpen(true);
                 }}
-                className="group flex items-center gap-2 bg-gradient-to-r from-[#005f82] to-[#007ba8] hover:from-[#007ba8] hover:to-[#005f82] text-white px-5 py-2.5 rounded-xl transition-all duration-300 font-medium text-sm shadow-lg hover:shadow-xl transform hover:scale-105 active:scale-95"
+                className="group flex items-center gap-2 bg-linear-to-r from-[#005f82] to-[#007ba8] hover:from-[#007ba8] hover:to-[#005f82] text-white px-5 py-2.5 rounded-xl transition-all duration-300 font-medium text-sm shadow-lg hover:shadow-xl transform hover:scale-105 active:scale-95"
               >
                 <Plus className="w-4 h-4 transition-transform duration-300 group-hover:rotate-90" />
                 <span>Nouvel événement</span>
               </button>
-              <div className="h-8 w-px bg-gradient-to-b from-transparent via-slate-300 to-transparent"></div>
+              <div className="h-8 w-px bg-linear-to-b from-transparent via-slate-300 to-transparent"></div>
               <button
                 onClick={handleLogout}
                 className="group flex items-center gap-2 bg-white hover:bg-red-50 text-slate-700 hover:text-red-600 px-3 py-2 rounded-xl transition-all duration-300 border border-slate-200 hover:border-red-300 hover:shadow-md"
@@ -489,12 +389,12 @@ export default function DashboardPage() {
                 <div className="relative calendar-dropdown-container">
                   <button
                     onClick={() => setIsCalendarDropdownOpen(!isCalendarDropdownOpen)}
-                    className="group flex items-center gap-2 bg-white hover:bg-gradient-to-r hover:from-blue-50 hover:to-indigo-50 px-4 py-2 rounded-xl shadow-sm border border-slate-200 hover:border-[#005f82] transition-all duration-300 text-sm font-medium text-slate-700 hover:shadow-md"
+                    className="group flex items-center gap-2 bg-white hover:bg-linear-to-r hover:from-blue-50 hover:to-indigo-50 px-4 py-2 rounded-xl shadow-sm border border-slate-200 hover:border-[#005f82] transition-all duration-300 text-sm font-medium text-slate-700 hover:shadow-md"
                   >
                     <CalendarIcon className="w-4 h-4 transition-transform duration-300 group-hover:scale-110" />
                     <span>Agendas</span>
-                    <span className="text-xs bg-gradient-to-r from-[#005f82] to-[#007ba8] text-white px-2 py-0.5 rounded-full font-semibold shadow-sm">
-                      {calendars.filter(c => c.is_enabled).length}
+                    <span className="text-xs bg-linear-to-r from-[#005f82] to-[#007ba8] text-white px-2 py-0.5 rounded-full font-semibold shadow-sm">
+                      {calendars.filter(c => c.display).length}
                     </span>
                     <svg
                       className={`w-4 h-4 transition-transform duration-300 ${isCalendarDropdownOpen ? 'rotate-180' : ''}`}
@@ -534,23 +434,23 @@ export default function DashboardPage() {
                             {ownedCalendars.map((calendar) => (
                               <button
                                 key={calendar.id}
-                                onClick={() => handleToggleCalendar(calendar)}
-                                className="group w-full flex items-center justify-between p-3 hover:bg-gradient-to-r hover:from-blue-50 hover:to-indigo-50 rounded-xl transition-all duration-200 border border-transparent hover:border-[#005f82]/20"
+                                onClick={() => dispatch(toggleCalendarEnabled(calendar.id))}
+                                className="group w-full flex items-center justify-between p-3 hover:bg-linear-to-r hover:from-blue-50 hover:to-indigo-50 rounded-xl transition-all duration-200 border border-transparent hover:border-[#005f82]/20"
                               >
                                 <div className="flex items-center gap-3 flex-1">
-                                  <div className={`relative transition-all duration-200 ${calendar.is_enabled ? 'scale-100' : 'scale-90 opacity-50'}`}>
+                                  <div className={`relative transition-all duration-200 ${calendar.display ? 'scale-100' : 'scale-90 opacity-50'}`}>
                                     <input
                                       type="checkbox"
-                                      checked={calendar.is_enabled}
+                                      checked={calendar.display}
                                       readOnly
                                       className="h-5 w-5 text-[#005f82] focus:ring-[#005f82] border-gray-300 rounded transition-all duration-200 pointer-events-none"
                                     />
                                   </div>
                                   <div
-                                    className="w-4 h-4 rounded-full flex-shrink-0 shadow-md ring-2 ring-white transition-all duration-200 group-hover:scale-110"
+                                    className="w-4 h-4 rounded-full shrink-0 shadow-md ring-2 ring-white transition-all duration-200 group-hover:scale-110"
                                     style={{ backgroundColor: calendar.color }}
                                   />
-                                  <span className={`text-sm font-medium transition-all duration-200 ${calendar.is_enabled ? 'text-slate-800' : 'text-slate-400'}`}>
+                                  <span className={`text-sm font-medium transition-all duration-200 ${calendar.display ? 'text-slate-800' : 'text-slate-400'}`}>
                                     {calendar.name}
                                   </span>
                                 </div>
@@ -569,21 +469,21 @@ export default function DashboardPage() {
                               {sharedUserCalendars.map((calendar) => (
                                 <button
                                   key={calendar.id}
-                                  onClick={() => handleToggleCalendar(calendar)}
-                                  className="group w-full flex items-center justify-between p-3 hover:bg-gradient-to-r hover:from-blue-50 hover:to-indigo-50 rounded-xl transition-all duration-200 border border-transparent hover:border-blue-200"
+                                  onClick={() => dispatch(toggleCalendarEnabled(calendar.id))}
+                                  className="group w-full flex items-center justify-between p-3 hover:bg-linear-to-r hover:from-blue-50 hover:to-indigo-50 rounded-xl transition-all duration-200 border border-transparent hover:border-blue-200"
                                 >
                                   <div className="flex items-center gap-3 flex-1">
                                     <input
                                       type="checkbox"
-                                      checked={calendar.is_enabled}
+                                      checked={calendar.display}
                                       readOnly
                                       className="h-5 w-5 text-blue-600 focus:ring-blue-500 border-gray-300 rounded pointer-events-none"
                                     />
                                     <div
-                                      className="w-4 h-4 rounded-full flex-shrink-0 shadow-md ring-2 ring-white"
+                                      className="w-4 h-4 rounded-full shrink-0 shadow-md ring-2 ring-white"
                                       style={{ backgroundColor: calendar.color }}
                                     />
-                                    <span className={`text-sm font-medium ${calendar.is_enabled ? 'text-slate-800' : 'text-slate-400'}`}>
+                                    <span className={`text-sm font-medium ${calendar.display ? 'text-slate-800' : 'text-slate-400'}`}>
                                       {calendar.name}
                                     </span>
                                   </div>
@@ -603,21 +503,21 @@ export default function DashboardPage() {
                               {sharedResourceCalendars.map((calendar) => (
                                 <button
                                   key={calendar.id}
-                                  onClick={() => handleToggleCalendar(calendar)}
-                                  className="group w-full flex items-center justify-between p-3 hover:bg-gradient-to-r hover:from-purple-50 hover:to-pink-50 rounded-xl transition-all duration-200 border border-transparent hover:border-purple-200"
+                                  onClick={() => dispatch(toggleCalendarEnabled(calendar.id))}
+                                  className="group w-full flex items-center justify-between p-3 hover:bg-linear-to-r hover:from-purple-50 hover:to-pink-50 rounded-xl transition-all duration-200 border border-transparent hover:border-purple-200"
                                 >
                                   <div className="flex items-center gap-3 flex-1">
                                     <input
                                       type="checkbox"
-                                      checked={calendar.is_enabled}
+                                      checked={calendar.display}
                                       readOnly
                                       className="h-5 w-5 text-purple-600 focus:ring-purple-500 border-gray-300 rounded pointer-events-none"
                                     />
                                     <div
-                                      className="w-4 h-4 rounded-full flex-shrink-0 shadow-md ring-2 ring-white"
+                                      className="w-4 h-4 rounded-full shrink-0 shadow-md ring-2 ring-white"
                                       style={{ backgroundColor: calendar.color }}
                                     />
-                                    <span className={`text-sm font-medium ${calendar.is_enabled ? 'text-slate-800' : 'text-slate-400'}`}>
+                                    <span className={`text-sm font-medium ${calendar.display ? 'text-slate-800' : 'text-slate-400'}`}>
                                       {calendar.name}
                                     </span>
                                   </div>
@@ -745,5 +645,4 @@ export default function DashboardPage() {
     </div>
   );
 }
-
 

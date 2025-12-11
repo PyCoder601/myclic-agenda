@@ -10,10 +10,6 @@ interface CalendarState {
     error: string | null;
     lastFetch: number | null;
     optimisticEvents: { [key: string]: Task }; // Événements en attente de confirmation
-    // ✅ Cache intelligent
-    cachedPeriods: { [key: string]: number }; // Clé: "start_end", Valeur: timestamp du fetch
-    calendarsLastFetch: number | null; // Timestamp du dernier fetch des calendriers
-    eventsByDate: { [key: string]: number[] }; // Index des événements par date
 }
 
 const initialState: CalendarState = {
@@ -24,9 +20,6 @@ const initialState: CalendarState = {
     error: null,
     lastFetch: null,
     optimisticEvents: {},
-    cachedPeriods: {},
-    calendarsLastFetch: null,
-    eventsByDate: {},
 };
 
 // Thunks
@@ -34,20 +27,8 @@ const initialState: CalendarState = {
 // Récupérer les calendriers
 export const fetchCalendars = createAsyncThunk(
     'calendar/fetchCalendars',
-    async (forceRefresh: boolean = false, {rejectWithValue, getState}) => {
+    async (forceRefresh: boolean = false, {rejectWithValue}) => {
         try {
-            // ✅ Vérifier le cache (5 minutes)
-            const state = getState() as { calendar: CalendarState };
-            const now = Date.now();
-            const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
-
-            if (!forceRefresh &&
-                state.calendar.calendarsLastFetch &&
-                state.calendar.calendars.length > 0 &&
-                (now - state.calendar.calendarsLastFetch) < CACHE_DURATION) {
-                console.log('✅ Calendriers déjà en cache, pas de requête');
-                return state.calendar.calendars; // Retourner depuis le cache
-            }
 
             console.log('🔄 Fetch calendriers depuis l\'API');
             const response = await baikalAPI.getCalendars();
@@ -61,38 +42,15 @@ export const fetchCalendars = createAsyncThunk(
 // Récupérer les événements
 export const fetchEvents = createAsyncThunk(
     'calendar/fetchEvents',
-    async (params: { start_date: string; end_date: string; forceRefresh?: boolean }, {rejectWithValue, getState}) => {
+    async (params: { start_date: string; end_date: string }, {rejectWithValue}) => {
         try {
-            // ✅ Vérifier le cache par période (2 minutes)
-            const state = getState() as { calendar: CalendarState };
-            const now = Date.now();
-            const CACHE_DURATION = 2 * 60 * 1000; // 2 minutes
-            const periodKey = `${params.start_date}_${params.end_date}`;
-
-            if (!params.forceRefresh && state.calendar.cachedPeriods[periodKey]) {
-                const lastFetch = state.calendar.cachedPeriods[periodKey];
-                if ((now - lastFetch) < CACHE_DURATION) {
-                    console.log(`✅ Période ${periodKey} déjà en cache, pas de requête`);
-                    // Retourner les événements existants pour cette période
-                    return {
-                        events: state.calendar.events,
-                        periodKey,
-                        fromCache: true
-                    };
-                }
-            }
-
-            console.log(`🔄 Fetch événements pour ${periodKey}`);
+            console.log(`🔄 Fetch événements pour ${params.start_date} à ${params.end_date}`);
             const response = await baikalAPI.getEvents({
                 start_date: params.start_date,
                 end_date: params.end_date
             });
 
-            return {
-                events: response.data,
-                periodKey,
-                fromCache: false
-            };
+            return response.data;
         } catch (error: any) {
             return rejectWithValue(error.response?.data || 'Erreur lors de la récupération des événements');
         }
@@ -213,10 +171,6 @@ const calendarSlice = createSlice({
             state.events = state.events.filter(e => e.id !== tempId as any);
         },
 
-        clearError: (state) => {
-            state.error = null;
-        },
-
         // Mise à jour optimiste pour les modifications
         optimisticUpdateEvent: (state, action: PayloadAction<{ id: number; data: Partial<Task> }>) => {
             const {id, data} = action.payload;
@@ -230,6 +184,42 @@ const calendarSlice = createSlice({
         optimisticDeleteEvent: (state, action: PayloadAction<number>) => {
             state.events = state.events.filter(e => e.id !== action.payload);
         },
+
+        toggleCalendarEnabled: (state, action: PayloadAction<number>) => {
+            const calendarId = action.payload;
+            state.calendars = state.calendars.map(cal => {
+                if (cal.id === calendarId) {
+                    return {
+                        ...cal,
+                        display: !cal.display,
+                    };
+                }
+                return cal;
+            });
+        },
+
+        // Activer/désactiver les calendriers selon le mode de vue
+        setCalendarsEnabledByMode: (state, action: PayloadAction<'personal' | 'group'>) => {
+            const mode = action.payload;
+            state.calendars = state.calendars.map(cal => {
+                const calendarName = cal.displayname || cal.name || '';
+                const hasParentheses = calendarName.includes('(') || calendarName.includes(')');
+
+                if (mode === 'group') {
+                    // En mode groupe, activer tous les calendriers visibles par défaut
+                    return {
+                        ...cal,
+                        display: true
+                    };
+                }
+
+                // En mode personnel : désactiver par défaut ceux avec parenthèses
+                return {
+                    ...cal,
+                    display: !hasParentheses,
+                };
+            });
+        },
     },
     extraReducers: (builder) => {
         // Fetch calendriers
@@ -239,8 +229,34 @@ const calendarSlice = createSlice({
         });
         builder.addCase(fetchCalendars.fulfilled, (state, action) => {
             state.loading = false;
-            state.calendars = action.payload;
-            state.calendarsLastFetch = Date.now(); // ✅ Timestamp du cache
+
+            // Si c'est le premier chargement (calendars vide), initialiser is_enabled
+            const isFirstLoad = state.calendars.length === 0;
+
+            if (isFirstLoad) {
+                state.calendars = (action.payload as CalendarSource[]).map((cal) => {
+                    const calendarName = cal.displayname || cal.name || '';
+                    const hasParentheses = calendarName.includes('(') || calendarName.includes(')');
+
+                    // Par défaut (mode "Mes calendriers"), désactiver ceux avec parenthèses
+                    return {
+                        ...cal,
+                        is_enabled: !hasParentheses,
+                    };
+                });
+            } else {
+                // Rechargement : conserver les préférences is_enabled de l'utilisateur
+                const previousEnabledStates = new Map(
+                    state.calendars.map(cal => [cal.id, cal.is_enabled])
+                );
+
+                state.calendars = (action.payload as CalendarSource[]).map((cal) => ({
+                    ...cal,
+                    is_enabled: previousEnabledStates.has(cal.id)
+                        ? previousEnabledStates.get(cal.id)
+                        : !((cal.displayname || cal.name || '').includes('(') || (cal.displayname || cal.name || '').includes(')')),
+                }));
+            }
         });
         builder.addCase(fetchCalendars.rejected, (state, action) => {
             state.loading = false;
@@ -255,27 +271,11 @@ const calendarSlice = createSlice({
         builder.addCase(fetchEvents.fulfilled, (state, action) => {
             state.eventsLoading = false;
 
-            // ✅ Gestion intelligente du cache
-            if (action.payload.fromCache) {
-                // Déjà en cache, pas de changement
-                console.log('✅ Événements depuis le cache');
-            } else {
-                // Nouveaux événements depuis l'API
-                const newEvents = action.payload.events;
-
-                // Fusionner les événements sans doublons (par ID)
-                const existingIds = new Set(state.events.map(e => e.id));
-                const eventsToAdd = newEvents.filter((e: Task) => !existingIds.has(e.id));
-
-                state.events = [...state.events, ...eventsToAdd];
-
-                // Mettre à jour le cache de la période
-                state.cachedPeriods[action.payload.periodKey] = Date.now();
-
-                console.log(`✅ ${eventsToAdd.length} nouveaux événements ajoutés, total: ${state.events.length}`);
-            }
-
+            // Remplacer tous les événements par les nouveaux
+            state.events = action.payload as Task[];
             state.lastFetch = Date.now();
+
+            console.log(`✅ ${state.events.length} événements chargés`);
         });
         builder.addCase(fetchEvents.rejected, (state, action) => {
             state.eventsLoading = false;
@@ -337,9 +337,10 @@ const calendarSlice = createSlice({
 export const {
     addOptimisticEvent,
     removeOptimisticEvent,
-    clearError,
     optimisticUpdateEvent,
     optimisticDeleteEvent,
+    setCalendarsEnabledByMode,
+    toggleCalendarEnabled
 } = calendarSlice.actions;
 
 export default calendarSlice.reducer;

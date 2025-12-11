@@ -4,7 +4,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAppSelector } from '@/store/hooks';
-import { caldavAPI } from '@/lib/api';
+import { caldavAPI, baikalAPI } from '@/lib/api';
 import { CalDAVConfig, CalendarSource } from '@/lib/types';
 
 export default function SettingsPage() {
@@ -68,7 +68,7 @@ export default function SettingsPage() {
       });
 
       // Charger tous les calendriers (possédés et partagés)
-      const calendarsResponse = await caldavAPI.getAllCalendars();
+      const calendarsResponse = await baikalAPI.getCalendars();
       setCalendars(calendarsResponse.data);
 
     } catch (error: any) {
@@ -147,7 +147,7 @@ export default function SettingsPage() {
 
   const handleToggleCalendar = async (calendar: CalendarSource) => {
     try {
-      await caldavAPI.updateCalendar(calendar.id, { is_enabled: !calendar.is_enabled });
+      await baikalAPI.updateCalendar(calendar.id, { is_enabled: !calendar.is_enabled });
       setCalendars(calendars.map(cal =>
         cal.id === calendar.id ? { ...cal, is_enabled: !cal.is_enabled } : cal
       ));
@@ -158,7 +158,7 @@ export default function SettingsPage() {
 
   const handleColorChange = async (calendar: CalendarSource, color: string) => {
     try {
-      await caldavAPI.updateCalendar(calendar.id, { color });
+      await baikalAPI.updateCalendar(calendar.id, { color });
       setCalendars(calendars.map(cal =>
         cal.id === calendar.id ? { ...cal, color } : cal
       ));

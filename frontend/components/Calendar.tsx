@@ -48,7 +48,7 @@ const getTaskColor = (task: Task, calendars: CalendarSource[]): string => {
   const calendar = calendars.find(cal => (cal.calendarid || cal.id) === calendarId);
   if (calendar) {
     // Baikal calendar color or fallback
-    return calendar.color || "#005f82";
+    return calendar.calendarcolor || "#005f82";
   }
 
   return "#005f82";
@@ -751,9 +751,9 @@ export default function Calendar({
                   <div className="w-48 flex-shrink-0 border-r border-slate-200 p-2 text-sm text-slate-700 font-medium flex items-center gap-2">
                     <div
                       className="w-3 h-3 rounded-full shadow-sm"
-                      style={{ backgroundColor: calendar.color }}
+                      style={{ backgroundColor: calendar.calendarcolor }}
                     ></div>
-                    <span className="truncate">{calendar.name}</span>
+                    <span className="truncate">{calendar.displayname}</span>
                   </div>
                   {daysToDisplay.map((day) => {
                     const dayTasks = tasks.filter(

@@ -9,6 +9,8 @@ from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from django.conf import settings
 from datetime import datetime, timedelta
+
+from .baikal_models import BaikalCalendarInstance
 from .caldav_service import BaikalCalDAVClient
 
 logger = logging.getLogger(__name__)
@@ -34,8 +36,7 @@ class BaikalCalendarViewSet(viewsets.ViewSet):
 
         return BaikalCalDAVClient(
             base_url=settings.BAIKAL_SERVER_URL,
-            username=user.email,
-            password=password
+            user=user
         )
 
     def list(self, request):
@@ -49,33 +50,8 @@ class BaikalCalendarViewSet(viewsets.ViewSet):
 
         try:
             # Récupérer la liste des calendriers avec détails
-            calendars = client.list_calendars(details=True)
-
-            # Formater pour correspondre au format attendu par le frontend
-            formatted_calendars = []
-            for idx, cal in enumerate(calendars):
-                formatted_cal = {
-                    'id': idx + 1,  # ID temporaire basé sur l'index
-                    'calendarid': idx + 1,
-                    'principaluri': f'principals/{request.user.email}',
-                    'username': request.user.email,
-                    'access': 1,  # Propriétaire
-                    'displayname': cal['name'],
-                    'name': cal['name'],
-                    'uri': cal['id'],
-                    'description': '',
-                    'calendarorder': idx,
-                    'color': '#005f82',  # Couleur par défaut
-                    'display': True,
-                    'is_enabled': True,
-                    'defined_name': cal['id'],
-                    'user_id': request.user.id
-                }
-                formatted_calendars.append(formatted_cal)
-
-            logger.info(f"Récupération de {len(formatted_calendars)} calendrier(s) pour {request.user.email}")
-
-            return Response(formatted_calendars)
+            calendars = client.list_calendars()
+            return Response(calendars)
         except Exception as e:
             logger.error(f"Erreur récupération calendriers: {e}", exc_info=True)
             return Response(
@@ -93,41 +69,23 @@ class BaikalCalendarViewSet(viewsets.ViewSet):
             )
 
         try:
-            calendars = client.list_calendars(details=True)
+            cal = BaikalCalendarInstance.objects.using('baikal').get(id=pk)
+            return Response({
+                'id': cal.id,
+                'calendarid': cal.calendarid,
+                'displayname': cal.displayname or cal.defined_name or 'Calendrier',
+                'principaluri': cal.principaluri,
+                'uri': cal.uri,
+                'description': cal.description,
+                'calendarcolor': cal.calendarcolor or '#005f82',
+                'access': cal.access,
+                'share_href': cal.share_href,
+                'share_displayname': cal.share_displayname,
+                'display': cal.display,
+                'user_id': cal.user_id
+            })
 
-            # Convertir pk en index (pk - 1)
-            try:
-                idx = int(pk) - 1
-                if 0 <= idx < len(calendars):
-                    cal = calendars[idx]
-                    formatted_cal = {
-                        'id': int(pk),
-                        'calendarid': int(pk),
-                        'principaluri': f'principals/{request.user.email}',
-                        'username': request.user.email,
-                        'access': 1,
-                        'displayname': cal['name'],
-                        'name': cal['name'],
-                        'uri': cal['id'],
-                        'description': '',
-                        'calendarorder': idx,
-                        'color': '#005f82',
-                        'display': True,
-                        'is_enabled': True,
-                        'defined_name': cal['id'],
-                        'user_id': request.user.id
-                    }
-                    return Response(formatted_cal)
-                else:
-                    return Response(
-                        {'error': 'Calendrier non trouvé'},
-                        status=status.HTTP_404_NOT_FOUND
-                    )
-            except (ValueError, IndexError):
-                return Response(
-                    {'error': 'ID de calendrier invalide'},
-                    status=status.HTTP_400_BAD_REQUEST
-                )
+
         except Exception as e:
             logger.error(f"Erreur récupération calendrier {pk}: {e}", exc_info=True)
             return Response(
@@ -170,8 +128,7 @@ class BaikalCalendarViewSet(viewsets.ViewSet):
         try:
             test_client = BaikalCalDAVClient(
                 base_url=settings.BAIKAL_SERVER_URL,
-                username=request.user.email,
-                password=password
+                user=self.request.user
             )
 
             # Essayer de lister les calendriers pour valider
@@ -247,8 +204,7 @@ class BaikalEventViewSet(viewsets.ViewSet):
 
         return BaikalCalDAVClient(
             base_url=settings.BAIKAL_SERVER_URL,
-            username=user.email,
-            password=password
+            user=user
         )
 
     def _format_event_for_frontend(self, event, calendar_name, event_id=None):
@@ -317,7 +273,7 @@ class BaikalEventViewSet(viewsets.ViewSet):
             for cal in calendars:
                 try:
                     events = client.get_events(
-                        calendar_name=cal['name'],
+                        calendar_name=cal['displayname'],
                         start_date=start_date,
                         end_date=end_date
                     )
@@ -325,7 +281,7 @@ class BaikalEventViewSet(viewsets.ViewSet):
                     for event in events:
                         formatted_event = self._format_event_for_frontend(
                             event,
-                            cal['name'],
+                            cal['displayname'],
                             event_id=event_counter
                         )
                         all_events.append(formatted_event)
@@ -572,7 +528,7 @@ class BaikalEventViewSet(viewsets.ViewSet):
         return self.update(request, pk)
 
     def destroy(self, request, pk=None):
-        """Supprime un événement via CalDAV en utilisant l'URL fournie"""
+        """Supprime un événement via CalDAV"""
         client = self._get_caldav_client()
         if not client:
             return Response(
@@ -584,11 +540,44 @@ class BaikalEventViewSet(viewsets.ViewSet):
             # ✅ Récupérer l'URL depuis le body ou query params
             event_url = request.data.get('url') or request.query_params.get('url')
 
+            # Si l'URL n'est pas fournie, chercher l'événement par ID
             if not event_url:
-                return Response(
-                    {'error': 'L\'URL de l\'événement est requise (champ "url" ou query param)'},
-                    status=status.HTTP_400_BAD_REQUEST
-                )
+                logger.info(f"URL non fournie, recherche de l'événement {pk} dans tous les calendriers")
+
+                # Récupérer tous les calendriers
+                calendars = client.list_calendars()
+
+                # Chercher l'événement dans tous les calendriers
+                found = False
+                for cal in calendars:
+                    try:
+                        # Récupérer les événements du calendrier
+                        events = client.get_events(
+                            calendar_name=cal['name'],
+                            start_date=datetime.now() - timedelta(days=365),
+                            end_date=datetime.now() + timedelta(days=365)
+                        )
+
+                        # Chercher l'événement avec l'ID correspondant
+                        for idx, event in enumerate(events, start=1):
+                            if idx == int(pk):
+                                event_url = event.get('url')
+                                logger.info(f"Événement {pk} trouvé dans le calendrier '{cal['name']}': {event_url}")
+                                found = True
+                                break
+
+                        if found:
+                            break
+
+                    except Exception as e:
+                        logger.warning(f"Erreur lors de la recherche dans '{cal['name']}': {e}")
+                        continue
+
+                if not event_url:
+                    return Response(
+                        {'error': f'Événement {pk} non trouvé dans les calendriers'},
+                        status=status.HTTP_404_NOT_FOUND
+                    )
 
             # Supprimer via CalDAV
             result = client.delete_event(event_url)

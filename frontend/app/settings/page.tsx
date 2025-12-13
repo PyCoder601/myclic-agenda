@@ -147,9 +147,9 @@ export default function SettingsPage() {
 
   const handleToggleCalendar = async (calendar: CalendarSource) => {
     try {
-      await caldavAPI.updateCalendar(calendar.id, { is_enabled: !calendar.is_enabled });
+      await caldavAPI.updateCalendar(calendar.id, { display: !calendar.display });
       setCalendars(calendars.map(cal =>
-        cal.id === calendar.id ? { ...cal, is_enabled: !cal.is_enabled } : cal
+        cal.id === calendar.id ? { ...cal, display: !cal.display } : cal
       ));
     } catch (error: any) {
       setMessage({ type: 'error', text: 'Erreur lors de la mise à jour du calendrier' });
@@ -158,9 +158,9 @@ export default function SettingsPage() {
 
   const handleColorChange = async (calendar: CalendarSource, color: string) => {
     try {
-      await caldavAPI.updateCalendar(calendar.id, { color });
+      await caldavAPI.updateCalendar(calendar.id, { calendarcolor: color });
       setCalendars(calendars.map(cal =>
-        cal.id === calendar.id ? { ...cal, color } : cal
+        cal.id === calendar.id ? { ...cal, calendarcolor: color } : cal
       ));
     } catch (error: any) {
       setMessage({ type: 'error', text: 'Erreur lors de la mise à jour de la couleur' });
@@ -524,16 +524,16 @@ export default function SettingsPage() {
                           </div>
                           <div
                             className="w-4 h-4 rounded-full shadow-lg ring-2 ring-white transition-all duration-300 group-hover:scale-125"
-                            style={{ backgroundColor: calendar.color }}
+                            style={{ backgroundColor: calendar.calendarcolor }}
                           />
                           <span className="text-slate-900 font-medium group-hover:text-[#005f82] transition-colors duration-200">
-                            {calendar.name}
+                            {calendar.displayname}
                           </span>
                         </div>
                         <div className="flex items-center gap-2">
                           <input
                             type="color"
-                            value={calendar.color}
+                            value={calendar.calendarcolor}
                             onChange={(e) => handleColorChange(calendar, e.target.value)}
                             className="w-10 h-10 rounded-xl cursor-pointer border-2 border-slate-200 hover:border-[#005f82] transition-all duration-300 hover:scale-110"
                             title="Changer la couleur"
@@ -563,7 +563,7 @@ export default function SettingsPage() {
                       Calendriers partagés avec vous
                     </h3>
                     <div className="space-y-2">
-                      {calendars.filter(cal => cal.user?.id !== user?.id).map((calendar, index) => (
+                      {calendars.filter(cal => cal.user_id !== user?.id).map((calendar, index) => (
                         <div
                           key={calendar.id}
                           className="group flex items-center justify-between p-4 hover:bg-gradient-to-r hover:from-purple-50 hover:to-pink-50 rounded-xl transition-all duration-300 border border-transparent hover:border-purple-200 hover:shadow-md animate-fadeIn"
@@ -573,26 +573,25 @@ export default function SettingsPage() {
                             <div className="relative">
                               <input
                                 type="checkbox"
-                                checked={calendar.is_enabled}
+                                checked={calendar.display}
                                 onChange={() => handleToggleCalendar(calendar)}
                                 className="h-5 w-5 text-purple-600 focus:ring-purple-500 border-slate-300 rounded transition-all duration-200 cursor-pointer"
                               />
                             </div>
                             <div
                               className="w-4 h-4 rounded-full shadow-lg ring-2 ring-white transition-all duration-300 group-hover:scale-125"
-                              style={{ backgroundColor: calendar.color }}
+                              style={{ backgroundColor: calendar.calendarcolor }}
                             />
                             <div>
                                 <span className="text-slate-900 font-medium group-hover:text-purple-700 transition-colors duration-200">
-                                {calendar.name}
+                                {calendar.displayname}
                                 </span>
-                                <span className="text-xs text-slate-500 ml-2">(de {calendar.user?.username})</span>
                             </div>
                           </div>
                           <div className="flex items-center gap-2">
                             <input
                               type="color"
-                              value={calendar.color}
+                              value={calendar.calendarcolor}
                               onChange={(e) => handleColorChange(calendar, e.target.value)}
                               className="w-10 h-10 rounded-xl cursor-pointer border-2 border-slate-200 hover:border-purple-300 transition-all duration-300 hover:scale-110"
                               title="Changer la couleur"
@@ -636,7 +635,7 @@ export default function SettingsPage() {
           <div className="fixed inset-0 bg-black/30 backdrop-blur-sm flex items-center justify-center z-50 animate-fadeIn">
             <div className="bg-white rounded-2xl shadow-2xl p-8 max-w-lg w-full">
               <h3 className="text-xl font-bold text-slate-900 mb-4">
-                Partager &quot;{selectedCalendar.name}&quot;
+                Partager &quot;{selectedCalendar.displayname}&quot;
               </h3>
 
               {/* Utilisateurs déjà partagés */}

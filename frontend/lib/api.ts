@@ -106,9 +106,9 @@ export const caldavAPI = {
 
     // Mettre à jour un calendrier (activer/désactiver, changer couleur, etc.)
     updateCalendar: (calendarId: number, data: Partial<{
-        name: string;
-        is_enabled: boolean;
-        color: string;
+        displayname: string;
+        display: boolean;
+        calendarcolor: string;
     }>) => api.put(`/caldav/calendars/${calendarId}/`, data),
 
     // Supprimer un calendrier

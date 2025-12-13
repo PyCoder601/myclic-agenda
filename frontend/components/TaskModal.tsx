@@ -167,11 +167,10 @@ export default function TaskModal({ isOpen, onClose, onSave, onDelete, task, ini
               >
                 {calendars.map(cal => {
                   const calId = String(cal.calendarid || cal.id);
-                  const calName = cal.displayname || cal.name || cal.defined_name || 'Calendrier';
-                  const username = cal.username || cal.user?.username || '';
+                  const calName = cal.displayname || 'Calendrier';
                   return (
                     <option key={calId} value={calId}>
-                      {calName} {username && `(${username})`}
+                      {calName}
                     </option>
                   );
                 })}

@@ -6,6 +6,8 @@ import niquests
 from niquests.auth import HTTPDigestAuth
 from typing import List, Optional, Dict, Any
 
+from .baikal_models import BaikalCalendarInstance
+
 # Configuration du logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
@@ -14,14 +16,14 @@ logger = logging.getLogger(__name__)
 class BaikalCalDAVClient:
     """Client CalDAV complet pour Baïkal"""
 
-    def __init__(self, base_url: str, username: str, password: str):
+    def __init__(self, base_url: str, user):
         self.base_url = base_url.rstrip('/') + '/'
-        self.username = username
-        self.password = password
+        self.username = user.email
+        self.password = user.baikal_password
 
         # Session avec authentification Digest
         self._session = niquests.Session()
-        self._session.auth = HTTPDigestAuth(username, password)
+        self._session.auth = HTTPDigestAuth(user.email, user.baikal_password)
 
         # Client DAV avec notre session
         self.client = DAVClient(url=self.base_url)
@@ -31,35 +33,33 @@ class BaikalCalDAVClient:
         self.principal = self.client.principal()
         logger.info(f"Connecté à Baïkal: {self.username}")
 
-    def list_calendars(self, details: bool = False) -> List[Dict[str, Any]]:
-        """Liste tous les calendriers avec option pour plus de détails"""
-        calendars = self.principal.calendars()
-
-        result = []
+    def list_calendars(self):
+        """Liste tous les calendriers disponibles via le principal CalDAV, au format dict pour le frontend/backend."""
+        calendars = BaikalCalendarInstance.objects.using('baikal').filter(
+            principaluri__contains=self.username
+        )
+        calendar_list = []
         for cal in calendars:
-            cal_info = {
-                'name': cal.name,
-                'url': str(cal.url),
-                'id': str(cal.url).split('/')[-2] if len(str(cal.url).split('/')) >= 2 else 'unknown'
-            }
-
-            if details:
-                try:
-                    # Récupérer les propriétés détaillées
-                    props = cal.get_properties(['{DAV:}displayname', '{DAV:}resourcetype'])
-                    cal_info['properties'] = dict(props)
-                except:
-                    cal_info['properties'] = {}
-
-            result.append(cal_info)
-
-        logger.info(f"Trouvé {len(result)} calendrier(s)")
-        return result
+            calendar_list.append({
+                'id': cal.id,
+                'calendarid': cal.calendarid,
+                'displayname': cal.displayname or cal.defined_name or 'Calendrier',
+                'principaluri': cal.principaluri,
+                'uri': cal.uri,
+                'description': cal.description,
+                'calendarcolor': cal.calendarcolor or '#005f82',
+                'access': cal.access,
+                'share_href': cal.share_href,
+                'share_displayname': cal.share_displayname,
+                'display': cal.display,
+                'user_id': cal.user_id
+            })
+        return calendar_list
 
     def get_calendar_by_name(self, name: str) -> Optional[Calendar]:
         """Récupère un calendrier spécifique par son nom exact"""
         for cal in self.principal.calendars():
-            if cal.name == name:
+            if getattr(cal, 'name', None) == name or getattr(cal, 'displayname', None) == name:
                 return cal
         return None
 
@@ -592,7 +592,7 @@ def main():
         # 2. Lister les calendriers
         print("\n📅 LISTE DES CALENDRIERS DISPONIBLES:")
         print("-" * 40)
-        calendars = baikal.list_calendars(details=False)
+        calendars = baikal.list_calendars()
         for i, cal in enumerate(calendars, 1):
             print(f"  {i}. {cal['name']}")
 

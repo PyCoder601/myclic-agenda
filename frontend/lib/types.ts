@@ -14,25 +14,16 @@ export interface CalendarShare {
 
 export interface CalendarSource {
     id: number;
-    user?: { id: number; username: string };
-    name?: string;
-    calendar_url?: string;
-    is_enabled?: boolean;
-    color?: string;
-    created_at?: string;
-    updated_at?: string;
-    shares?: CalendarShare[];
-    // Champs spécifiques à Baikal
     calendarid?: number;
-    principaluri?: string;
-    username?: string;
-    access?: number;
     displayname?: string;
+    principaluri?: string;
     uri?: string;
     description?: string;
-    calendarorder?: number;
+    calendarcolor?: string;
+    access?: number;
+    share_href?: string;
+    share_displayname?: string;
     display?: boolean;
-    defined_name?: string;
     user_id?: number;
 }
 

@@ -119,7 +119,7 @@ export default function DashboardPage() {
       const calendarName = task.calendar_source_name || '';
       if (!calendarName) return true; // si pas d'info, on n'exclut pas
 
-      const calendar = calendars.find(cal => (cal.displayname || cal.name) === calendarName);
+      const calendar = calendars.find(cal => cal.displayname === calendarName);
       if (!calendar) return true;
 
       // En mode "Agenda de groupe", on affiche tous les événements visibles (display !== 0)
@@ -291,20 +291,20 @@ export default function DashboardPage() {
   }, [events, dispatch, currentDate]);
 
   // Séparation des calendriers pour l'affichage
-  const ownedCalendars = useMemo(() => 
-    calendars.filter(cal => cal.user?.id === user?.id),
+  const ownCalendars = useMemo(() =>
+    calendars.filter(cal => cal.user_id === user?.id),
     [calendars, user]
   );
   const sharedCalendars = useMemo(() => 
-    calendars.filter(cal => cal.user?.id !== user?.id),
+    calendars.filter(cal => cal.user_id !== user?.id),
     [calendars, user]
   );
   const sharedUserCalendars = useMemo(() => 
-    sharedCalendars.filter(cal => !(cal.displayname || cal.name || '').toLowerCase().includes('kubicom')),
+    sharedCalendars.filter(cal => !(cal.displayname || '').toLowerCase().includes('kubicom')),
     [sharedCalendars]
   );
   const sharedResourceCalendars = useMemo(() =>
-    sharedCalendars.filter(cal => (cal.displayname || cal.name || '').toLowerCase().includes('kubicom')),
+    sharedCalendars.filter(cal => (cal.displayname || '').toLowerCase().includes('kubicom')),
     [sharedCalendars]
   );
 
@@ -441,7 +441,7 @@ export default function DashboardPage() {
                             Mes calendriers
                           </div>
                           <div className="space-y-1">
-                            {ownedCalendars.map((calendar) => (
+                            {ownCalendars.map((calendar) => (
                               <button
                                 key={calendar.id}
                                 onClick={() => dispatch(toggleCalendarEnabled(calendar.id))}
@@ -458,10 +458,10 @@ export default function DashboardPage() {
                                   </div>
                                   <div
                                     className="w-4 h-4 rounded-full shrink-0 shadow-md ring-2 ring-white transition-all duration-200 group-hover:scale-110"
-                                    style={{ backgroundColor: calendar.color }}
+                                    style={{ backgroundColor: calendar.calendarcolor }}
                                   />
                                   <span className={`text-sm font-medium transition-all duration-200 ${calendar.display ? 'text-slate-800' : 'text-slate-400'}`}>
-                                    {calendar.name}
+                                    {calendar.displayname}
                                   </span>
                                 </div>
                               </button>
@@ -491,10 +491,10 @@ export default function DashboardPage() {
                                     />
                                     <div
                                       className="w-4 h-4 rounded-full shrink-0 shadow-md ring-2 ring-white"
-                                      style={{ backgroundColor: calendar.color }}
+                                      style={{ backgroundColor: calendar.calendarcolor }}
                                     />
                                     <span className={`text-sm font-medium ${calendar.display ? 'text-slate-800' : 'text-slate-400'}`}>
-                                      {calendar.name}
+                                      {calendar.displayname}
                                     </span>
                                   </div>
                                 </button>
@@ -525,10 +525,10 @@ export default function DashboardPage() {
                                     />
                                     <div
                                       className="w-4 h-4 rounded-full shrink-0 shadow-md ring-2 ring-white"
-                                      style={{ backgroundColor: calendar.color }}
+                                      style={{ backgroundColor: calendar.calendarcolor }}
                                     />
                                     <span className={`text-sm font-medium ${calendar.display ? 'text-slate-800' : 'text-slate-400'}`}>
-                                      {calendar.name}
+                                      {calendar.displayname}
                                     </span>
                                   </div>
                                 </button>
@@ -541,6 +541,8 @@ export default function DashboardPage() {
                   )}
                 </div>
               )}
+
+
 
               {/* View Mode Selector */}
               <div className="flex gap-3">

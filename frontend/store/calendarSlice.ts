@@ -202,7 +202,7 @@ const calendarSlice = createSlice({
         setCalendarsEnabledByMode: (state, action: PayloadAction<'personal' | 'group'>) => {
             const mode = action.payload;
             state.calendars = state.calendars.map(cal => {
-                const calendarName = cal.displayname || cal.name || '';
+                const calendarName = cal.displayname || '';
                 const hasParentheses = calendarName.includes('(') || calendarName.includes(')');
 
                 if (mode === 'group') {
@@ -230,31 +230,31 @@ const calendarSlice = createSlice({
         builder.addCase(fetchCalendars.fulfilled, (state, action) => {
             state.loading = false;
 
-            // Si c'est le premier chargement (calendars vide), initialiser is_enabled
+            // Si c'est le premier chargement (calendars vide), initialiser display
             const isFirstLoad = state.calendars.length === 0;
 
             if (isFirstLoad) {
                 state.calendars = (action.payload as CalendarSource[]).map((cal) => {
-                    const calendarName = cal.displayname || cal.name || '';
+                    const calendarName = cal.displayname || '';
                     const hasParentheses = calendarName.includes('(') || calendarName.includes(')');
 
                     // Par défaut (mode "Mes calendriers"), désactiver ceux avec parenthèses
                     return {
                         ...cal,
-                        is_enabled: !hasParentheses,
+                        display: !hasParentheses,
                     };
                 });
             } else {
-                // Rechargement : conserver les préférences is_enabled de l'utilisateur
-                const previousEnabledStates = new Map(
-                    state.calendars.map(cal => [cal.id, cal.is_enabled])
+                // Rechargement : conserver les préférences display de l'utilisateur
+                const previousDisplayStates = new Map(
+                    state.calendars.map(cal => [cal.id, cal.display])
                 );
 
                 state.calendars = (action.payload as CalendarSource[]).map((cal) => ({
                     ...cal,
-                    is_enabled: previousEnabledStates.has(cal.id)
-                        ? previousEnabledStates.get(cal.id)
-                        : !((cal.displayname || cal.name || '').includes('(') || (cal.displayname || cal.name || '').includes(')')),
+                    display: previousDisplayStates.has(cal.id)
+                        ? previousDisplayStates.get(cal.id)
+                        : !((cal.displayname || '').includes('(') || (cal.displayname || '').includes(')')),
                 }));
             }
         });

@@ -347,22 +347,22 @@ export default function DashboardPage() {
                   {syncMessage}
                 </div>
               )}
-              <button
-                onClick={handleRefresh}
-                disabled={isSyncing}
-                className="group relative flex items-center gap-2 bg-white hover:bg-linear-to-r hover:from-blue-50 hover:to-indigo-50 text-slate-700 px-3 py-2 rounded-xl transition-all duration-300 border border-slate-200 hover:border-[#005f82] disabled:opacity-50 disabled:cursor-not-allowed hover:shadow-md"
-                title="Rafraîchir les données"
-              >
-                <RefreshCw className={`w-4 h-4 transition-transform duration-300 ${isSyncing ? 'animate-spin' : 'group-hover:rotate-180'}`} />
-                <span className="absolute -top-1 -right-1 w-2 h-2 bg-green-500 rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-300"></span>
-              </button>
-              <button
-                onClick={() => router.push('/settings')}
-                className="group relative flex items-center gap-2 bg-white hover:bg-linear-to-r hover:from-purple-50 hover:to-pink-50 text-slate-700 px-3 py-2 rounded-xl transition-all duration-300 border border-slate-200 hover:border-purple-300 hover:shadow-md"
-                title="Paramètres"
-              >
-                <Settings className="w-4 h-4 transition-transform duration-300 group-hover:rotate-90" />
-              </button>
+              {/*<button*/}
+              {/*  onClick={handleRefresh}*/}
+              {/*  disabled={isSyncing}*/}
+              {/*  className="group relative flex items-center gap-2 bg-white hover:bg-linear-to-r hover:from-blue-50 hover:to-indigo-50 text-slate-700 px-3 py-2 rounded-xl transition-all duration-300 border border-slate-200 hover:border-[#005f82] disabled:opacity-50 disabled:cursor-not-allowed hover:shadow-md"*/}
+              {/*  title="Rafraîchir les données"*/}
+              {/*>*/}
+              {/*  <RefreshCw className={`w-4 h-4 transition-transform duration-300 ${isSyncing ? 'animate-spin' : 'group-hover:rotate-180'}`} />*/}
+              {/*  <span className="absolute -top-1 -right-1 w-2 h-2 bg-green-500 rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-300"></span>*/}
+              {/*</button>*/}
+              {/*<button*/}
+              {/*  onClick={() => router.push('/settings')}*/}
+              {/*  className="group relative flex items-center gap-2 bg-white hover:bg-linear-to-r hover:from-purple-50 hover:to-pink-50 text-slate-700 px-3 py-2 rounded-xl transition-all duration-300 border border-slate-200 hover:border-purple-300 hover:shadow-md"*/}
+              {/*  title="Paramètres"*/}
+              {/*>*/}
+              {/*  <Settings className="w-4 h-4 transition-transform duration-300 group-hover:rotate-90" />*/}
+              {/*</button>*/}
               <button
                 onClick={() => {
                   setSelectedTask(null);

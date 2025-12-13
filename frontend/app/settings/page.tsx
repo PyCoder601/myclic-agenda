@@ -517,7 +517,7 @@ export default function SettingsPage() {
                           <div className="relative">
                             <input
                               type="checkbox"
-                              checked={calendar.is_enabled}
+                              checked={calendar.display}
                               onChange={() => handleToggleCalendar(calendar)}
                               className="h-5 w-5 text-[#005f82] focus:ring-[#005f82] border-slate-300 rounded transition-all duration-200 cursor-pointer"
                             />
@@ -554,7 +554,7 @@ export default function SettingsPage() {
                 </div>
 
                 {/* Calendriers partagés */}
-                {calendars.filter(cal => cal.user?.id !== user?.id).length > 0 && (
+                {calendars.filter(cal => cal.user_id !== user?.id).length > 0 && (
                   <div className="animate-slideInDown" style={{ animationDelay: '100ms' }}>
                     <h3 className="text-sm font-bold text-purple-700 mb-3 pb-2 border-b border-purple-200 uppercase tracking-wider flex items-center gap-2">
                       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -642,8 +642,9 @@ export default function SettingsPage() {
               <div className="mb-6">
                 <h4 className="font-semibold text-slate-700 mb-2">Partagé avec :</h4>
                 <div className="space-y-2 max-h-32 overflow-y-auto">
+                  {/* TODO: Implémenter la gestion des partages
                   {selectedCalendar.shares && selectedCalendar.shares.length > 0 ? (
-                    selectedCalendar.shares.map(share => (
+                    selectedCalendar.shares.map((share: any) => (
                       <div key={share.id} className="flex justify-between items-center bg-slate-100 p-2 rounded-lg">
                         <span>{share.user.username}</span>
                         <div className="flex items-center gap-2">
@@ -663,6 +664,8 @@ export default function SettingsPage() {
                   ) : (
                     <p className="text-slate-500 text-sm">Ce calendrier n&#39;est partagé avec personne.</p>
                   )}
+                  */}
+                  <p className="text-slate-500 text-sm">Fonctionnalité de partage à venir.</p>
                 </div>
               </div>
 

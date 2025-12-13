@@ -63,13 +63,13 @@ class BaikalCalDAVClient:
                 return cal
         return None
 
-    def get_events(self, calendar_name: str, start_date: datetime = None,
+    def get_events(self, calendar, start_date: datetime = None,
                    end_date: datetime = None) -> List[Dict[str, Any]]:
         """
         Récupère les événements d'un calendrier avec des filtres
 
         Args:
-            calendar_name: Nom du calendrier
+            calendar:calendrier
             start_date: Date de début (défaut: aujourd'hui - 7 jours)
             end_date: Date de fin (défaut: aujourd'hui + 30 jours)
             limit: Nombre maximum d'événements à retourner
@@ -77,6 +77,8 @@ class BaikalCalDAVClient:
         Returns:
             Liste d'événements formatés
         """
+        calendar_obj = calendar
+        calendar_name = calendar["displayname"]
         calendar = self.get_calendar_by_name(calendar_name)
         if not calendar:
             logger.error(f"Calendrier '{calendar_name}' non trouvé")
@@ -109,16 +111,21 @@ class BaikalCalDAVClient:
                     if not vevent:
                         continue
 
+                    print(f'VEVENT: {vevent}')
+
                     formatted_event = {
                         'id': str(vevent.get('uid', event.url)),
-                        'summary': str(vevent.get('summary', 'Sans titre')),
+                        'title': str(vevent.get('summary', 'Sans titre')),
                         'description': str(vevent.get('description', '')),
                         'location': str(vevent.get('location', '')),
-                        'start': self._parse_ical_date(vevent.get('dtstart')) if vevent.get('dtstart') else None,
-                        'end': self._parse_ical_date(vevent.get('dtend')) if vevent.get('dtend') else None,
-                        'last_modified': self._parse_ical_date(vevent.get('last-modified')) if vevent.get('last-modified') else None,
+                        'start_date': self._parse_ical_date(vevent.get('dtstart')) if vevent.get('dtstart') else None,
+                        'end_date': self._parse_ical_date(vevent.get('dtend')) if vevent.get('dtend') else None,
+                        'lastmodified': self._parse_ical_date(vevent.get('last-modified')) if vevent.get('last-modified') else None,
                         'url': str(event.url),
-                        'calendar': calendar_name
+                        'calendar_source_name': calendar_name,
+                        'calendar_source_id': calendar_obj['id'],
+                        'calendar_source_uri': calendar_obj['uri'],
+                        'calendar_source_color': calendar_obj["calendarcolor"]
                     }
                     formatted_events.append(formatted_event)
                 except Exception as e:

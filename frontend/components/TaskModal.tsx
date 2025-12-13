@@ -40,8 +40,7 @@ export default function TaskModal({ isOpen, onClose, onSave, onDelete, task, ini
         description: task.description || '',
         start_date: task.start_date.slice(0, 16),
         end_date: task.end_date.slice(0, 16),
-        is_completed: task.is_completed ?? false,
-        calendar_source: String(task.calendar_id || task.calendar_source || 'personal'),
+        calendar_source: String(task.calendar_source_id || 'personal'),
       };
     }
     
@@ -60,7 +59,6 @@ export default function TaskModal({ isOpen, onClose, onSave, onDelete, task, ini
       description: '',
       start_date: formatDateTimeLocal(start),
       end_date: formatDateTimeLocal(end),
-      is_completed: false,
       calendar_source: 'personal',
     };
   };
@@ -96,14 +94,14 @@ export default function TaskModal({ isOpen, onClose, onSave, onDelete, task, ini
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
-    // Convertir calendar_source en number, ne pas envoyer null si 'personal'
+    // Convertir calendar_source en number ou string
     const calendarIdValue = formData.calendar_source === 'personal'
-      ? calendars.length > 0 ? Number(calendars[0].calendarid || calendars[0].id) : null
+      ? calendars.length > 0 ? Number(calendars[0].calendarid || calendars[0].id) : 1
       : Number(formData.calendar_source);
 
     console.log('=== TaskModal Submit ===');
     console.log('calendar_source from form:', formData.calendar_source);
-    console.log('calendar_id to send:', calendarIdValue);
+    console.log('calendar_source_id to send:', calendarIdValue);
     console.log('=======================');
 
     onSave({
@@ -111,9 +109,8 @@ export default function TaskModal({ isOpen, onClose, onSave, onDelete, task, ini
       description: formData.description,
       start_date: new Date(formData.start_date).toISOString(),
       end_date: new Date(formData.end_date).toISOString(),
-      is_completed: formData.is_completed,
-      calendar_id: calendarIdValue as number,  // Le backend attend calendar_id
-      calendar_source: calendarIdValue,  // Gardé pour compatibilité
+      calendar_source_id: calendarIdValue,
+      calendar_source_uri: calendarIdValue,
     });
     onClose();
   };
@@ -216,18 +213,7 @@ export default function TaskModal({ isOpen, onClose, onSave, onDelete, task, ini
             </div>
           </div>
 
-          <div className="flex items-center p-4 bg-gradient-to-r from-slate-50 to-blue-50 rounded-xl border border-slate-200">
-            <input
-              type="checkbox"
-              id="completed"
-              checked={formData.is_completed}
-              onChange={(e) => setFormData({ ...formData, is_completed: e.target.checked })}
-              className="w-5 h-5 text-[#005f82] bg-white border-slate-300 rounded focus:ring-[#005f82] cursor-pointer"
-            />
-            <label htmlFor="completed" className="ml-3 text-sm font-semibold text-slate-700 cursor-pointer">
-              Événement terminé
-            </label>
-          </div>
+
 
           <div className="flex gap-3 pt-4">
             <button

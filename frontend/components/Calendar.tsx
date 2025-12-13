@@ -42,7 +42,7 @@ interface CalendarProps {
 const getTaskColor = (task: Task, calendars: CalendarSource[]): string => {
   if (task.calendar_source_color) return task.calendar_source_color;
 
-  const calendarId = task.calendar_id || task.calendar_source;
+  const calendarId = task.calendar_source_id;
   if (!calendarId) return "#005f82";
 
   const calendar = calendars.find(cal => (cal.calendarid || cal.id) === calendarId);
@@ -422,7 +422,7 @@ export default function Calendar({
   const calendarsByUser = useMemo(() => {
     const grouped: { [key: string]: CalendarSource[] } = {};
     calendars.forEach((cal) => {
-      const username = cal.user?.username || "Unknown";
+      const username = cal.displayname || "Unknown";
       if (!grouped[username]) {
         grouped[username] = [];
       }
@@ -758,7 +758,7 @@ export default function Calendar({
                   {daysToDisplay.map((day) => {
                     const dayTasks = tasks.filter(
                       (task) =>
-                        task.calendar_source === calendar.id &&
+                        task.calendar_source_id === calendar.id &&
                         isSameDay(new Date(task.start_date), day),
                     );
                     const cellDate = new Date(day);

@@ -6,11 +6,6 @@ export interface User {
     nom: string;
 }
 
-export interface CalendarShare {
-    id: number;
-    user: { id: number; username: string };
-    permission: 'read' | 'write';
-}
 
 export interface CalendarSource {
     id: number;
@@ -31,24 +26,15 @@ export interface Task {
     id: number;
     title: string;
     description: string;
-    is_completed: boolean;
+    location?: string;
     start_date: string;
     end_date: string;
-    created_at?: string;
-    updated_at?: string;
-    caldav_uid?: string;
-    caldav_etag?: string;
-    last_synced?: string;
-    calendar_source?: number | null;
-    calendar_source_name?: string;
-    calendar_source_color?: string;
-    // Champs Baikal
-    calendar_id?: number;
-    uid?: string;
-    etag?: string;
-    uri?: string;
-    url?: string; // ✅ URL complète CalDAV pour PATCH/DELETE
     lastmodified?: number;
+    url?: string; // ✅ URL complète CalDAV pour PATCH/DELETE
+    calendar_source_name?: string;
+    calendar_source_id: number | string;
+    calendar_source_uri: number | string;
+    calendar_source_color?: string;
 }
 
 export interface CalDAVConfig {

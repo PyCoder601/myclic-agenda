@@ -148,10 +148,6 @@ export const baikalAPI = {
     updateCalendar: (calendarId: number, data: Partial<CalendarSource>) =>
         api.patch(`/baikal/calendars/${calendarId}/`, data),
 
-    // Supprimer un calendrier
-    deleteCalendar: (calendarId: number) => api.delete(`/baikal/calendars/${calendarId}/`),
-
-    // Récupérer les événements
     getEvents: (params?: { start_date?: string; end_date?: string }) =>
         api.get('/baikal/events/', {params}),
 

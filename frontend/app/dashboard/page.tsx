@@ -69,24 +69,24 @@ export default function DashboardPage() {
   }, [user, dispatch]);
 
 
-  // ✅ Activer/désactiver les calendriers selon le mode de vue
-  const previousMainViewMode = useRef<'personal' | 'group' | null>(null);
-  useEffect(() => {
-    if (calendars.length > 0) {
-      // Au premier montage (previousMainViewMode.current === null), on applique le mode initial
-      if (previousMainViewMode.current === null) {
-        console.log(`🔄 Initialisation du mode de vue: ${mainViewMode}`);
-        dispatch(setCalendarsEnabledByMode(mainViewMode));
-        previousMainViewMode.current = mainViewMode;
-      }
-      // Pour les changements ultérieurs, on vérifie si le mode a changé
-      else if (previousMainViewMode.current !== mainViewMode) {
-        console.log(`🔄 Changement de mode de vue: ${previousMainViewMode.current} → ${mainViewMode}`);
-        dispatch(setCalendarsEnabledByMode(mainViewMode));
-        previousMainViewMode.current = mainViewMode;
-      }
-    }
-  }, [mainViewMode, calendars.length, dispatch]);
+  // // ✅ Activer/désactiver les calendriers selon le mode de vue
+  // const previousMainViewMode = useRef<'personal' | 'group' | null>(null);
+  // useEffect(() => {
+  //   if (calendars.length > 0) {
+  //     // Au premier montage (previousMainViewMode.current === null), on applique le mode initial
+  //     if (previousMainViewMode.current === null) {
+  //       console.log(`🔄 Initialisation du mode de vue: ${mainViewMode}`);
+  //       dispatch(setCalendarsEnabledByMode(mainViewMode));
+  //       previousMainViewMode.current = mainViewMode;
+  //     }
+  //     // Pour les changements ultérieurs, on vérifie si le mode a changé
+  //     else if (previousMainViewMode.current !== mainViewMode) {
+  //       console.log(`🔄 Changement de mode de vue: ${previousMainViewMode.current} → ${mainViewMode}`);
+  //       dispatch(setCalendarsEnabledByMode(mainViewMode));
+  //       previousMainViewMode.current = mainViewMode;
+  //     }
+  //   }
+  // }, [mainViewMode, calendars.length, dispatch]);
 
   // Fonction de chargement des événements
   const loadEventsForPeriod = useCallback((date: Date) => {
@@ -138,7 +138,7 @@ export default function DashboardPage() {
     router.push('/login');
   }, [dispatch, router]);
 
-  const handleSaveTask = useCallback(async (taskData: Omit<Task, 'id' | 'created_at' | 'updated_at'>) => {
+  const handleSaveTask = useCallback(async (taskData: Omit<Task, 'id'>) => {
     try {
       if (selectedTask) {
         // Mise à jour avec optimistic update

@@ -224,7 +224,7 @@ class BaikalEventViewSet(viewsets.ViewSet):
             'is_completed': False,
             'lastmodified': int(event['last_modified'].timestamp()) if event.get('last_modified') else None,
             'calendar_source_name': calendar_name,
-            'calendar_source_color': '#005f82'
+            'calendar_source_color': '#005f82',
         }
 
     def list(self, request):
@@ -268,30 +268,23 @@ class BaikalEventViewSet(viewsets.ViewSet):
 
             # Récupérer les événements de chaque calendrier
             all_events = []
-            event_counter = 1
 
             for cal in calendars:
+                if cal['display'] == 0 or cal['display'] == 'O':
+                    continue  # Calendrier masqué
                 try:
                     events = client.get_events(
-                        calendar_name=cal['displayname'],
+                        calendar=cal,
                         start_date=start_date,
                         end_date=end_date
                     )
 
-                    for event in events:
-                        formatted_event = self._format_event_for_frontend(
-                            event,
-                            cal['displayname'],
-                            event_id=event_counter
-                        )
-                        all_events.append(formatted_event)
-                        event_counter += 1
+                    all_events.extend(events)
+
 
                 except Exception as e:
                     logger.warning(f"Erreur récupération événements du calendrier {cal['name']}: {e}")
                     continue
-
-            logger.info(f"Récupération de {len(all_events)} événement(s) pour {request.user.email}")
 
             return Response(all_events)
         except Exception as e:

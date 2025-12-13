@@ -29,7 +29,6 @@ export const fetchCalendars = createAsyncThunk(
     'calendar/fetchCalendars',
     async (forceRefresh: boolean = false, {rejectWithValue}) => {
         try {
-
             console.log('🔄 Fetch calendriers depuis l\'API');
             const response = await baikalAPI.getCalendars();
             return response.data;
@@ -71,14 +70,10 @@ export const createEvent = createAsyncThunk(
             description: eventData.description || '',
             start_date: eventData.start_date!,
             end_date: eventData.end_date!,
-            is_completed: eventData.is_completed || false,
-            calendar_id: eventData.calendar_id,
-            calendar_source: eventData.calendar_source,
+            calendar_source_id: eventData.calendar_source_id || 1,
+            calendar_source_uri: eventData.calendar_source_uri || eventData.calendar_source_id || 1,
             calendar_source_name: eventData.calendar_source_name,
             calendar_source_color: eventData.calendar_source_color,
-            uid: tempId,
-            etag: '',
-            uri: '',
             lastmodified: Date.now(),
         };
 

@@ -465,6 +465,12 @@ class BaikalEventViewSet(viewsets.ViewSet):
             # Récupérer l'événement mis à jour pour retourner les données complètes
             updated_event = client.get_event_by_url(event_url)
 
+            # ✅ Préserver les informations du calendrier source depuis la requête
+            calendar_source_name = request.data.get('calendar_source_name')
+            calendar_source_id = request.data.get('calendar_source_id')
+            calendar_source_color = request.data.get('calendar_source_color')
+            calendar_source_uri = request.data.get('calendar_source_uri')
+
             if updated_event:
                 formatted_event = {
                     'id': pk,
@@ -475,6 +481,10 @@ class BaikalEventViewSet(viewsets.ViewSet):
                     'start_date': updated_event['start'].isoformat() if updated_event.get('start') else None,
                     'end_date': updated_event['end'].isoformat() if updated_event.get('end') else None,
                     'location': updated_event.get('location', ''),
+                    'calendar_source_name': calendar_source_name,
+                    'calendar_source_id': calendar_source_id,
+                    'calendar_source_color': calendar_source_color,
+                    'calendar_source_uri': calendar_source_uri,
                     'message': 'Événement mis à jour avec succès'
                 }
             else:
@@ -486,6 +496,10 @@ class BaikalEventViewSet(viewsets.ViewSet):
                     'description': update_data.get('description'),
                     'start_date': update_data.get('start'),
                     'end_date': update_data.get('end'),
+                    'calendar_source_name': calendar_source_name,
+                    'calendar_source_id': calendar_source_id,
+                    'calendar_source_color': calendar_source_color,
+                    'calendar_source_uri': calendar_source_uri,
                     'message': 'Événement mis à jour avec succès'
                 }
 

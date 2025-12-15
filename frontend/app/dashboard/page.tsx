@@ -189,11 +189,21 @@ export default function DashboardPage() {
   const handleSaveTask = useCallback(async (taskData: Omit<Task, 'id'>) => {
     try {
       if (selectedTask) {
+        // ✅ Fusionner avec les données existantes pour préserver tous les champs
+        const mergedData = {
+          ...taskData,
+          url: selectedTask.url, // Assurer que l'URL est toujours présente
+          calendar_source_name: taskData.calendar_source_name || selectedTask.calendar_source_name,
+          calendar_source_id: taskData.calendar_source_id || selectedTask.calendar_source_id,
+          calendar_source_color: taskData.calendar_source_color || selectedTask.calendar_source_color,
+          calendar_source_uri: taskData.calendar_source_uri || selectedTask.calendar_source_uri,
+        };
+
         // Mise à jour avec optimistic update
-        dispatch(optimisticUpdateEvent({ id: selectedTask.id, data: taskData }));
+        dispatch(optimisticUpdateEvent({ id: selectedTask.id, data: mergedData }));
 
         // Dispatch updateEvent thunk
-        await dispatch(updateEvent({ id: selectedTask.id, data: taskData })).unwrap();
+        await dispatch(updateEvent({ id: selectedTask.id, data: mergedData })).unwrap();
 
       } else {
         // Création avec optimistic update complet
@@ -285,6 +295,7 @@ export default function DashboardPage() {
         data: {
           start_date: newStartDate.toISOString(),
           end_date: newEndDate.toISOString(),
+          url: task.url, // ✅ Inclure l'URL pour assurer la mise à jour via CalDAV
         }
       })).unwrap();
 

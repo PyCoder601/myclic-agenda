@@ -35,12 +35,29 @@ export default function TaskModal({ isOpen, onClose, onSave, onDelete, task, ini
   // Calculer les valeurs initiales du formulaire
   const getInitialFormData = () => {
     if (task) {
+      // ✅ Utiliser l'ID du calendrier de l'événement existant
+      let calendarSourceId = String(task.calendar_source_id || '');
+
+      // Si on a des calendriers chargés, vérifier que l'ID existe
+      if (calendars.length > 0) {
+        const taskCalendar = calendars.find(
+          cal => cal.id === task.calendar_source_id || cal.calendarid === task.calendar_source_id
+        );
+        if (taskCalendar) {
+          calendarSourceId = String(taskCalendar.id);
+        } else {
+          // Si le calendrier de la tâche n'existe pas, utiliser le premier disponible
+          calendarSourceId = String(calendars[0].id);
+          console.warn('⚠️ Calendrier de l\'événement non trouvé, utilisation du premier disponible');
+        }
+      }
+
       return {
         title: task.title,
         description: task.description || '',
         start_date: task.start_date.slice(0, 16),
         end_date: task.end_date.slice(0, 16),
-        calendar_source: String(task.calendar_source_id || 'personal'),
+        calendar_source: calendarSourceId,
       };
     }
     
@@ -54,12 +71,17 @@ export default function TaskModal({ isOpen, onClose, onSave, onDelete, task, ini
     const end = new Date(start);
     end.setHours(hour + 1, 0, 0, 0);
     
+    // ✅ Utiliser le premier calendrier disponible comme défaut
+    const defaultCalendarSource = calendars.length > 0
+      ? String(calendars[0].id)
+      : '';
+
     return {
       title: '',
       description: '',
       start_date: formatDateTimeLocal(start),
       end_date: formatDateTimeLocal(end),
-      calendar_source: 'personal',
+      calendar_source: defaultCalendarSource,
     };
   };
 
@@ -79,30 +101,70 @@ export default function TaskModal({ isOpen, onClose, onSave, onDelete, task, ini
       // ✅ Réinitialiser le formulaire quand le modal s'ouvre
       const newFormData = getInitialFormData();
 
-      // Si pas de task et que nous avons des calendriers, utiliser le premier par défaut
-      if (!task && calendars.length > 0) {
-        newFormData.calendar_source = String(calendars[0].calendarid || calendars[0].id);
+      // ✅ S'assurer qu'un calendrier valide est sélectionné
+      if (calendars.length > 0 && !newFormData.calendar_source) {
+        newFormData.calendar_source = String(calendars[0].id);
       }
 
       setFormData(newFormData);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isOpen, task, initialDate, initialHour]);
+  }, [isOpen, task, initialDate, initialHour, calendars]);
 
   if (!isOpen) return null;
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
+    // ✅ Logging détaillé pour déboguer
+    console.log('=== DEBUG TaskModal Submit ===');
+    console.log('formData.calendar_source:', formData.calendar_source);
+    console.log('Calendriers disponibles:', calendars.map(cal => ({
+      id: cal.id,
+      calendarid: cal.calendarid,
+      displayname: cal.displayname,
+      stringId: String(cal.id),
+      stringCalendarId: String(cal.calendarid || cal.id)
+    })));
+
     // Trouver le calendrier sélectionné dans le state global
+    // ✅ Rechercher par id OU calendarid
     const selectedCalendar = calendars.find(
-      cal => String(cal.calendarid || cal.id) === formData.calendar_source
+      cal => String(cal.id) === formData.calendar_source ||
+             String(cal.calendarid) === formData.calendar_source
     );
 
     if (!selectedCalendar) {
       console.error('❌ Calendrier sélectionné non trouvé');
+      console.error('Valeur recherchée:', formData.calendar_source);
+      console.error('Calendriers disponibles:', calendars);
+
+      // ✅ Fallback : utiliser le premier calendrier disponible
+      if (calendars.length > 0) {
+        console.warn('⚠️ Utilisation du premier calendrier par défaut');
+        const fallbackCalendar = calendars[0];
+
+        // Mettre à jour formData pour la prochaine fois
+        setFormData({ ...formData, calendar_source: String(fallbackCalendar.id) });
+
+        // Utiliser ce calendrier
+        const selectedCalendar = fallbackCalendar;
+
+        // Continuer avec ce calendrier
+        console.log('✅ Calendrier de secours utilisé:', selectedCalendar);
+        submitWithCalendar(selectedCalendar);
+        return;
+      }
+
+      // Si vraiment aucun calendrier, impossible de continuer
+      alert('Aucun calendrier disponible. Veuillez créer ou activer un calendrier.');
       return;
     }
+
+    submitWithCalendar(selectedCalendar);
+  };
+
+  const submitWithCalendar = (selectedCalendar: any) => {
 
     console.log('=== TaskModal Submit ===');
     console.log('Selected calendar:', selectedCalendar);
@@ -124,6 +186,8 @@ export default function TaskModal({ isOpen, onClose, onSave, onDelete, task, ini
       calendar_source_id: selectedCalendar.id,
       calendar_source_uri: selectedCalendar.uri || '',
       calendar_source_color: selectedCalendar.calendarcolor,
+      // ✅ IMPORTANT : Inclure l'URL de l'événement pour les mises à jour
+      ...(task && { url: task.url }),
     });
     onClose();
   };
@@ -176,7 +240,8 @@ export default function TaskModal({ isOpen, onClose, onSave, onDelete, task, ini
                 className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#005f82] focus:border-transparent text-slate-800 font-medium transition-all appearance-none"
               >
                 {calendars.map(cal => {
-                  const calId = String(cal.calendarid || cal.id);
+                  // ✅ Toujours utiliser cal.id comme valeur pour uniformité
+                  const calId = String(cal.id);
                   const calName = cal.displayname || 'Calendrier';
                   return (
                     <option key={calId} value={calId}>

@@ -158,11 +158,13 @@ export const baikalAPI = {
     createEvent: (data: Partial<Task>) => api.post('/baikal/events/', data),
 
     // Mettre à jour un événement
-    updateEvent: (eventId: number, data: Partial<Task>) =>
-        api.patch(`/baikal/events/${eventId}/`, {
+    updateEvent: (eventId: number, data: Partial<Task>) => {
+        console.log('📝 baikalAPI.updateEvent appelé:', { eventId, data });
+        return api.patch(`/baikal/events/${eventId}/`, {
             ...data,
             url: data.url // ✅ Envoyer l'URL CalDAV pour la mise à jour
-        }),
+        });
+    },
 
     // Supprimer un événement
     deleteEvent: (url: string, id: string) => {

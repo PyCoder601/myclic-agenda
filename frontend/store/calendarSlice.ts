@@ -2,11 +2,17 @@ import {createSlice, createAsyncThunk, PayloadAction} from '@reduxjs/toolkit';
 import {baikalAPI} from '@/lib/api';
 import {Task, CalendarSource} from '@/lib/types';
 
+interface DateRange {
+    start: string;
+    end: string;
+}
+
 interface CalendarState {
     calendars: CalendarSource[];
-    events: Task[];
+    events: Task[]; // TOUS les événements accumulés (cache global)
     allCalendars: CalendarSource[]; // TOUS les calendriers (même display == 0)
     allEvents: Task[]; // TOUS les événements de tous les calendriers
+    loadedRanges: DateRange[]; // Plages de dates déjà chargées pour éviter les fetches
     loading: boolean;
     eventsLoading: boolean;
     groupEventsLoading: boolean; // État de chargement spécifique pour les événements du mode groupe
@@ -22,6 +28,7 @@ const initialState: CalendarState = {
     events: [],
     allCalendars: [],
     allEvents: [],
+    loadedRanges: [],
     loading: false,
     eventsLoading: false,
     groupEventsLoading: false,
@@ -30,6 +37,45 @@ const initialState: CalendarState = {
     error: null,
     lastFetch: null,
     optimisticEvents: {},
+};
+
+// Helper function pour vérifier si une plage de dates est déjà chargée
+const isRangeLoaded = (ranges: DateRange[], start: string, end: string): boolean => {
+    return ranges.some(range => {
+        // Vérifier si la plage demandée est couverte par une plage existante
+        return range.start <= start && range.end >= end;
+    });
+};
+
+// Helper function pour fusionner les plages de dates adjacentes ou qui se chevauchent
+const mergeRanges = (ranges: DateRange[], newRange: DateRange): DateRange[] => {
+    const allRanges = [...ranges, newRange];
+
+    // Trier par date de début
+    allRanges.sort((a, b) => a.start.localeCompare(b.start));
+
+    // Fusionner les plages qui se chevauchent ou sont adjacentes
+    const merged: DateRange[] = [];
+    let current = allRanges[0];
+
+    for (let i = 1; i < allRanges.length; i++) {
+        const next = allRanges[i];
+
+        if (current.end >= next.start) {
+            // Chevauchement ou adjacent - fusionner
+            current = {
+                start: current.start,
+                end: current.end > next.end ? current.end : next.end
+            };
+        } else {
+            // Pas de chevauchement - ajouter current et passer au suivant
+            merged.push(current);
+            current = next;
+        }
+    }
+
+    merged.push(current);
+    return merged;
 };
 
 // Thunks
@@ -62,18 +108,26 @@ export const fetchAllCalendars = createAsyncThunk(
     }
 );
 
-// Récupérer les événements
+// Récupérer les événements avec cache intelligent
 export const fetchEvents = createAsyncThunk(
     'calendar/fetchEvents',
-    async (params: { start_date: string; end_date: string }, {rejectWithValue}) => {
+    async (params: { start_date: string; end_date: string; forceRefresh?: boolean }, {rejectWithValue, getState}) => {
         try {
-            console.log(`🔄 Fetch événements pour ${params.start_date} à ${params.end_date}`);
+            const state = getState() as { calendar: CalendarState };
+
+            // Vérifier si cette plage est déjà chargée (sauf si forceRefresh)
+            if (!params.forceRefresh && isRangeLoaded(state.calendar.loadedRanges, params.start_date, params.end_date)) {
+                console.log(`✅ [Cache] Événements déjà en cache pour ${params.start_date} à ${params.end_date}`);
+                return { data: [], fromCache: true, range: { start: params.start_date, end: params.end_date } };
+            }
+
+            console.log(`🔄 [Fetch] Événements pour ${params.start_date} à ${params.end_date}`);
             const response = await baikalAPI.getEvents({
                 start_date: params.start_date,
                 end_date: params.end_date
             });
 
-            return response.data;
+            return { data: response.data, fromCache: false, range: { start: params.start_date, end: params.end_date } };
         } catch (error: any) {
             return rejectWithValue(error.response?.data || 'Erreur lors de la récupération des événements');
         }
@@ -357,11 +411,30 @@ const calendarSlice = createSlice({
         builder.addCase(fetchEvents.fulfilled, (state, action) => {
             state.eventsLoading = false;
 
-            // Remplacer tous les événements par les nouveaux
-            state.events = action.payload as Task[];
+            const payload = action.payload as any;
+
+            // Si les données viennent du cache, ne rien faire
+            if (payload.fromCache) {
+                console.log(`✅ [Cache] Utilisation des données en cache`);
+                return;
+            }
+
+            const newEvents = payload.data as Task[];
+            const range = payload.range as DateRange;
+
+            // AJOUTER les nouveaux événements sans supprimer les anciens
+            // Filtrer les doublons basés sur l'ID
+            const existingIds = new Set(state.events.map(e => e.id));
+            const eventsToAdd = newEvents.filter(e => !existingIds.has(e.id));
+
+            state.events = [...state.events, ...eventsToAdd];
+
+            // Ajouter la plage aux plages chargées
+            state.loadedRanges = mergeRanges(state.loadedRanges, range);
+
             state.lastFetch = Date.now();
 
-            console.log(`✅ ${state.events.length} événements chargés`);
+            console.log(`✅ [Fetch] ${eventsToAdd.length} nouveaux événements ajoutés (total: ${state.events.length})`);
         });
         builder.addCase(fetchEvents.rejected, (state, action) => {
             state.eventsLoading = false;
@@ -436,8 +509,18 @@ const calendarSlice = createSlice({
             if (index !== -1) {
                 state.events[index] = serverEvent;
             } else {
-                // Si pas trouvé, l'ajouter
+                // Si pas trouvé, l'ajouter au cache global
                 state.events.push(serverEvent);
+            }
+
+            // Aussi ajouter à allEvents si chargé
+            if (state.allEventsLoaded) {
+                const allIndex = state.allEvents.findIndex(e => e.id === tempId as any);
+                if (allIndex !== -1) {
+                    state.allEvents[allIndex] = serverEvent;
+                } else {
+                    state.allEvents.push(serverEvent);
+                }
             }
         });
         builder.addCase(createEvent.rejected, (state, action) => {
@@ -450,6 +533,14 @@ const calendarSlice = createSlice({
             if (index !== -1) {
                 state.events[index] = action.payload;
             }
+
+            // Aussi mettre à jour dans allEvents si chargé
+            if (state.allEventsLoaded) {
+                const allIndex = state.allEvents.findIndex(e => e.id === action.payload.id);
+                if (allIndex !== -1) {
+                    state.allEvents[allIndex] = action.payload;
+                }
+            }
         });
         builder.addCase(updateEvent.rejected, (state, action) => {
             state.error = action.payload as string;
@@ -458,6 +549,11 @@ const calendarSlice = createSlice({
         // Delete événement
         builder.addCase(deleteEvent.fulfilled, (state, action) => {
             state.events = state.events.filter(e => e.id !== action.payload);
+
+            // Aussi supprimer de allEvents si chargé
+            if (state.allEventsLoaded) {
+                state.allEvents = state.allEvents.filter(e => e.id !== action.payload);
+            }
         });
         builder.addCase(deleteEvent.rejected, (state, action) => {
             state.error = action.payload as string;

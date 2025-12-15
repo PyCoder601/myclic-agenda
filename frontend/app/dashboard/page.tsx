@@ -7,9 +7,7 @@ import { logout } from '@/store/authSlice';
 import {
   fetchCalendars,
   fetchEvents,
-  fetchAllGroupEvents,
   fetchAllCalendars,
-  fetchAllEventsBackground,
   createEvent,
   updateEvent,
   deleteEvent,
@@ -29,9 +27,7 @@ export default function DashboardPage() {
     calendars,
     events,
     allCalendars,
-    allEvents,
-    allCalendarsLoaded,
-    allEventsLoaded
+    allCalendarsLoaded
   } = useAppSelector((state) => state.calendar);
   const dispatch = useAppDispatch();
   const router = useRouter();
@@ -77,26 +73,13 @@ export default function DashboardPage() {
     }
   }, [user, dispatch]);
 
-  // Charger TOUS les calendriers et événements en arrière-plan après le chargement initial
+  // Charger TOUS les calendriers en arrière-plan après le chargement initial
   useEffect(() => {
     if (user && calendars.length > 0 && !allCalendarsLoaded) {
-      console.log('🔄 [Arrière-plan] Chargement de TOUS les calendriers et événements');
-
-      // Charger tous les calendriers
+      console.log('🔄 [Arrière-plan] Chargement de TOUS les calendriers');
       dispatch(fetchAllCalendars());
-
-      // Charger tous les événements pour la période actuelle
-      const year = currentDate.getFullYear();
-      const month = currentDate.getMonth();
-      const start = new Date(year, month, -7);
-      const end = new Date(year, month + 1, 7);
-
-      dispatch(fetchAllEventsBackground({
-        start_date: start.toISOString().split('T')[0],
-        end_date: end.toISOString().split('T')[0]
-      }));
     }
-  }, [user, calendars.length, allCalendarsLoaded, currentDate, dispatch]);
+  }, [user, calendars.length, allCalendarsLoaded, dispatch]);
 
 
   // // ✅ Activer/désactiver les calendriers selon le mode de vue
@@ -133,21 +116,6 @@ export default function DashboardPage() {
     }));
   }, [dispatch]);
 
-  // Fonction de chargement de TOUS les événements (pour le mode groupe)
-  const loadAllGroupEventsForPeriod = useCallback((date: Date) => {
-    const year = date.getFullYear();
-    const month = date.getMonth();
-    const start = new Date(year, month, -7);
-    const end = new Date(year, month + 1, 7);
-
-    console.log(`📡 Chargement de TOUS les événements de groupe...`);
-
-    dispatch(fetchAllGroupEvents({
-      start_date: start.toISOString().split('T')[0],
-      end_date: end.toISOString().split('T')[0]
-    }));
-  }, [dispatch]);
-
   // Activer/désactiver les calendriers selon le mode de vue
   useEffect(() => {
     if (calendars.length > 0) {
@@ -156,34 +124,35 @@ export default function DashboardPage() {
     }
   }, [mainViewMode, calendars.length, dispatch]);
 
-  // Charger TOUS les événements lors du passage en mode "Agenda de groupe"
+  // Charger les événements pour la période visible (avec cache intelligent)
   useEffect(() => {
-    if (user && mainViewMode === 'group') {
-      // Si les données sont déjà chargées en arrière-plan, ne pas refetch
-      if (allEventsLoaded && allEvents.length > 0) {
-        console.log('✅ [Optimisé] Utilisation des données en cache pour "Agenda de groupe"');
-        // Les données sont déjà dans le slice, pas besoin de fetch
-        // On va simplement mettre à jour events avec allEvents via le reducer
-        // Mais comme on utilise useSelector, on va créer une logique plus bas
-      } else {
-        console.log('🔄 Passage en mode "Agenda de groupe" - Chargement de tous les événements');
-        loadAllGroupEventsForPeriod(currentDate);
-      }
-    } else if (user && mainViewMode === 'personal') {
-      // Recharger les événements personnels quand on repasse en mode personnel
-      console.log('🔄 Retour en mode "Mes agendas" - Rechargement des événements personnels');
+    if (user) {
       loadEventsForPeriod(currentDate);
     }
-  }, [user, mainViewMode, currentDate, allEventsLoaded, allEvents.length, loadAllGroupEventsForPeriod, loadEventsForPeriod]);
+  }, [user, currentDate, loadEventsForPeriod]);
 
-  // Sélectionner les événements à utiliser selon le mode
+  // Sélectionner les événements à utiliser selon le mode et filtrer par date visible
   const eventsToUse = useMemo(() => {
-    if (mainViewMode === 'group' && allEventsLoaded && allEvents.length > 0) {
-      console.log('📊 Utilisation de allEvents pour le mode groupe');
-      return allEvents;
-    }
-    return events;
-  }, [mainViewMode, allEventsLoaded, allEvents, events]);
+    const year = currentDate.getFullYear();
+    const month = currentDate.getMonth();
+    const start = new Date(year, month, -7);
+    const end = new Date(year, month + 1, 7);
+
+    // Utiliser le cache global (events) qui contient tous les événements chargés
+    // Filtrer par la plage de dates visible
+    const filteredByDate = events.filter(event => {
+      const eventStart = new Date(event.start_date);
+      const eventEnd = new Date(event.end_date);
+
+      // Inclure l'événement s'il se trouve dans la plage visible
+      return (eventStart >= start && eventStart <= end) ||
+             (eventEnd >= start && eventEnd <= end) ||
+             (eventStart <= start && eventEnd >= end);
+    });
+
+    console.log(`📊 ${filteredByDate.length} événements dans la plage visible (${events.length} en cache)`);
+    return filteredByDate;
+  }, [events, currentDate]);
 
   // Sélectionner les calendriers à utiliser selon le mode
   const calendarsToUse = useMemo(() => {

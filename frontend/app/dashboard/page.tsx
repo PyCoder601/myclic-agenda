@@ -7,21 +7,32 @@ import { logout } from '@/store/authSlice';
 import {
   fetchCalendars,
   fetchEvents,
+  fetchAllGroupEvents,
+  fetchAllCalendars,
+  fetchAllEventsBackground,
   createEvent,
   updateEvent,
   deleteEvent,
   optimisticUpdateEvent,
   optimisticDeleteEvent,
-  setCalendarsEnabledByMode, toggleCalendarEnabled,
+  toggleCalendarEnabled,
+  setCalendarsEnabledByMode,
 } from '@/store/calendarSlice';
-import { Calendar as CalendarIcon, LogOut, Plus, RefreshCw, Settings } from 'lucide-react';
+import { Calendar as CalendarIcon, LogOut, Plus } from 'lucide-react';
 import Calendar from '@/components/Calendar';
 import TaskModal from '@/components/TaskModal';
 import { Task, ViewMode } from '@/lib/types';
 
 export default function DashboardPage() {
   const { user, loading: authLoading } = useAppSelector((state) => state.auth);
-  const { calendars, events } = useAppSelector((state) => state.calendar);
+  const {
+    calendars,
+    events,
+    allCalendars,
+    allEvents,
+    allCalendarsLoaded,
+    allEventsLoaded
+  } = useAppSelector((state) => state.calendar);
   const dispatch = useAppDispatch();
   const router = useRouter();
   
@@ -33,8 +44,6 @@ export default function DashboardPage() {
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [modalInitialDate, setModalInitialDate] = useState<Date>();
   const [modalInitialHour, setModalInitialHour] = useState<number>();
-  const [isSyncing, setIsSyncing] = useState(false);
-  const [syncMessage, setSyncMessage] = useState<string | null>(null);
   const [isCalendarDropdownOpen, setIsCalendarDropdownOpen] = useState(false);
 
   const calendarsLoaded = useRef(false);
@@ -67,6 +76,27 @@ export default function DashboardPage() {
       dispatch(fetchCalendars(false)); // ✅ Utilise le cache automatiquement
     }
   }, [user, dispatch]);
+
+  // Charger TOUS les calendriers et événements en arrière-plan après le chargement initial
+  useEffect(() => {
+    if (user && calendars.length > 0 && !allCalendarsLoaded) {
+      console.log('🔄 [Arrière-plan] Chargement de TOUS les calendriers et événements');
+
+      // Charger tous les calendriers
+      dispatch(fetchAllCalendars());
+
+      // Charger tous les événements pour la période actuelle
+      const year = currentDate.getFullYear();
+      const month = currentDate.getMonth();
+      const start = new Date(year, month, -7);
+      const end = new Date(year, month + 1, 7);
+
+      dispatch(fetchAllEventsBackground({
+        start_date: start.toISOString().split('T')[0],
+        end_date: end.toISOString().split('T')[0]
+      }));
+    }
+  }, [user, calendars.length, allCalendarsLoaded, currentDate, dispatch]);
 
 
   // // ✅ Activer/désactiver les calendriers selon le mode de vue
@@ -103,35 +133,84 @@ export default function DashboardPage() {
     }));
   }, [dispatch]);
 
-  // Charger les événements quand la date change
+  // Fonction de chargement de TOUS les événements (pour le mode groupe)
+  const loadAllGroupEventsForPeriod = useCallback((date: Date) => {
+    const year = date.getFullYear();
+    const month = date.getMonth();
+    const start = new Date(year, month, -7);
+    const end = new Date(year, month + 1, 7);
+
+    console.log(`📡 Chargement de TOUS les événements de groupe...`);
+
+    dispatch(fetchAllGroupEvents({
+      start_date: start.toISOString().split('T')[0],
+      end_date: end.toISOString().split('T')[0]
+    }));
+  }, [dispatch]);
+
+  // Activer/désactiver les calendriers selon le mode de vue
   useEffect(() => {
-    if (user) {
+    if (calendars.length > 0) {
+      console.log(`🔄 Changement de mode de vue: ${mainViewMode}`);
+      dispatch(setCalendarsEnabledByMode(mainViewMode));
+    }
+  }, [mainViewMode, calendars.length, dispatch]);
+
+  // Charger TOUS les événements lors du passage en mode "Agenda de groupe"
+  useEffect(() => {
+    if (user && mainViewMode === 'group') {
+      // Si les données sont déjà chargées en arrière-plan, ne pas refetch
+      if (allEventsLoaded && allEvents.length > 0) {
+        console.log('✅ [Optimisé] Utilisation des données en cache pour "Agenda de groupe"');
+        // Les données sont déjà dans le slice, pas besoin de fetch
+        // On va simplement mettre à jour events avec allEvents via le reducer
+        // Mais comme on utilise useSelector, on va créer une logique plus bas
+      } else {
+        console.log('🔄 Passage en mode "Agenda de groupe" - Chargement de tous les événements');
+        loadAllGroupEventsForPeriod(currentDate);
+      }
+    } else if (user && mainViewMode === 'personal') {
+      // Recharger les événements personnels quand on repasse en mode personnel
+      console.log('🔄 Retour en mode "Mes agendas" - Rechargement des événements personnels');
       loadEventsForPeriod(currentDate);
     }
-  }, [user, currentDate, loadEventsForPeriod]);
+  }, [user, mainViewMode, currentDate, allEventsLoaded, allEvents.length, loadAllGroupEventsForPeriod, loadEventsForPeriod]);
+
+  // Sélectionner les événements à utiliser selon le mode
+  const eventsToUse = useMemo(() => {
+    if (mainViewMode === 'group' && allEventsLoaded && allEvents.length > 0) {
+      console.log('📊 Utilisation de allEvents pour le mode groupe');
+      return allEvents;
+    }
+    return events;
+  }, [mainViewMode, allEventsLoaded, allEvents, events]);
+
+  // Sélectionner les calendriers à utiliser selon le mode
+  const calendarsToUse = useMemo(() => {
+    if (mainViewMode === 'group' && allCalendarsLoaded && allCalendars.length > 0) {
+      console.log('📊 Utilisation de allCalendars pour le mode groupe');
+      return allCalendars;
+    }
+    return calendars;
+  }, [mainViewMode, allCalendarsLoaded, allCalendars, calendars]);
 
   // Filtrer les tâches en fonction des calendriers activés avec mémoïsation
   const filteredTasks = useMemo(() => {
-    if (calendars.length === 0) return events;
+    if (calendarsToUse.length === 0) return eventsToUse;
 
-    return events.filter(task => {
+    return eventsToUse.filter(task => {
       // On identifie le calendrier par son displayname, qui correspond à calendar_source_name côté événements
       const calendarName = task.calendar_source_name || '';
       if (!calendarName) return true; // si pas d'info, on n'exclut pas
 
-      const calendar = calendars.find(cal => cal.displayname === calendarName);
+      const calendar = calendarsToUse.find(cal => cal.displayname === calendarName);
       if (!calendar) return true;
 
-      // En mode "Agenda de groupe", on affiche tous les événements visibles (display !== 0)
-      // L'utilisateur peut toujours toggler is_enabled pour cacher/afficher
-      if (mainViewMode === 'group') {
-        return true
-      }
-
-      // En mode "Mes calendriers", on respecte is_enabled (toggle utilisateur) et display
+      // En mode "Agenda de groupe" comme en mode "Mes calendriers",
+      // on respecte le toggle manuel de l'utilisateur (calendar.display)
       return calendar.display
     });
-  }, [events, calendars, mainViewMode]);
+  }, [eventsToUse, calendarsToUse]);
 
   const handleLogout = useCallback(() => {
     dispatch(logout());
@@ -205,37 +284,6 @@ export default function DashboardPage() {
     setIsModalOpen(true);
   }, []);
 
-  const handleRefresh = useCallback(async () => {
-    setIsSyncing(true);
-    setSyncMessage('Rafraîchissement...');
-
-    try {
-      const year = currentDate.getFullYear();
-      const month = currentDate.getMonth();
-      const start = new Date(year, month, -7);
-      const end = new Date(year, month + 1, 7);
-
-      // Recharger calendriers et événements en parallèle
-      await Promise.all([
-        dispatch(fetchCalendars(true)).unwrap(),
-        dispatch(fetchEvents({
-          start_date: start.toISOString().split('T')[0],
-          end_date: end.toISOString().split('T')[0]
-        })).unwrap()
-      ]);
-
-
-      setSyncMessage('✓ Données actualisées');
-      setTimeout(() => setSyncMessage(null), 3000);
-    } catch (error) {
-      console.error('Erreur de rafraîchissement:', error);
-      setSyncMessage('✗ Erreur de rafraîchissement');
-      setTimeout(() => setSyncMessage(null), 3000);
-    } finally {
-      setIsSyncing(false);
-    }
-  }, [dispatch, currentDate]);
-
   const handleTaskDrop = useCallback(async (taskId: number, newDate: Date) => {
     const task = events.find(t => t.id === taskId);
     if (!task) return;
@@ -292,12 +340,12 @@ export default function DashboardPage() {
 
   // Séparation des calendriers pour l'affichage
   const ownCalendars = useMemo(() =>
-    calendars.filter(cal => cal.user_id === user?.id),
-    [calendars, user]
+    calendarsToUse.filter(cal => cal.user_id === user?.id),
+    [calendarsToUse, user]
   );
   const sharedCalendars = useMemo(() => 
-    calendars.filter(cal => cal.user_id !== user?.id),
-    [calendars, user]
+    calendarsToUse.filter(cal => cal.user_id !== user?.id),
+    [calendarsToUse, user]
   );
   const sharedUserCalendars = useMemo(() => 
     sharedCalendars.filter(cal => !(cal.displayname || '').toLowerCase().includes('kubicom')),
@@ -342,11 +390,6 @@ export default function DashboardPage() {
             </div>
 
             <div className="flex items-center gap-2">
-              {syncMessage && (
-                <div className="text-xs bg-white px-3 py-1.5 rounded-lg border border-slate-200 text-slate-700 shadow-sm animate-slideInRight">
-                  {syncMessage}
-                </div>
-              )}
               {/*<button*/}
               {/*  onClick={handleRefresh}*/}
               {/*  disabled={isSyncing}*/}
@@ -395,7 +438,7 @@ export default function DashboardPage() {
             {/* View Mode Selector and Calendar Filter */}
             <div className="mb-3 flex items-center justify-between gap-3">
               {/* Calendar Dropdown Selector */}
-              {calendars.length > 0 && (
+              {calendarsToUse.length > 0 && (
                 <div className="relative calendar-dropdown-container">
                   <button
                     onClick={() => setIsCalendarDropdownOpen(!isCalendarDropdownOpen)}
@@ -404,7 +447,7 @@ export default function DashboardPage() {
                     <CalendarIcon className="w-4 h-4 transition-transform duration-300 group-hover:scale-110" />
                     <span>Agendas</span>
                     <span className="text-xs bg-linear-to-r from-[#005f82] to-[#007ba8] text-white px-2 py-0.5 rounded-full font-semibold shadow-sm">
-                      {calendars.filter(c => c.display).length}
+                      {calendarsToUse.filter(c => c.display).length}
                     </span>
                     <svg
                       className={`w-4 h-4 transition-transform duration-300 ${isCalendarDropdownOpen ? 'rotate-180' : ''}`}
@@ -622,7 +665,8 @@ export default function DashboardPage() {
             </div>
 
             {/* Calendar */}
-            <div className="flex-1 min-h-0">
+            <div className="flex-1 min-h-0 relative">
+
               <Calendar
                 tasks={filteredTasks}
                 viewMode={mainViewMode === 'personal' ? viewMode : groupViewMode}

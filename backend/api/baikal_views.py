@@ -266,11 +266,15 @@ class BaikalEventViewSet(viewsets.ViewSet):
             # Récupérer tous les calendriers
             calendars = client.list_calendars()
 
+            # Paramètre pour inclure tous les calendriers (mode groupe)
+            include_all = request.query_params.get('include_all', 'false').lower() == 'true'
+
             # Récupérer les événements de chaque calendrier
             all_events = []
 
             for cal in calendars:
-                if cal['display'] == 0 or cal['display'] == 'O':
+                # En mode "include_all", on ignore le filtre display
+                if not include_all and (cal['display'] == 0 or cal['display'] == 'O'):
                     continue  # Calendrier masqué
                 try:
                     events = client.get_events(

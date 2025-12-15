@@ -5,8 +5,13 @@ import {Task, CalendarSource} from '@/lib/types';
 interface CalendarState {
     calendars: CalendarSource[];
     events: Task[];
+    allCalendars: CalendarSource[]; // TOUS les calendriers (même display == 0)
+    allEvents: Task[]; // TOUS les événements de tous les calendriers
     loading: boolean;
     eventsLoading: boolean;
+    groupEventsLoading: boolean; // État de chargement spécifique pour les événements du mode groupe
+    allCalendarsLoaded: boolean; // Indique si tous les calendriers ont été chargés
+    allEventsLoaded: boolean; // Indique si tous les événements ont été chargés
     error: string | null;
     lastFetch: number | null;
     optimisticEvents: { [key: string]: Task }; // Événements en attente de confirmation
@@ -15,8 +20,13 @@ interface CalendarState {
 const initialState: CalendarState = {
     calendars: [],
     events: [],
+    allCalendars: [],
+    allEvents: [],
     loading: false,
     eventsLoading: false,
+    groupEventsLoading: false,
+    allCalendarsLoaded: false,
+    allEventsLoaded: false,
     error: null,
     lastFetch: null,
     optimisticEvents: {},
@@ -24,7 +34,7 @@ const initialState: CalendarState = {
 
 // Thunks
 
-// Récupérer les calendriers
+// Récupérer les calendriers (display != 0)
 export const fetchCalendars = createAsyncThunk(
     'calendar/fetchCalendars',
     async (forceRefresh: boolean = false, {rejectWithValue}) => {
@@ -34,6 +44,20 @@ export const fetchCalendars = createAsyncThunk(
             return response.data;
         } catch (error: any) {
             return rejectWithValue(error.response?.data || 'Erreur lors de la récupération des calendriers');
+        }
+    }
+);
+
+// Récupérer TOUS les calendriers (même display == 0) en arrière-plan
+export const fetchAllCalendars = createAsyncThunk(
+    'calendar/fetchAllCalendars',
+    async (_, {rejectWithValue}) => {
+        try {
+            console.log('🔄 [Arrière-plan] Fetch TOUS les calendriers (même display == 0)');
+            const response = await baikalAPI.getCalendars();
+            return response.data;
+        } catch (error: any) {
+            return rejectWithValue(error.response?.data || 'Erreur lors de la récupération de tous les calendriers');
         }
     }
 );
@@ -52,6 +76,44 @@ export const fetchEvents = createAsyncThunk(
             return response.data;
         } catch (error: any) {
             return rejectWithValue(error.response?.data || 'Erreur lors de la récupération des événements');
+        }
+    }
+);
+
+// Récupérer TOUS les événements de TOUS les calendriers (pour le mode groupe)
+export const fetchAllGroupEvents = createAsyncThunk(
+    'calendar/fetchAllGroupEvents',
+    async (params: { start_date: string; end_date: string }, {rejectWithValue}) => {
+        try {
+            console.log(`🔄 Fetch TOUS les événements de groupe pour ${params.start_date} à ${params.end_date}`);
+            const response = await baikalAPI.getEvents({
+                start_date: params.start_date,
+                end_date: params.end_date,
+                include_all: true  // ✅ Récupérer TOUS les calendriers sans filtre display
+            });
+
+            return response.data;
+        } catch (error: any) {
+            return rejectWithValue(error.response?.data || 'Erreur lors de la récupération des événements de groupe');
+        }
+    }
+);
+
+// Récupérer TOUS les événements en arrière-plan (même display == 0)
+export const fetchAllEventsBackground = createAsyncThunk(
+    'calendar/fetchAllEventsBackground',
+    async (params: { start_date: string; end_date: string }, {rejectWithValue}) => {
+        try {
+            console.log(`🔄 [Arrière-plan] Fetch TOUS les événements (même display == 0) pour ${params.start_date} à ${params.end_date}`);
+            const response = await baikalAPI.getEvents({
+                start_date: params.start_date,
+                end_date: params.end_date,
+                include_all: true  // ✅ Récupérer TOUS les calendriers sans filtre display
+            });
+
+            return response.data;
+        } catch (error: any) {
+            return rejectWithValue(error.response?.data || 'Erreur lors de la récupération de tous les événements');
         }
     }
 );
@@ -191,12 +253,41 @@ const calendarSlice = createSlice({
                 }
                 return cal;
             });
+            // Aussi mettre à jour allCalendars
+            state.allCalendars = state.allCalendars.map(cal => {
+                if (cal.id === calendarId) {
+                    return {
+                        ...cal,
+                        display: !cal.display,
+                    };
+                }
+                return cal;
+            });
         },
 
         // Activer/désactiver les calendriers selon le mode de vue
         setCalendarsEnabledByMode: (state, action: PayloadAction<'personal' | 'group'>) => {
             const mode = action.payload;
             state.calendars = state.calendars.map(cal => {
+                const calendarName = cal.displayname || '';
+                const hasParentheses = calendarName.includes('(') || calendarName.includes(')');
+
+                if (mode === 'group') {
+                    // En mode groupe, activer tous les calendriers visibles par défaut
+                    return {
+                        ...cal,
+                        display: true
+                    };
+                }
+
+                // En mode personnel : désactiver par défaut ceux avec parenthèses
+                return {
+                    ...cal,
+                    display: !hasParentheses,
+                };
+            });
+            // Aussi mettre à jour allCalendars
+            state.allCalendars = state.allCalendars.map(cal => {
                 const calendarName = cal.displayname || '';
                 const hasParentheses = calendarName.includes('(') || calendarName.includes(')');
 
@@ -275,6 +366,62 @@ const calendarSlice = createSlice({
         builder.addCase(fetchEvents.rejected, (state, action) => {
             state.eventsLoading = false;
             state.error = action.payload as string;
+        });
+
+        // Fetch TOUS les événements de groupe
+        builder.addCase(fetchAllGroupEvents.pending, (state) => {
+            state.groupEventsLoading = true;
+            state.error = null;
+        });
+        builder.addCase(fetchAllGroupEvents.fulfilled, (state, action) => {
+            state.groupEventsLoading = false;
+
+            // Remplacer tous les événements par les nouveaux
+            state.events = action.payload as Task[];
+            state.lastFetch = Date.now();
+
+            console.log(`✅ ${state.events.length} événements de groupe chargés`);
+        });
+        builder.addCase(fetchAllGroupEvents.rejected, (state, action) => {
+            state.groupEventsLoading = false;
+            state.error = action.payload as string;
+        });
+
+        // Fetch TOUS les calendriers en arrière-plan
+        builder.addCase(fetchAllCalendars.fulfilled, (state, action) => {
+            // Si calendars existe déjà, synchroniser les valeurs display
+            if (state.calendars.length > 0) {
+                const displayStates = new Map(
+                    state.calendars.map(cal => [cal.id, cal.display])
+                );
+
+                state.allCalendars = (action.payload as CalendarSource[]).map((cal) => ({
+                    ...cal,
+                    display: displayStates.has(cal.id)
+                        ? displayStates.get(cal.id)!
+                        : !((cal.displayname || '').includes('(') || (cal.displayname || '').includes(')')),
+                }));
+            } else {
+                // Initialisation par défaut
+                state.allCalendars = (action.payload as CalendarSource[]).map((cal) => {
+                    const calendarName = cal.displayname || '';
+                    const hasParentheses = calendarName.includes('(') || calendarName.includes(')');
+
+                    return {
+                        ...cal,
+                        display: !hasParentheses,
+                    };
+                });
+            }
+            state.allCalendarsLoaded = true;
+            console.log(`✅ [Arrière-plan] ${state.allCalendars.length} calendriers chargés`);
+        });
+
+        // Fetch TOUS les événements en arrière-plan
+        builder.addCase(fetchAllEventsBackground.fulfilled, (state, action) => {
+            state.allEvents = action.payload as Task[];
+            state.allEventsLoaded = true;
+            console.log(`✅ [Arrière-plan] ${state.allEvents.length} événements chargés`);
         });
 
         // Create événement

@@ -148,7 +148,7 @@ export const baikalAPI = {
     updateCalendar: (calendarId: number, data: Partial<CalendarSource>) =>
         api.patch(`/baikal/calendars/${calendarId}/`, data),
 
-    getEvents: (params?: { start_date?: string; end_date?: string }) =>
+    getEvents: (params?: { start_date?: string; end_date?: string; include_all?: boolean }) =>
         api.get('/baikal/events/', {params}),
 
     // Récupérer un événement spécifique

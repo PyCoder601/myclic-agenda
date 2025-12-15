@@ -345,52 +345,19 @@ class BaikalEventViewSet(viewsets.ViewSet):
             )
 
         try:
+
+            print(request.data)
             # Récupérer les données
             title = request.data.get('title')
             description = request.data.get('description', '')
             start_date = request.data.get('start_date')
             end_date = request.data.get('end_date')
-            calendar_source = request.data.get('calendar_source') or request.data.get('calendar_id')
+            calendar_source_name = request.data.get('calendar_source_name')
+            calendar_source_color = request.data.get('calendar_source_color')
+            calendar_source_uri = request.data.get('calendar_source_uri'),
+            calendar_source_id = request.data.get('calendar_source_id'),
 
-            # Validation
-            if not title:
-                return Response(
-                    {'error': 'Le titre est requis'},
-                    status=status.HTTP_400_BAD_REQUEST
-                )
 
-            if not start_date or not end_date:
-                return Response(
-                    {'error': 'Les dates de début et fin sont requises'},
-                    status=status.HTTP_400_BAD_REQUEST
-                )
-
-            # Récupérer le nom du calendrier
-            calendars = client.list_calendars()
-
-            calendar_name = None
-            if calendar_source:
-                # Essayer de trouver le calendrier par index
-                try:
-                    idx = int(calendar_source) - 1
-                    if 0 <= idx < len(calendars):
-                        calendar_name = calendars[idx]['name']
-                except (ValueError, IndexError):
-                    # Essayer par nom
-                    for cal in calendars:
-                        if cal['name'] == calendar_source or cal['id'] == calendar_source:
-                            calendar_name = cal['name']
-                            break
-
-            # Utiliser le premier calendrier si non spécifié
-            if not calendar_name and calendars:
-                calendar_name = calendars[0]['name']
-
-            if not calendar_name:
-                return Response(
-                    {'error': 'Aucun calendrier disponible'},
-                    status=status.HTTP_404_NOT_FOUND
-                )
 
             # Parser les dates
             try:
@@ -404,15 +371,15 @@ class BaikalEventViewSet(viewsets.ViewSet):
 
             # Créer l'événement via CalDAV
             event_data = {
-                'summary': title,
+                'title': title,
                 'description': description,
                 'start': start_dt,
                 'end': end_dt,
             }
 
-            result = client.create_event(calendar_name, event_data)
+            result = client.create_event(calendar_source_name, event_data)
 
-            if not result.get('success'):
+            if not result.get('id'):
                 return Response(
                     {'error': result.get('error', 'Erreur lors de la création')},
                     status=status.HTTP_500_INTERNAL_SERVER_ERROR
@@ -420,17 +387,17 @@ class BaikalEventViewSet(viewsets.ViewSet):
 
             # Retourner les données de l'événement créé
             created_event = {
-                'id': hash(result['uid']),
-                'uid': result['uid'],
+                'id': result['id'],
                 'title': title,
                 'description': description,
                 'start_date': start_date,
                 'end_date': end_date,
-                'calendar_id': calendar_name,
-                'calendar_source': calendar_name,
-                'calendar_source_name': calendar_name,
-                'calendar_source_color': '#005f82',
-                'message': 'Événement créé avec succès'
+                'location': "",
+                'lastmodified': int(datetime.now().timestamp()),
+                'calendar_source_name': calendar_source_name,
+                'calendar_source_color': calendar_source_color,
+                'calendar_source_id': calendar_source_id,
+                'calendar_source_uri': calendar_source_uri,
             }
 
             return Response(created_event, status=status.HTTP_201_CREATED)

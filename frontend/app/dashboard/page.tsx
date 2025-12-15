@@ -341,14 +341,15 @@ export default function DashboardPage() {
     <div className="min-h-screen bg-linear-to-br from-slate-50 via-blue-50 to-indigo-50">
       {/* Header */}
       <header className="bg-white/90 backdrop-blur-xl border-b border-slate-200/50 shadow-sm sticky top-0 z-50 transition-all duration-300">
-        <div className="max-w-[1920px] mx-auto px-6 py-3">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3 group">
-              <div className="bg-linear-to-br from-[#005f82] to-[#007ba8] p-2.5 rounded-xl shadow-lg transform transition-all duration-300 group-hover:scale-110 group-hover:rotate-3">
-                <CalendarIcon className="w-5 h-5 text-white" />
+        <div className="max-w-[1920px] mx-auto px-3 sm:px-6 py-3">
+          <div className="flex items-center justify-between gap-2 sm:gap-4">
+            {/* Logo et Titre */}
+            <div className="flex items-center gap-2 sm:gap-3 group">
+              <div className="bg-linear-to-br from-[#005f82] to-[#007ba8] p-2 sm:p-2.5 rounded-xl shadow-lg transform transition-all duration-300 group-hover:scale-110 group-hover:rotate-3">
+                <CalendarIcon className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
               </div>
-              <div>
-                <h1 className="text-xl font-bold bg-linear-to-r from-[#005f82] to-[#007ba8] bg-clip-text text-transparent">
+              <div className="hidden sm:block">
+                <h1 className="text-lg sm:text-xl font-bold bg-linear-to-r from-[#005f82] to-[#007ba8] bg-clip-text text-transparent">
                   Mon Agenda
                 </h1>
                 <p className="text-xs text-slate-600 flex items-center gap-1">
@@ -358,7 +359,84 @@ export default function DashboardPage() {
               </div>
             </div>
 
-            <div className="flex items-center gap-2">
+            {/* View Mode Switches - Maintenant dans le header */}
+            <div className="flex items-center gap-2 flex-1 justify-center">
+              {/* Main View Mode Selector (Personal / Group) */}
+              <div className="flex gap-1 sm:gap-2 bg-white/80 backdrop-blur-sm p-1 sm:p-1.5 rounded-lg sm:rounded-xl shadow-sm border border-slate-200">
+                <button
+                  onClick={() => setMainViewMode('personal')}
+                  className={`relative px-2 sm:px-4 py-1.5 sm:py-2 rounded-md sm:rounded-lg font-semibold transition-all duration-300 text-xs sm:text-sm overflow-hidden ${
+                    mainViewMode === 'personal'
+                      ? 'text-white shadow-lg'
+                      : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+                  }`}
+                >
+                  {mainViewMode === 'personal' && (
+                    <span className="absolute inset-0 bg-gradient-to-r from-[#005f82] to-[#007ba8] animate-slideInFromLeft"></span>
+                  )}
+                  <span className="relative z-10">Mes agendas</span>
+                </button>
+                <button
+                  onClick={() => setMainViewMode('group')}
+                  className={`relative px-2 sm:px-4 py-1.5 sm:py-2 rounded-md sm:rounded-lg font-semibold transition-all duration-300 text-xs sm:text-sm overflow-hidden ${
+                    mainViewMode === 'group'
+                      ? 'text-white shadow-lg'
+                      : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+                  }`}
+                >
+                  {mainViewMode === 'group' && (
+                    <span className="absolute inset-0 bg-gradient-to-r from-[#005f82] to-[#007ba8] animate-slideInFromLeft"></span>
+                  )}
+                  <span className="relative z-10">Groupe</span>
+                </button>
+              </div>
+
+              {/* Sub View Mode Selector (Day / Week / Month) */}
+              <div className="hidden sm:flex gap-1 sm:gap-2 bg-white/80 backdrop-blur-sm p-1 sm:p-1.5 rounded-lg sm:rounded-xl shadow-sm border border-slate-200">
+                <button
+                  onClick={() => mainViewMode === 'personal' ? setViewMode('day') : setGroupViewMode('day')}
+                  className={`relative px-2 sm:px-4 py-1.5 sm:py-2 rounded-md sm:rounded-lg font-semibold transition-all duration-300 text-xs sm:text-sm overflow-hidden ${
+                    (mainViewMode === 'personal' ? viewMode : groupViewMode) === 'day'
+                      ? 'text-white shadow-lg'
+                      : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+                  }`}
+                >
+                  {(mainViewMode === 'personal' ? viewMode : groupViewMode) === 'day' && (
+                    <span className="absolute inset-0 bg-gradient-to-r from-[#005f82] to-[#007ba8] animate-slideInFromLeft"></span>
+                  )}
+                  <span className="relative z-10">Jour</span>
+                </button>
+                <button
+                  onClick={() => mainViewMode === 'personal' ? setViewMode('week') : setGroupViewMode('week')}
+                  className={`relative px-2 sm:px-4 py-1.5 sm:py-2 rounded-md sm:rounded-lg font-semibold transition-all duration-300 text-xs sm:text-sm overflow-hidden ${
+                    (mainViewMode === 'personal' ? viewMode : groupViewMode) === 'week'
+                      ? 'text-white shadow-lg'
+                      : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+                  }`}
+                >
+                  {(mainViewMode === 'personal' ? viewMode : groupViewMode) === 'week' && (
+                    <span className="absolute inset-0 bg-gradient-to-r from-[#005f82] to-[#007ba8] animate-slideInFromLeft"></span>
+                  )}
+                  <span className="relative z-10">Semaine</span>
+                </button>
+                <button
+                  onClick={() => mainViewMode === 'personal' ? setViewMode('month') : setGroupViewMode('month')}
+                  className={`relative px-2 sm:px-4 py-1.5 sm:py-2 rounded-md sm:rounded-lg font-semibold transition-all duration-300 text-xs sm:text-sm overflow-hidden ${
+                    (mainViewMode === 'personal' ? viewMode : groupViewMode) === 'month'
+                      ? 'text-white shadow-lg'
+                      : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+                  }`}
+                >
+                  {(mainViewMode === 'personal' ? viewMode : groupViewMode) === 'month' && (
+                    <span className="absolute inset-0 bg-gradient-to-r from-[#005f82] to-[#007ba8] animate-slideInFromLeft"></span>
+                  )}
+                  <span className="relative z-10">Mois</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Actions */}
+            <div className="flex items-center gap-1 sm:gap-2">
               {/*<button*/}
               {/*  onClick={handleRefresh}*/}
               {/*  disabled={isSyncing}*/}
@@ -382,31 +460,76 @@ export default function DashboardPage() {
                   setModalInitialHour(undefined);
                   setIsModalOpen(true);
                 }}
-                className="group flex items-center gap-2 bg-linear-to-r from-[#005f82] to-[#007ba8] hover:from-[#007ba8] hover:to-[#005f82] text-white px-5 py-2.5 rounded-xl transition-all duration-300 font-medium text-sm shadow-lg hover:shadow-xl transform hover:scale-105 active:scale-95"
+                className="group flex items-center gap-1 sm:gap-2 bg-linear-to-r from-[#005f82] to-[#007ba8] hover:from-[#007ba8] hover:to-[#005f82] text-white px-2 sm:px-4 py-1.5 sm:py-2.5 rounded-lg sm:rounded-xl transition-all duration-300 font-medium text-xs sm:text-sm shadow-lg hover:shadow-xl transform hover:scale-105 active:scale-95"
               >
-                <Plus className="w-4 h-4 transition-transform duration-300 group-hover:rotate-90" />
-                <span>Nouvel événement</span>
+                <Plus className="w-3 h-3 sm:w-4 sm:h-4 transition-transform duration-300 group-hover:rotate-90" />
+                <span className="hidden sm:inline">Nouvel événement</span>
+                <span className="sm:hidden">Nouveau</span>
               </button>
-              <div className="h-8 w-px bg-linear-to-b from-transparent via-slate-300 to-transparent"></div>
+              <div className="hidden sm:block h-8 w-px bg-linear-to-b from-transparent via-slate-300 to-transparent"></div>
               <button
                 onClick={handleLogout}
-                className="group flex items-center gap-2 bg-white hover:bg-red-50 text-slate-700 hover:text-red-600 px-3 py-2 rounded-xl transition-all duration-300 border border-slate-200 hover:border-red-300 hover:shadow-md"
+                className="group flex items-center gap-1 sm:gap-2 bg-white hover:bg-red-50 text-slate-700 hover:text-red-600 px-2 sm:px-3 py-1.5 sm:py-2 rounded-lg sm:rounded-xl transition-all duration-300 border border-slate-200 hover:border-red-300 hover:shadow-md"
                 title="Déconnexion"
               >
-                <LogOut className="w-4 h-4 transition-transform duration-300 group-hover:translate-x-1" />
+                <LogOut className="w-3 h-3 sm:w-4 sm:h-4 transition-transform duration-300 group-hover:translate-x-1" />
               </button>
             </div>
           </div>
         </div>
       </header>
 
-      <div className="max-w-[1920px] mx-auto px-6 py-3">
-        <div className="flex gap-4 h-[calc(100vh-85px)]">
+      <div className="max-w-[1920px] mx-auto px-3 sm:px-6 py-2 sm:py-3">
+        <div className="flex gap-2 sm:gap-4 h-[calc(100vh-80px)] sm:h-[calc(100vh-85px)]">
           {/* Main Calendar */}
           <div className="flex-1 flex flex-col min-w-0">
-            {/* View Mode Selector and Calendar Filter */}
-            <div className="mb-3 flex items-center justify-between gap-3">
-              {/* Calendar Dropdown Selector */}
+            {/* Mobile View Mode Selector (Day/Week/Month) - Visible seulement sur mobile */}
+            <div className="sm:hidden mb-2 flex justify-center">
+              <div className="flex gap-1 bg-white/80 backdrop-blur-sm p-1 rounded-lg shadow-sm border border-slate-200">
+                <button
+                  onClick={() => mainViewMode === 'personal' ? setViewMode('day') : setGroupViewMode('day')}
+                  className={`relative px-3 py-1.5 rounded-md font-semibold transition-all duration-300 text-xs overflow-hidden ${
+                    (mainViewMode === 'personal' ? viewMode : groupViewMode) === 'day'
+                      ? 'text-white shadow-lg'
+                      : 'text-slate-600'
+                  }`}
+                >
+                  {(mainViewMode === 'personal' ? viewMode : groupViewMode) === 'day' && (
+                    <span className="absolute inset-0 bg-gradient-to-r from-[#005f82] to-[#007ba8]"></span>
+                  )}
+                  <span className="relative z-10">Jour</span>
+                </button>
+                <button
+                  onClick={() => mainViewMode === 'personal' ? setViewMode('week') : setGroupViewMode('week')}
+                  className={`relative px-3 py-1.5 rounded-md font-semibold transition-all duration-300 text-xs overflow-hidden ${
+                    (mainViewMode === 'personal' ? viewMode : groupViewMode) === 'week'
+                      ? 'text-white shadow-lg'
+                      : 'text-slate-600'
+                  }`}
+                >
+                  {(mainViewMode === 'personal' ? viewMode : groupViewMode) === 'week' && (
+                    <span className="absolute inset-0 bg-gradient-to-r from-[#005f82] to-[#007ba8]"></span>
+                  )}
+                  <span className="relative z-10">Semaine</span>
+                </button>
+                <button
+                  onClick={() => mainViewMode === 'personal' ? setViewMode('month') : setGroupViewMode('month')}
+                  className={`relative px-3 py-1.5 rounded-md font-semibold transition-all duration-300 text-xs overflow-hidden ${
+                    (mainViewMode === 'personal' ? viewMode : groupViewMode) === 'month'
+                      ? 'text-white shadow-lg'
+                      : 'text-slate-600'
+                  }`}
+                >
+                  {(mainViewMode === 'personal' ? viewMode : groupViewMode) === 'month' && (
+                    <span className="absolute inset-0 bg-gradient-to-r from-[#005f82] to-[#007ba8]"></span>
+                  )}
+                  <span className="relative z-10">Mois</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Calendar Dropdown Selector */}
+            <div className="mb-2 sm:mb-3">
               {calendarsToUse.length > 0 && (
                 <div className="relative calendar-dropdown-container">
                   <button
@@ -553,84 +676,6 @@ export default function DashboardPage() {
                   )}
                 </div>
               )}
-
-
-
-              {/* View Mode Selector */}
-              <div className="flex gap-3">
-                {/* Main View Mode Selector (Personal / Group) */}
-                <div className="flex gap-2 bg-white/80 backdrop-blur-sm p-1.5 rounded-xl shadow-sm border border-slate-200">
-                  <button
-                    onClick={() => setMainViewMode('personal')}
-                    className={`relative px-5 py-2 rounded-lg font-semibold transition-all duration-300 text-sm overflow-hidden ${
-                      mainViewMode === 'personal'
-                        ? 'text-white shadow-lg'
-                        : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
-                    }`}
-                  >
-                    {mainViewMode === 'personal' && (
-                      <span className="absolute inset-0 bg-gradient-to-r from-[#005f82] to-[#007ba8] animate-slideInFromLeft"></span>
-                    )}
-                    <span className="relative z-10">Mes agendas</span>
-                  </button>
-                  <button
-                    onClick={() => setMainViewMode('group')}
-                    className={`relative px-5 py-2 rounded-lg font-semibold transition-all duration-300 text-sm overflow-hidden ${
-                      mainViewMode === 'group'
-                        ? 'text-white shadow-lg'
-                        : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
-                    }`}
-                  >
-                    {mainViewMode === 'group' && (
-                      <span className="absolute inset-0 bg-gradient-to-r from-[#005f82] to-[#007ba8] animate-slideInFromLeft"></span>
-                    )}
-                    <span className="relative z-10">Agenda de groupe</span>
-                  </button>
-                </div>
-
-                {/* Sub View Mode Selector (Day / Week / Month) */}
-                <div className="flex gap-2 bg-white/80 backdrop-blur-sm p-1.5 rounded-xl shadow-sm border border-slate-200">
-                  <button
-                    onClick={() => mainViewMode === 'personal' ? setViewMode('day') : setGroupViewMode('day')}
-                    className={`relative px-5 py-2 rounded-lg font-semibold transition-all duration-300 text-sm overflow-hidden ${
-                      (mainViewMode === 'personal' ? viewMode : groupViewMode) === 'day'
-                        ? 'text-white shadow-lg'
-                        : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
-                    }`}
-                  >
-                    {(mainViewMode === 'personal' ? viewMode : groupViewMode) === 'day' && (
-                      <span className="absolute inset-0 bg-gradient-to-r from-[#005f82] to-[#007ba8] animate-slideInFromLeft"></span>
-                    )}
-                    <span className="relative z-10">Aujourd&apos;hui</span>
-                  </button>
-                  <button
-                    onClick={() => mainViewMode === 'personal' ? setViewMode('week') : setGroupViewMode('week')}
-                    className={`relative px-5 py-2 rounded-lg font-semibold transition-all duration-300 text-sm overflow-hidden ${
-                      (mainViewMode === 'personal' ? viewMode : groupViewMode) === 'week'
-                        ? 'text-white shadow-lg'
-                        : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
-                    }`}
-                  >
-                    {(mainViewMode === 'personal' ? viewMode : groupViewMode) === 'week' && (
-                      <span className="absolute inset-0 bg-gradient-to-r from-[#005f82] to-[#007ba8] animate-slideInFromLeft"></span>
-                    )}
-                    <span className="relative z-10">Cette semaine</span>
-                  </button>
-                  <button
-                    onClick={() => mainViewMode === 'personal' ? setViewMode('month') : setGroupViewMode('month')}
-                    className={`relative px-5 py-2 rounded-lg font-semibold transition-all duration-300 text-sm overflow-hidden ${
-                      (mainViewMode === 'personal' ? viewMode : groupViewMode) === 'month'
-                        ? 'text-white shadow-lg'
-                        : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
-                    }`}
-                  >
-                    {(mainViewMode === 'personal' ? viewMode : groupViewMode) === 'month' && (
-                      <span className="absolute inset-0 bg-gradient-to-r from-[#005f82] to-[#007ba8] animate-slideInFromLeft"></span>
-                    )}
-                    <span className="relative z-10">Ce mois</span>
-                  </button>
-                </div>
-              </div>
             </div>
 
             {/* Calendar */}

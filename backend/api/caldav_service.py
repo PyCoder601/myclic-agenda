@@ -170,7 +170,7 @@ class BaikalCalDAVClient:
 
         try:
             # Validation des données requises
-            required_fields = ['summary', 'start', 'end']
+            required_fields = ['title', 'start', 'end']
             for field in required_fields:
                 if field not in event_data:
                     return {'error': f"Champ requis manquant: {field}", 'success': False}
@@ -196,7 +196,7 @@ UID:{uid}
 DTSTAMP:{datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%SZ')}
 DTSTART:{self._format_ical_date(start_date)}
 DTEND:{self._format_ical_date(end_date)}
-SUMMARY:{event_data.get('summary', 'Nouvel événement')}
+SUMMARY:{event_data.get('title', 'Nouvel événement')}
 DESCRIPTION:{event_data.get('description', '')}
 LOCATION:{event_data.get('location', '')}
 STATUS:CONFIRMED
@@ -206,13 +206,14 @@ END:VCALENDAR"""
             # Sauvegarder l'événement
             calendar.save_event(ical_content)
 
-            logger.info(f"Événement créé: {event_data.get('summary')} dans '{calendar_name}'")
+            logger.info(f"Événement créé: {event_data.get('title')} dans '{calendar_name}'")
 
             return {
-                'success': True,
-                'uid': uid,
-                'message': f"Événement créé dans '{calendar_name}'",
-                'summary': event_data.get('summary'),
+                'id': uid,
+                'title': event_data.get('title'),
+                'description': event_data.get('description', ''),
+                'location': event_data.get('location', ''),
+                'calendar_source_name': calendar_name,
                 'start': start_date.isoformat() if hasattr(start_date, 'isoformat') else str(start_date),
                 'end': end_date.isoformat() if hasattr(end_date, 'isoformat') else str(end_date)
             }

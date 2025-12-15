@@ -631,17 +631,22 @@ export default function Calendar({
 
   const renderMonthView = () => {
     return (
-      <div className="flex-1 flex flex-col bg-white">
-        <div className="grid grid-cols-7 border-b border-slate-200 bg-gradient-to-r from-slate-50 to-blue-50">
-          {weekDayLabels.map((day) => (
+      <div className="flex-1 flex flex-col bg-white overflow-auto">
+        {/* En-tête des jours de la semaine - responsive */}
+        <div className="grid grid-cols-7 border-b border-slate-200 bg-gradient-to-r from-slate-50 to-blue-50 sticky top-0 z-10">
+          {weekDayLabels.map((day, index) => (
             <div
               key={day}
-              className="p-3 text-center font-semibold text-slate-700 border-r border-slate-200 last:border-r-0"
+              className="p-1.5 sm:p-3 text-center font-semibold text-slate-700 border-r border-slate-200 last:border-r-0 text-xs sm:text-sm"
             >
-              {day}
+              {/* Afficher version courte sur mobile, complète sur desktop */}
+              <span className="hidden sm:inline">{day}</span>
+              <span className="sm:hidden">{day.substring(0, 3)}</span>
             </div>
           ))}
         </div>
+
+        {/* Grille des jours - responsive avec hauteur minimale ajustée */}
         <div className="flex-1 grid grid-cols-7 auto-rows-fr">
           {calendarDays.map((day) => {
             const dayTasks = getTasksForDate(day);
@@ -651,18 +656,19 @@ export default function Calendar({
             return (
               <div
                 key={day.toString()}
-                className={`border-r border-b border-slate-200 min-h-[120px] ${!isCurrentMonth ? "bg-slate-50/50" : ""}`}
+                className={`border-r border-b border-slate-200 min-h-[80px] sm:min-h-[120px] ${!isCurrentMonth ? "bg-slate-50/50" : ""}`}
               >
                 <DroppableCell
                   id={format(day, "yyyy-MM-dd")}
                   date={day}
                   className="h-full"
                 >
-                  <div className="p-2 h-full" onClick={() => onAddTask(day)}>
+                  <div className="p-1 sm:p-2 h-full flex flex-col" onClick={() => onAddTask(day)}>
+                    {/* Numéro du jour - plus visible */}
                     <div
-                      className={`text-sm font-semibold mb-2 ${
+                      className={`text-xs sm:text-sm font-bold mb-1 sm:mb-2 flex-shrink-0 ${
                         isToday
-                          ? "bg-gradient-to-r from-[#005f82] to-[#007ba8] text-white rounded-xl w-8 h-8 flex items-center justify-center shadow-md"
+                          ? "bg-gradient-to-r from-[#005f82] to-[#007ba8] text-white rounded-lg sm:rounded-xl w-6 h-6 sm:w-8 sm:h-8 flex items-center justify-center shadow-md"
                           : isCurrentMonth
                             ? "text-slate-800"
                             : "text-slate-400"
@@ -670,24 +676,47 @@ export default function Calendar({
                     >
                       {format(day, "d")}
                     </div>
-                    <div className="space-y-1">
+
+                    {/* Événements - responsive */}
+                    <div className="space-y-0.5 sm:space-y-1 flex-1 overflow-hidden">
                       {dayTasks
                         .filter((t) => isSameDay(new Date(t.start_date), day))
-                        .slice(0, 3)
+                        .slice(0, 2) // Limiter à 2 sur mobile, 3 sur desktop géré par CSS
                         .map((task) => (
-                          <Draggable key={task.id} task={task} />
+                          <div key={task.id} className="hidden sm:block">
+                            <Draggable task={task} />
+                          </div>
                         ))}
-                      {dayTasks.length > 3 && (
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setDayTasksModalDate(day);
-                          }}
-                          className="text-xs text-blue-600 hover:text-blue-800 font-semibold pl-1 text-left w-full hover:underline"
-                        >
-                          +{dayTasks.length - 3} autres
-                        </button>
+
+                      {/* Indicateur du nombre d'événements sur mobile */}
+                      {dayTasks.length > 0 && (
+                        <div className="sm:hidden">
+                          <div className="text-[10px] font-semibold text-[#005f82] bg-blue-50 rounded px-1.5 py-0.5 inline-block">
+                            {dayTasks.length} événement{dayTasks.length > 1 ? 's' : ''}
+                          </div>
+                        </div>
                       )}
+
+                      {/* Sur desktop, afficher les événements et le lien "autres" */}
+                      <div className="hidden sm:block space-y-1">
+                        {dayTasks
+                          .filter((t) => isSameDay(new Date(t.start_date), day))
+                          .slice(2, 3)
+                          .map((task) => (
+                            <Draggable key={task.id} task={task} />
+                          ))}
+                        {dayTasks.length > 3 && (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setDayTasksModalDate(day);
+                            }}
+                            className="text-xs text-blue-600 hover:text-blue-800 font-semibold pl-1 text-left w-full hover:underline"
+                          >
+                            +{dayTasks.length - 3} autre{dayTasks.length - 3 > 1 ? 's' : ''}
+                          </button>
+                        )}
+                      </div>
                     </div>
                   </div>
                 </DroppableCell>
@@ -807,28 +836,28 @@ export default function Calendar({
   return (
     <>
       <DndContext onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
-        <div className="flex flex-col h-full bg-white rounded-2xl overflow-hidden shadow-xl border border-slate-200/50 animate-fadeIn">
+        <div className="flex flex-col h-full bg-white rounded-lg sm:rounded-2xl overflow-hidden shadow-xl border border-slate-200/50 animate-fadeIn">
           {/* Calendar Header */}
-          <div className="flex items-center justify-between p-4 border-b border-slate-200/50 bg-gradient-to-r from-white via-blue-50/40 to-white backdrop-blur-sm">
-            <div className="flex items-center gap-3">
+          <div className="flex items-center justify-between p-2 sm:p-4 border-b border-slate-200/50 bg-gradient-to-r from-white via-blue-50/40 to-white backdrop-blur-sm">
+            <div className="flex items-center gap-1 sm:gap-3 flex-1 justify-center">
               <button
                 onClick={navigatePrevious}
-                className="group p-2.5 hover:bg-gradient-to-r hover:from-blue-50 hover:to-indigo-50 rounded-xl transition-all duration-300 text-slate-700 hover:shadow-lg border border-transparent hover:border-[#005f82]/20"
+                className="group p-1.5 sm:p-2.5 hover:bg-gradient-to-r hover:from-blue-50 hover:to-indigo-50 rounded-lg sm:rounded-xl transition-all duration-300 text-slate-700 hover:shadow-lg border border-transparent hover:border-[#005f82]/20"
                 title="Période précédente"
               >
-                <ChevronLeft className="w-5 h-5 text-slate-600 group-hover:text-[#005f82] transition-all duration-300 group-hover:-translate-x-1" />
+                <ChevronLeft className="w-4 h-4 sm:w-5 sm:h-5 text-slate-600 group-hover:text-[#005f82] transition-all duration-300 group-hover:-translate-x-1" />
               </button>
-              <div className="text-center min-w-[280px]">
-                <h2 className="text-lg font-bold bg-gradient-to-r from-[#005f82] to-[#007ba8] bg-clip-text text-transparent capitalize">
+              <div className="text-center flex-1 px-2">
+                <h2 className="text-sm sm:text-lg font-bold bg-gradient-to-r from-[#005f82] to-[#007ba8] bg-clip-text text-transparent capitalize">
                   {getDateRange}
                 </h2>
               </div>
               <button
                 onClick={navigateNext}
-                className="group p-2.5 hover:bg-gradient-to-r hover:from-blue-50 hover:to-indigo-50 rounded-xl transition-all duration-300 text-slate-700 hover:shadow-lg border border-transparent hover:border-[#005f82]/20"
+                className="group p-1.5 sm:p-2.5 hover:bg-gradient-to-r hover:from-blue-50 hover:to-indigo-50 rounded-lg sm:rounded-xl transition-all duration-300 text-slate-700 hover:shadow-lg border border-transparent hover:border-[#005f82]/20"
                 title="Période suivante"
               >
-                <ChevronRight className="w-5 h-5 text-slate-600 group-hover:text-[#005f82] transition-all duration-300 group-hover:translate-x-1" />
+                <ChevronRight className="w-4 h-4 sm:w-5 sm:h-5 text-slate-600 group-hover:text-[#005f82] transition-all duration-300 group-hover:translate-x-1" />
               </button>
             </div>
           </div>

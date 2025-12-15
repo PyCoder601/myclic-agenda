@@ -94,23 +94,36 @@ export default function TaskModal({ isOpen, onClose, onSave, onDelete, task, ini
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
-    // Convertir calendar_source en number ou string
-    const calendarIdValue = formData.calendar_source === 'personal'
-      ? calendars.length > 0 ? Number(calendars[0].calendarid || calendars[0].id) : 1
-      : Number(formData.calendar_source);
+    // Trouver le calendrier sélectionné dans le state global
+    const selectedCalendar = calendars.find(
+      cal => String(cal.calendarid || cal.id) === formData.calendar_source
+    );
+
+    if (!selectedCalendar) {
+      console.error('❌ Calendrier sélectionné non trouvé');
+      return;
+    }
 
     console.log('=== TaskModal Submit ===');
-    console.log('calendar_source from form:', formData.calendar_source);
-    console.log('calendar_source_id to send:', calendarIdValue);
+    console.log('Selected calendar:', selectedCalendar);
+    console.log('Calendar data to send:', {
+      calendar_source_name: selectedCalendar.displayname,
+      calendar_source_id: selectedCalendar.id,
+      calendar_source_uri: selectedCalendar.uri,
+      calendar_source_color: selectedCalendar.calendarcolor,
+    });
     console.log('=======================');
 
+    // Envoyer les données avec toutes les infos du calendrier
     onSave({
       title: formData.title,
       description: formData.description,
       start_date: new Date(formData.start_date).toISOString(),
       end_date: new Date(formData.end_date).toISOString(),
-      calendar_source_id: calendarIdValue,
-      calendar_source_uri: calendarIdValue,
+      calendar_source_name: selectedCalendar.displayname,
+      calendar_source_id: selectedCalendar.id,
+      calendar_source_uri: selectedCalendar.uri || '',
+      calendar_source_color: selectedCalendar.calendarcolor,
     });
     onClose();
   };

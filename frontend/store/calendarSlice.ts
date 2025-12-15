@@ -197,6 +197,7 @@ export const createEvent = createAsyncThunk(
         dispatch(addOptimisticEvent({tempId, event: optimisticEvent}));
 
         try {
+            console.log(eventData);
             // Envoyer la requête au backend
             const response = await baikalAPI.createEvent(eventData);
 
@@ -236,14 +237,23 @@ export const updateEvent = createAsyncThunk(
 // Supprimer un événement
 export const deleteEvent = createAsyncThunk(
     'calendar/deleteEvent',
-    async (id: number, {rejectWithValue, getState}) => {
+    async (url: string, {rejectWithValue, getState}) => {
         try {
-            // ✅ Récupérer l'événement existant pour obtenir son URL
+            // ✅ Récupérer l'événement existant pour obtenir son ID
             const state = getState() as { calendar: CalendarState };
-            const existingEvent = state.calendar.events.find(e => e.id === id);
 
-            await baikalAPI.deleteEvent(id, existingEvent?.url);
-            return id;
+            console.log(state.calendar.events)
+            const existingEvent = state.calendar.events.find(e => e.url === url);
+
+            console.log(existingEvent)
+
+            if (!existingEvent) {
+                return rejectWithValue('Événement non trouvé pour la suppression');
+            }
+
+            const id = String(existingEvent.id);
+            await baikalAPI.deleteEvent(url, id);
+            return url;
         } catch (error: any) {
             return rejectWithValue(error.response?.data || 'Erreur lors de la suppression de l\'événement');
         }
@@ -292,8 +302,8 @@ const calendarSlice = createSlice({
         },
 
         // Suppression optimiste
-        optimisticDeleteEvent: (state, action: PayloadAction<number>) => {
-            state.events = state.events.filter(e => e.id !== action.payload);
+        optimisticDeleteEvent: (state, action: PayloadAction<string>) => {
+            state.events = state.events.filter(e => e.url !== action.payload);
         },
 
         toggleCalendarEnabled: (state, action: PayloadAction<number>) => {
@@ -548,11 +558,11 @@ const calendarSlice = createSlice({
 
         // Delete événement
         builder.addCase(deleteEvent.fulfilled, (state, action) => {
-            state.events = state.events.filter(e => e.id !== action.payload);
+            state.events = state.events.filter(e => e.url !== action.payload);
 
             // Aussi supprimer de allEvents si chargé
             if (state.allEventsLoaded) {
-                state.allEvents = state.allEvents.filter(e => e.id !== action.payload);
+                state.allEvents = state.allEvents.filter(e => e.url !== action.payload);
             }
         });
         builder.addCase(deleteEvent.rejected, (state, action) => {

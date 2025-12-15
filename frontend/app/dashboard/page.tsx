@@ -213,15 +213,14 @@ export default function DashboardPage() {
     }
   }, [dispatch, selectedTask]);
 
-  const handleDeleteTask = useCallback(async (id: number) => {
+  const handleDeleteTask = useCallback(async (url: string) => {
     try {
-      // Optimistic delete - suppression immédiate dans le state
-      dispatch(optimisticDeleteEvent(id));
 
       // Dispatch deleteEvent thunk en arrière-plan
-      await dispatch(deleteEvent(id)).unwrap();
+      console.log(`🗑️ Suppression de l'événement ${url}...`);
+      await dispatch(deleteEvent(url)).unwrap();
 
-      console.log(`✅ Événement ${id} supprimé`);
+      console.log(`✅ Événement ${url} supprimé`);
 
     } catch (error) {
       console.error('Erreur lors de la suppression de l\'événement:', error);

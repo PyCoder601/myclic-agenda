@@ -1,4 +1,6 @@
 import logging
+import uuid
+
 from caldav import DAVClient
 from caldav.objects import Calendar
 from datetime import datetime, timedelta, timezone
@@ -176,7 +178,7 @@ class BaikalCalDAVClient:
                     return {'error': f"Champ requis manquant: {field}", 'success': False}
 
             # Générer un UID unique
-            uid = f"{datetime.now().timestamp()}_{hash(calendar_name)}@baikal"
+            uid = str(uuid.uuid4())
 
             # Gérer les dates (support datetime et timestamp)
             start_date = event_data['start']

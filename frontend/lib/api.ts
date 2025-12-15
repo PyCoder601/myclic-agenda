@@ -165,10 +165,12 @@ export const baikalAPI = {
         }),
 
     // Supprimer un événement
-    deleteEvent: (eventId: number, eventUrl?: string) => {
+    deleteEvent: (url: string, id: string) => {
+        console.log("eventUrl dans api.ts:", url);
         // ✅ Envoyer l'URL dans le body de la requête DELETE
-        return api.delete(`/baikal/events/${eventId}/`, {
-            data: eventUrl ? { url: eventUrl } : {}
+        console.log(url)
+        return api.delete(`/baikal/events/${id}/`, {
+            data: url ? { url: url } : {}
         });
     },
 };

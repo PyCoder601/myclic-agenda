@@ -11,7 +11,7 @@ interface TaskModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSave: (task: Omit<Task, 'id' | 'created_at' | 'updated_at'>) => void;
-  onDelete?: (id: number) => void;
+  onDelete?: (url: string) => void;
   task?: Task | null;
   initialDate?: Date;
   initialHour?: number;
@@ -130,7 +130,7 @@ export default function TaskModal({ isOpen, onClose, onSave, onDelete, task, ini
 
   const handleDelete = () => {
     if (task && onDelete) {
-      onDelete(task.id);
+      onDelete(task.url || '');
       onClose();
     }
   };
@@ -138,8 +138,8 @@ export default function TaskModal({ isOpen, onClose, onSave, onDelete, task, ini
   return (
     <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto shadow-2xl border border-slate-200">
-        <div className="flex items-center justify-between p-6 border-b border-slate-200 bg-gradient-to-r from-slate-50 to-blue-50">
-          <h2 className="text-2xl font-bold bg-gradient-to-r from-[#005f82] to-[#007ba8] bg-clip-text text-transparent">
+        <div className="flex items-center justify-between p-6 border-b border-slate-200 bg-linear-to-r from-slate-50 to-blue-50">
+          <h2 className="text-2xl font-bold bg-linear-to-r from-[#005f82] to-[#007ba8] bg-clip-text text-transparent">
             {task ? 'Modifier l\'événement' : 'Nouvel événement'}
           </h2>
           <button

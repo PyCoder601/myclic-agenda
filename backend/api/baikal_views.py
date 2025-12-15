@@ -357,6 +357,8 @@ class BaikalEventViewSet(viewsets.ViewSet):
             calendar_source_uri = request.data.get('calendar_source_uri'),
             calendar_source_id = request.data.get('calendar_source_id'),
 
+            calendar_source_uri = isinstance(calendar_source_uri, tuple) and calendar_source_uri[0] or calendar_source_uri
+            calendar_source_id = isinstance(calendar_source_id, tuple) and calendar_source_id[0] or calendar_source_id
 
 
             # Parser les dates
@@ -385,6 +387,12 @@ class BaikalEventViewSet(viewsets.ViewSet):
                     status=status.HTTP_500_INTERNAL_SERVER_ERROR
                 )
 
+            print("uri", calendar_source_uri)
+
+            url = f'https://www.myclic.fr/baikal/html/cal.php/calendars/{self.request.user.email}/{calendar_source_uri}/{result["id"]}.ics'
+
+            print(url)
+
             # Retourner les données de l'événement créé
             created_event = {
                 'id': result['id'],
@@ -393,6 +401,7 @@ class BaikalEventViewSet(viewsets.ViewSet):
                 'start_date': start_date,
                 'end_date': end_date,
                 'location': "",
+                'url': url,
                 'lastmodified': int(datetime.now().timestamp()),
                 'calendar_source_name': calendar_source_name,
                 'calendar_source_color': calendar_source_color,
@@ -421,6 +430,8 @@ class BaikalEventViewSet(viewsets.ViewSet):
         try:
             # ✅ Récupérer l'URL depuis le body de la requête
             event_url = request.data.get('url')
+
+            print("url", event_url)
 
             if not event_url:
                 return Response(
@@ -503,42 +514,10 @@ class BaikalEventViewSet(viewsets.ViewSet):
         try:
             # ✅ Récupérer l'URL depuis le body ou query params
             event_url = request.data.get('url') or request.query_params.get('url')
+            print('url', event_url)
 
-            # Si l'URL n'est pas fournie, chercher l'événement par ID
             if not event_url:
-                logger.info(f"URL non fournie, recherche de l'événement {pk} dans tous les calendriers")
-
-                # Récupérer tous les calendriers
-                calendars = client.list_calendars()
-
-                # Chercher l'événement dans tous les calendriers
-                found = False
-                for cal in calendars:
-                    try:
-                        # Récupérer les événements du calendrier
-                        events = client.get_events(
-                            calendar_name=cal['name'],
-                            start_date=datetime.now() - timedelta(days=365),
-                            end_date=datetime.now() + timedelta(days=365)
-                        )
-
-                        # Chercher l'événement avec l'ID correspondant
-                        for idx, event in enumerate(events, start=1):
-                            if idx == int(pk):
-                                event_url = event.get('url')
-                                logger.info(f"Événement {pk} trouvé dans le calendrier '{cal['name']}': {event_url}")
-                                found = True
-                                break
-
-                        if found:
-                            break
-
-                    except Exception as e:
-                        logger.warning(f"Erreur lors de la recherche dans '{cal['name']}': {e}")
-                        continue
-
-                if not event_url:
-                    return Response(
+                return Response(
                         {'error': f'Événement {pk} non trouvé dans les calendriers'},
                         status=status.HTTP_404_NOT_FOUND
                     )

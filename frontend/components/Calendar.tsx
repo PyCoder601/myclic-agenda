@@ -733,8 +733,8 @@ export default function Calendar({
           {Object.entries(calendarsByUser).map(([username, userCalendars]) => (
             <div key={username}>
               <div className="flex border-b border-slate-200 bg-slate-50/50">
-                <div className="w-48 flex-shrink-0 border-r border-slate-200 p-2 font-bold text-slate-800 text-sm">
-                  {username}
+                <div className="w-48 shrink-0 border-r border-slate-200 p-2 font-bold text-slate-800 text-sm">
+                  {/*{username}*/}
                 </div>
                 {daysToDisplay.map((day) => (
                   <div
@@ -748,7 +748,7 @@ export default function Calendar({
                   key={calendar.id}
                   className="flex border-b border-slate-200 group hover:bg-blue-50/20 transition-colors duration-200"
                 >
-                  <div className="w-48 flex-shrink-0 border-r border-slate-200 p-2 text-sm text-slate-700 font-medium flex items-center gap-2">
+                  <div className="w-48 shrink-0 border-r border-slate-200 p-2 text-sm text-slate-700 font-medium flex items-center gap-2">
                     <div
                       className="w-3 h-3 rounded-full shadow-sm"
                       style={{ backgroundColor: calendar.calendarcolor }}

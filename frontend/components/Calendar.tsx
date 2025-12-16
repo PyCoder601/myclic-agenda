@@ -36,6 +36,8 @@ interface CalendarProps {
   onAddTask: (date: Date, hour?: number) => void;
   onTaskDrop: (taskId: number, newDate: Date) => void;
   calendars: CalendarSource[];
+  isNavigating?: boolean;
+  pendingDate?: Date | null;
 }
 
 // Helper function to get calendar color for a task
@@ -254,6 +256,8 @@ export default function Calendar({
   onAddTask,
   onTaskDrop,
   calendars = [],
+  isNavigating = false,
+  pendingDate = null,
 }: CalendarProps) {
   const [hours] = useState(Array.from({ length: 24 }, (_, i) => i));
   const currentHourRef = useRef<HTMLDivElement>(null);
@@ -365,6 +369,11 @@ export default function Calendar({
   );
 
   const navigatePrevious = useCallback(() => {
+    if (isNavigating) {
+      console.log('⏳ Navigation en cours, clic ignoré');
+      return;
+    }
+
     const newDate = new Date(currentDate);
     if (viewMode === "day") {
       newDate.setDate(newDate.getDate() - 1);
@@ -374,9 +383,14 @@ export default function Calendar({
       newDate.setMonth(newDate.getMonth() - 1);
     }
     onDateChange(newDate);
-  }, [currentDate, viewMode, onDateChange]);
+  }, [currentDate, viewMode, onDateChange, isNavigating]);
 
   const navigateNext = useCallback(() => {
+    if (isNavigating) {
+      console.log('⏳ Navigation en cours, clic ignoré');
+      return;
+    }
+
     const newDate = new Date(currentDate);
     if (viewMode === "day") {
       newDate.setDate(newDate.getDate() + 1);
@@ -386,7 +400,7 @@ export default function Calendar({
       newDate.setMonth(newDate.getMonth() + 1);
     }
     onDateChange(newDate);
-  }, [currentDate, viewMode, onDateChange]);
+  }, [currentDate, viewMode, onDateChange, isNavigating]);
 
   const getDateRange = useMemo(() => {
     if (viewMode === "day") {
@@ -842,22 +856,35 @@ export default function Calendar({
             <div className="flex items-center gap-1 sm:gap-3 flex-1 justify-center">
               <button
                 onClick={navigatePrevious}
-                className="group p-1.5 sm:p-2.5 hover:bg-gradient-to-r hover:from-blue-50 hover:to-indigo-50 rounded-lg sm:rounded-xl transition-all duration-300 text-slate-700 hover:shadow-lg border border-transparent hover:border-[#005f82]/20"
+                disabled={isNavigating}
+                className={`group p-1.5 sm:p-2.5 hover:bg-gradient-to-r hover:from-blue-50 hover:to-indigo-50 rounded-lg sm:rounded-xl transition-all duration-300 text-slate-700 hover:shadow-lg border border-transparent hover:border-[#005f82]/20 ${isNavigating ? 'opacity-50 cursor-not-allowed' : ''}`}
                 title="Période précédente"
               >
-                <ChevronLeft className="w-4 h-4 sm:w-5 sm:h-5 text-slate-600 group-hover:text-[#005f82] transition-all duration-300 group-hover:-translate-x-1" />
+                {isNavigating ? (
+                  <div className="w-4 h-4 sm:w-5 sm:h-5 border-2 border-slate-300 border-t-[#005f82] rounded-full animate-spin" />
+                ) : (
+                  <ChevronLeft className="w-4 h-4 sm:w-5 sm:h-5 text-slate-600 group-hover:text-[#005f82] transition-all duration-300 group-hover:-translate-x-1" />
+                )}
               </button>
               <div className="text-center flex-1 px-2">
                 <h2 className="text-sm sm:text-lg font-bold bg-gradient-to-r from-[#005f82] to-[#007ba8] bg-clip-text text-transparent capitalize">
                   {getDateRange}
+                  {isNavigating && (
+                    <span className="ml-2 text-xs text-slate-500 font-normal">Chargement...</span>
+                  )}
                 </h2>
               </div>
               <button
                 onClick={navigateNext}
-                className="group p-1.5 sm:p-2.5 hover:bg-gradient-to-r hover:from-blue-50 hover:to-indigo-50 rounded-lg sm:rounded-xl transition-all duration-300 text-slate-700 hover:shadow-lg border border-transparent hover:border-[#005f82]/20"
+                disabled={isNavigating}
+                className={`group p-1.5 sm:p-2.5 hover:bg-gradient-to-r hover:from-blue-50 hover:to-indigo-50 rounded-lg sm:rounded-xl transition-all duration-300 text-slate-700 hover:shadow-lg border border-transparent hover:border-[#005f82]/20 ${isNavigating ? 'opacity-50 cursor-not-allowed' : ''}`}
                 title="Période suivante"
               >
-                <ChevronRight className="w-4 h-4 sm:w-5 sm:h-5 text-slate-600 group-hover:text-[#005f82] transition-all duration-300 group-hover:translate-x-1" />
+                {isNavigating ? (
+                  <div className="w-4 h-4 sm:w-5 sm:h-5 border-2 border-slate-300 border-t-[#005f82] rounded-full animate-spin" />
+                ) : (
+                  <ChevronRight className="w-4 h-4 sm:w-5 sm:h-5 text-slate-600 group-hover:text-[#005f82] transition-all duration-300 group-hover:translate-x-1" />
+                )}
               </button>
             </div>
           </div>

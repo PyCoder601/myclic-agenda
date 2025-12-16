@@ -41,6 +41,8 @@ export default function DashboardPage() {
   const [modalInitialDate, setModalInitialDate] = useState<Date>();
   const [modalInitialHour, setModalInitialHour] = useState<number>();
   const [isCalendarDropdownOpen, setIsCalendarDropdownOpen] = useState(false);
+  const [isNavigating, setIsNavigating] = useState(false);
+  const [pendingDate, setPendingDate] = useState<Date | null>(null);
 
   const calendarsLoaded = useRef(false);
 
@@ -102,18 +104,32 @@ export default function DashboardPage() {
   // }, [mainViewMode, calendars.length, dispatch]);
 
   // Fonction de chargement des événements
-  const loadEventsForPeriod = useCallback((date: Date) => {
+  const loadEventsForPeriod = useCallback(async (date: Date): Promise<boolean> => {
     const year = date.getFullYear();
     const month = date.getMonth();
     const start = new Date(year, month, -7);
     const end = new Date(year, month + 1, 7);
 
-    console.log(`📡 Chargement des événements...`);
+    const startStr = start.toISOString().split('T')[0];
+    const endStr = end.toISOString().split('T')[0];
 
-    dispatch(fetchEvents({
-      start_date: start.toISOString().split('T')[0],
-      end_date: end.toISOString().split('T')[0]
-    }));
+    console.log(`📡 Chargement des événements pour ${startStr} à ${endStr}...`);
+
+    try {
+      const result = await dispatch(fetchEvents({
+        start_date: startStr,
+        end_date: endStr
+      })).unwrap();
+
+      // Vérifier si les données viennent du cache
+      const fromCache = (result as any)?.fromCache === true;
+      console.log(`✅ Événements chargés ${fromCache ? '(depuis le cache)' : '(depuis le backend)'}`);
+
+      return !fromCache; // Retourne true si fetch backend, false si cache
+    } catch (error) {
+      console.error('❌ Erreur lors du chargement des événements:', error);
+      return false;
+    }
   }, [dispatch]);
 
   // Activer/désactiver les calendriers selon le mode de vue
@@ -124,9 +140,41 @@ export default function DashboardPage() {
     }
   }, [mainViewMode, calendars.length, dispatch]);
 
-  // Charger les événements pour la période visible (avec cache intelligent)
+  // Fonction de navigation intelligente avec gestion du loading
+  const handleDateNavigation = useCallback(async (newDate: Date) => {
+    if (isNavigating) {
+      console.log('⏳ Navigation déjà en cours, ignoré');
+      return;
+    }
+
+    // Vérifier si on a déjà les données en cache
+    setPendingDate(newDate);
+    setIsNavigating(true);
+
+    try {
+      const wasFetchedFromBackend = await loadEventsForPeriod(newDate);
+
+      if (wasFetchedFromBackend) {
+        // Si les données viennent du backend, attendre un court instant pour l'UX
+        console.log('⏳ Données chargées depuis le backend, mise à jour de la date...');
+      } else {
+        // Si les données viennent du cache, changement instantané
+        console.log('⚡ Données en cache, changement instantané');
+      }
+
+      // Changer la date après le chargement
+      setCurrentDate(newDate);
+      setPendingDate(null);
+    } finally {
+      setIsNavigating(false);
+    }
+  }, [isNavigating, loadEventsForPeriod]);
+
+  // Charger les événements pour la période visible au montage initial uniquement
+  const initialLoadDone = useRef(false);
   useEffect(() => {
-    if (user) {
+    if (user && !initialLoadDone.current) {
+      initialLoadDone.current = true;
       loadEventsForPeriod(currentDate);
     }
   }, [user, currentDate, loadEventsForPeriod]);
@@ -712,7 +760,9 @@ export default function DashboardPage() {
                 viewMode={mainViewMode === 'personal' ? viewMode : groupViewMode}
                 mainViewMode={mainViewMode}
                 currentDate={currentDate}
-                onDateChange={setCurrentDate}
+                onDateChange={handleDateNavigation}
+                isNavigating={isNavigating}
+                pendingDate={pendingDate}
                 onTaskClick={handleTaskClick}
                 onAddTask={handleAddTask}
                 onTaskDrop={handleTaskDrop}

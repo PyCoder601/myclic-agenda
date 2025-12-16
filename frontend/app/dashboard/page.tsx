@@ -249,10 +249,16 @@ export default function DashboardPage() {
   }, [dispatch, currentDate]);
 
   const handleTaskClick = useCallback((task: Task) => {
-    setSelectedTask(task);
-    setModalInitialDate(undefined);
-    setModalInitialHour(undefined);
-    setIsModalOpen(true);
+    // ✅ D'abord fermer le modal pour réinitialiser l'état
+    setIsModalOpen(false);
+
+    // ✅ Utiliser un micro-délai pour s'assurer que l'état est bien réinitialisé
+    setTimeout(() => {
+      setModalInitialDate(undefined);
+      setModalInitialHour(undefined);
+      setSelectedTask(task);
+      setIsModalOpen(true);
+    }, 0);
   }, []);
 
   const handleAddTask = useCallback((date: Date, hour?: number) => {
@@ -279,12 +285,17 @@ export default function DashboardPage() {
 
     const newEndDate = new Date(newStartDate.getTime() + duration);
 
-    // Optimistic update immédiat
+    // Optimistic update immédiat - préserver les informations du calendrier
     dispatch(optimisticUpdateEvent({
       id: taskId,
       data: {
         start_date: newStartDate.toISOString(),
         end_date: newEndDate.toISOString(),
+        // ✅ Préserver explicitement les informations de couleur
+        calendar_source_color: task.calendar_source_color,
+        calendar_source_name: task.calendar_source_name,
+        calendar_source_id: task.calendar_source_id,
+        calendar_source_uri: task.calendar_source_uri,
       }
     }));
 
@@ -296,6 +307,11 @@ export default function DashboardPage() {
           start_date: newStartDate.toISOString(),
           end_date: newEndDate.toISOString(),
           url: task.url, // ✅ Inclure l'URL pour assurer la mise à jour via CalDAV
+          // ✅ Préserver les informations du calendrier pour éviter la perte de couleur
+          calendar_source_color: task.calendar_source_color,
+          calendar_source_name: task.calendar_source_name,
+          calendar_source_id: task.calendar_source_id,
+          calendar_source_uri: task.calendar_source_uri,
         }
       })).unwrap();
 

@@ -1,5 +1,6 @@
 'use client';
 
+import { useEffect, useRef } from 'react';
 import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import Underline from '@tiptap/extension-underline';
@@ -62,6 +63,21 @@ const RichTextEditor = ({ content, onChange }: { content: string; onChange: (new
       },
     },
   });
+
+  // ✅ Mettre à jour le contenu de l'éditeur quand la prop content change
+  // Utiliser une référence pour éviter les mises à jour inutiles
+  const previousContent = useRef(content);
+
+  useEffect(() => {
+    if (editor && content !== previousContent.current) {
+      const currentEditorContent = editor.getHTML();
+      // Ne mettre à jour que si le contenu est vraiment différent
+      if (content !== currentEditorContent) {
+        editor.commands.setContent(content, { emitUpdate: false }); // Ne pas déclencher onUpdate
+        previousContent.current = content;
+      }
+    }
+  }, [content, editor]);
 
   return (
     <div className="border border-slate-200 rounded-xl bg-white shadow-sm">

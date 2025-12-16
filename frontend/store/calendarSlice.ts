@@ -541,14 +541,16 @@ const calendarSlice = createSlice({
         builder.addCase(updateEvent.fulfilled, (state, action) => {
             const index = state.events.findIndex(e => e.id === action.payload.id);
             if (index !== -1) {
-                state.events[index] = action.payload;
+                // ✅ Fusionner avec les données existantes pour préserver tous les champs
+                state.events[index] = { ...state.events[index], ...action.payload };
             }
 
             // Aussi mettre à jour dans allEvents si chargé
             if (state.allEventsLoaded) {
                 const allIndex = state.allEvents.findIndex(e => e.id === action.payload.id);
                 if (allIndex !== -1) {
-                    state.allEvents[allIndex] = action.payload;
+                    // ✅ Fusionner avec les données existantes pour préserver tous les champs
+                    state.allEvents[allIndex] = { ...state.allEvents[allIndex], ...action.payload };
                 }
             }
         });

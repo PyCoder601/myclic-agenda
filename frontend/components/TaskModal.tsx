@@ -107,9 +107,17 @@ export default function TaskModal({ isOpen, onClose, onSave, onDelete, task, ini
       }
 
       setFormData(newFormData);
+
+      console.log('📋 Initialisation du modal avec:', {
+        isEdit: !!task,
+        taskId: task?.id,
+        title: newFormData.title,
+        description: newFormData.description?.substring(0, 50),
+        calendar: newFormData.calendar_source
+      });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isOpen, task, initialDate, initialHour, calendars]);
+  }, [isOpen, task?.id, initialDate, initialHour]);
 
   if (!isOpen) return null;
 

@@ -35,6 +35,7 @@ interface CalendarProps {
   onTaskClick: (task: Task) => void;
   onAddTask: (date: Date, hour?: number) => void;
   onTaskDrop: (taskId: number, newDate: Date) => void;
+  onTaskResize?: (taskId: number, newEndDate: Date) => void;
   calendars: CalendarSource[];
   isNavigating?: boolean;
   pendingDate?: Date | null;
@@ -246,6 +247,245 @@ const WeekTaskItem = ({
   );
 };
 
+// Composant pour les événements positionnés (vue jour/semaine) avec redimensionnement
+const PositionedEventItem = ({
+  event,
+  onTaskClick,
+  calendars,
+  top,
+  height,
+  onResize,
+}: {
+  event: Task;
+  onTaskClick: (task: Task) => void;
+  calendars: CalendarSource[];
+  top: number;
+  height: number;
+  onResize?: (eventId: number, newHeight: number) => void;
+}) => {
+  const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
+    id: event.id,
+  });
+
+  const [isResizing, setIsResizing] = useState(false);
+  const [resizeHeight, setResizeHeight] = useState(height);
+  const resizeStartY = useRef(0);
+  const originalHeight = useRef(height);
+
+  const taskColor = getTaskColor(event, calendars);
+
+  useEffect(() => {
+    setResizeHeight(height);
+  }, [height]);
+
+  const handleResizeStart = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    e.preventDefault();
+    setIsResizing(true);
+    resizeStartY.current = e.clientY;
+    originalHeight.current = resizeHeight;
+
+    let finalHeight = resizeHeight; // Capturer la valeur finale
+
+    const handleMouseMove = (moveEvent: MouseEvent) => {
+      const deltaY = moveEvent.clientY - resizeStartY.current;
+      const newHeight = Math.max(15, originalHeight.current + deltaY); // Minimum 15px (15 minutes)
+      finalHeight = newHeight; // Mettre à jour la valeur finale
+      setResizeHeight(newHeight);
+    };
+
+    const handleMouseUp = () => {
+      setIsResizing(false);
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+
+      if (onResize && finalHeight !== originalHeight.current) {
+        console.log(`🔄 Resize: eventId=${event.id}, finalHeight=${finalHeight}px (${finalHeight} minutes)`);
+        onResize(event.id, finalHeight);
+      }
+    };
+
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup', handleMouseUp);
+  };
+
+  return (
+    <div
+      ref={setNodeRef}
+      className="absolute left-1 right-1 pointer-events-auto"
+      style={{
+        top: `${top}px`,
+        height: `${resizeHeight}px`,
+        zIndex: isDragging || isResizing ? 50 : 10,
+        opacity: isDragging ? 0.5 : 1,
+      }}
+    >
+      <div
+        className="h-full rounded-lg shadow-md hover:shadow-lg transition-shadow cursor-pointer p-2 overflow-hidden group relative"
+        style={{
+          background: `linear-gradient(135deg, ${taskColor} 0%, ${taskColor}dd 100%)`,
+          borderLeft: `4px solid ${taskColor}`,
+        }}
+        onClick={(e) => {
+          if (!isResizing) {
+            e.stopPropagation();
+            onTaskClick(event);
+          }
+        }}
+      >
+        <div className="flex items-start gap-1 h-full">
+          <div
+            {...listeners}
+            {...attributes}
+            className="cursor-grab active:cursor-grabbing shrink-0 opacity-0 group-hover:opacity-100 transition-opacity p-0.5 hover:bg-white/20 rounded"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <GripVertical className="w-3 h-3 text-white" />
+          </div>
+          <div className="flex-1 min-w-0 text-white">
+            <div className="font-semibold text-sm truncate">{event.title}</div>
+            <div className="text-xs opacity-90 mt-0.5">
+              {format(new Date(event.start_date), "HH:mm")} - {format(new Date(event.end_date), "HH:mm")}
+            </div>
+            {resizeHeight > 50 && event.description && (
+              <div className="text-xs opacity-80 mt-1 line-clamp-2">
+                {event.description.replace(/<[^>]*>/g, '')}
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Poignée de redimensionnement */}
+        <div
+          className="absolute bottom-0 left-0 right-0 h-2 cursor-ns-resize opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center"
+          onMouseDown={handleResizeStart}
+          onClick={(e) => e.stopPropagation()}
+        >
+          <div className="w-12 h-1 bg-white/50 rounded-full"></div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// Composant pour les événements positionnés dans la vue semaine (plus compact) avec redimensionnement
+const PositionedWeekEventItem = ({
+  event,
+  onTaskClick,
+  calendars,
+  top,
+  height,
+  onResize,
+}: {
+  event: Task;
+  onTaskClick: (task: Task) => void;
+  calendars: CalendarSource[];
+  top: number;
+  height: number;
+  onResize?: (eventId: number, newHeight: number) => void;
+}) => {
+  const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
+    id: event.id,
+  });
+
+  const [isResizing, setIsResizing] = useState(false);
+  const [resizeHeight, setResizeHeight] = useState(height);
+  const resizeStartY = useRef(0);
+  const originalHeight = useRef(height);
+
+  const taskColor = getTaskColor(event, calendars);
+
+  useEffect(() => {
+    setResizeHeight(height);
+  }, [height]);
+
+  const handleResizeStart = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    e.preventDefault();
+    setIsResizing(true);
+    resizeStartY.current = e.clientY;
+    originalHeight.current = resizeHeight;
+
+    let finalHeight = resizeHeight; // Capturer la valeur finale
+
+    const handleMouseMove = (moveEvent: MouseEvent) => {
+      const deltaY = moveEvent.clientY - resizeStartY.current;
+      const newHeight = Math.max(15, originalHeight.current + deltaY);
+      finalHeight = newHeight; // Mettre à jour la valeur finale
+      setResizeHeight(newHeight);
+    };
+
+    const handleMouseUp = () => {
+      setIsResizing(false);
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+
+      if (onResize && finalHeight !== originalHeight.current) {
+        console.log(`🔄 Resize (Week): eventId=${event.id}, finalHeight=${finalHeight}px (${finalHeight} minutes)`);
+        onResize(event.id, finalHeight);
+      }
+    };
+
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup', handleMouseUp);
+  };
+
+  return (
+    <div
+      ref={setNodeRef}
+      className="absolute left-1 right-1 pointer-events-auto"
+      style={{
+        top: `${top}px`,
+        height: `${resizeHeight}px`,
+        zIndex: isDragging || isResizing ? 50 : 10,
+        opacity: isDragging ? 0.5 : 1,
+      }}
+    >
+      <div
+        className="h-full rounded-md shadow-sm hover:shadow-md transition-shadow cursor-pointer p-1 overflow-hidden group text-white text-[10px] relative"
+        style={{
+          background: `linear-gradient(135deg, ${taskColor} 0%, ${taskColor}dd 100%)`,
+          borderLeft: `3px solid ${taskColor}`,
+        }}
+        onClick={(e) => {
+          if (!isResizing) {
+            e.stopPropagation();
+            onTaskClick(event);
+          }
+        }}
+      >
+        <div className="flex items-start gap-0.5 h-full">
+          <div
+            {...listeners}
+            {...attributes}
+            className="cursor-grab active:cursor-grabbing shrink-0 opacity-0 group-hover:opacity-100 transition-opacity p-0.5 hover:bg-white/20 rounded"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <GripVertical className="w-2.5 h-2.5" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="font-semibold truncate leading-tight">{event.title}</div>
+            {resizeHeight > 25 && (
+              <div className="opacity-90 mt-0.5 leading-tight">
+                {format(new Date(event.start_date), "HH:mm")}
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Poignée de redimensionnement */}
+        <div
+          className="absolute bottom-0 left-0 right-0 h-1.5 cursor-ns-resize opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center"
+          onMouseDown={handleResizeStart}
+          onClick={(e) => e.stopPropagation()}
+        >
+          <div className="w-8 h-0.5 bg-white/50 rounded-full"></div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 export default function Calendar({
   tasks,
   viewMode,
@@ -255,6 +495,7 @@ export default function Calendar({
   onTaskClick,
   onAddTask,
   onTaskDrop,
+  onTaskResize,
   calendars = [],
   isNavigating = false,
   pendingDate = null,
@@ -264,6 +505,21 @@ export default function Calendar({
   const dayViewRef = useRef<HTMLDivElement>(null);
   const [dayTasksModalDate, setDayTasksModalDate] = useState<Date | null>(null);
   const [activeTask, setActiveTask] = useState<Task | null>(null);
+
+  // Handler pour le redimensionnement des événements
+  const handleEventResize = useCallback((eventId: number, newHeight: number) => {
+    if (!onTaskResize) return;
+
+    const task = tasks.find(t => t.id === eventId);
+    if (!task) return;
+
+    const startDate = new Date(task.start_date);
+    // Calculer la nouvelle date de fin basée sur la nouvelle hauteur (1px = 1 minute)
+    const newEndDate = new Date(startDate.getTime() + newHeight * 60 * 1000);
+
+    console.log(`📏 handleEventResize: eventId=${eventId}, height=${newHeight}px → newEndDate=${newEndDate.toISOString()}`);
+    onTaskResize(eventId, newEndDate);
+  }, [tasks, onTaskResize]);
 
   const handleDragStart = (event: DragStartEvent) => {
     const { active } = event;
@@ -275,31 +531,40 @@ export default function Calendar({
 
   const handleDragEnd = (event: DragEndEvent) => {
     setActiveTask(null);
-    const { active, over } = event;
+    const { active, over, delta } = event;
 
     if (over && active.id !== over.id) {
       const taskId = active.id as number;
-      const newDate = over.data.current?.date as Date;
+      let newDate = over.data.current?.date as Date;
 
       if (taskId && newDate) {
         const task = tasks.find((t) => t.id === taskId);
 
-        if (task && mainViewMode === "group") {
-          // Preserve original time when dropping in group view
-          const oldStartDate = new Date(task.start_date);
-          newDate.setHours(
-            oldStartDate.getHours(),
-            oldStartDate.getMinutes(),
-            oldStartDate.getSeconds(),
-            oldStartDate.getMilliseconds(),
-          );
-        }
+        if (task) {
+          // Pour les vues jour et semaine, calculer la position exacte basée sur le delta
+          if (viewMode === 'day' || viewMode === 'week') {
+            // Delta.y représente le déplacement vertical en pixels
+            // 1px = 1 minute dans notre grille
+            const minutesOffset = Math.round(delta.y);
+            newDate = new Date(newDate.getTime() + minutesOffset * 60 * 1000);
+          } else if (mainViewMode === "group") {
+            // Preserve original time when dropping in group view
+            const oldStartDate = new Date(task.start_date);
+            newDate.setHours(
+              oldStartDate.getHours(),
+              oldStartDate.getMinutes(),
+              oldStartDate.getSeconds(),
+              oldStartDate.getMilliseconds(),
+            );
+          }
 
-        // Prevent drop if the date/time is identical
-        if (task && new Date(task.start_date).getTime() === newDate.getTime()) {
-          return;
+          // Prevent drop if the date/time is identical
+          if (new Date(task.start_date).getTime() === newDate.getTime()) {
+            return;
+          }
+
+          onTaskDrop(taskId, newDate);
         }
-        onTaskDrop(taskId, newDate);
       }
     }
   };
@@ -608,53 +873,20 @@ export default function Calendar({
             {/* Événements positionnés en absolu */}
             <div className="absolute inset-0 pointer-events-none" style={{ paddingLeft: "4px", paddingRight: "4px" }}>
               {dayEvents.map((event) => {
-                const taskColor = getTaskColor(event, calendars);
                 const eventStartOfDay = startOfDay(currentDate).getTime();
                 const eventStart = event.startDate.getTime();
                 const topOffset = Math.max(0, (eventStart - eventStartOfDay) / (1000 * 60)); // minutes depuis le début du jour
 
                 return (
-                  <div
+                  <PositionedEventItem
                     key={event.id}
-                    className="absolute left-1 right-1 pointer-events-auto"
-                    style={{
-                      top: `${topOffset}px`,
-                      height: `${event.height}px`,
-                      zIndex: 10,
-                    }}
-                  >
-                    <div
-                      className="h-full rounded-lg shadow-md hover:shadow-lg transition-all cursor-pointer p-2 overflow-hidden group"
-                      style={{
-                        background: `linear-gradient(135deg, ${taskColor} 0%, ${taskColor}dd 100%)`,
-                        borderLeft: `4px solid ${taskColor}`,
-                      }}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onTaskClick(event);
-                      }}
-                    >
-                      <div className="flex items-start gap-1 h-full">
-                        <div
-                          className="cursor-grab active:cursor-grabbing shrink-0 opacity-0 group-hover:opacity-100 transition-opacity p-0.5 hover:bg-white/20 rounded"
-                          onMouseDown={(e) => e.stopPropagation()}
-                        >
-                          <GripVertical className="w-3 h-3 text-white" />
-                        </div>
-                        <div className="flex-1 min-w-0 text-white">
-                          <div className="font-semibold text-sm truncate">{event.title}</div>
-                          <div className="text-xs opacity-90 mt-0.5">
-                            {format(event.startDate, "HH:mm")} - {format(event.endDate, "HH:mm")}
-                          </div>
-                          {event.height > 50 && event.description && (
-                            <div className="text-xs opacity-80 mt-1 line-clamp-2">
-                              {event.description.replace(/<[^>]*>/g, '')}
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  </div>
+                    event={event}
+                    onTaskClick={onTaskClick}
+                    calendars={calendars}
+                    top={topOffset}
+                    height={event.height}
+                    onResize={handleEventResize}
+                  />
                 );
               })}
             </div>
@@ -773,7 +1005,6 @@ export default function Calendar({
                 {/* Événements positionnés en absolu */}
                 <div className="absolute inset-0 pointer-events-none" style={{ paddingLeft: "2px", paddingRight: "2px" }}>
                   {dayEvents.map((event) => {
-                    const taskColor = getTaskColor(event, calendars);
                     const eventStartOfDay = startOfDay(day).getTime();
                     const eventStart = event.startDate.getTime();
                     const topOffset = Math.max(0, (eventStart - eventStartOfDay) / (1000 * 60)); // minutes depuis le début du jour
@@ -783,44 +1014,15 @@ export default function Calendar({
                     const displayHeight = Math.min(event.height, maxHeight);
 
                     return (
-                      <div
+                      <PositionedWeekEventItem
                         key={event.id}
-                        className="absolute left-1 right-1 pointer-events-auto"
-                        style={{
-                          top: `${topOffset}px`,
-                          height: `${displayHeight}px`,
-                          zIndex: 10,
-                        }}
-                      >
-                        <div
-                          className="h-full rounded-md shadow-sm hover:shadow-md transition-all cursor-pointer p-1 overflow-hidden group text-white text-[10px]"
-                          style={{
-                            background: `linear-gradient(135deg, ${taskColor} 0%, ${taskColor}dd 100%)`,
-                            borderLeft: `3px solid ${taskColor}`,
-                          }}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            onTaskClick(event);
-                          }}
-                        >
-                          <div className="flex items-start gap-0.5 h-full">
-                            <div
-                              className="cursor-grab active:cursor-grabbing shrink-0 opacity-0 group-hover:opacity-100 transition-opacity p-0.5 hover:bg-white/20 rounded"
-                              onMouseDown={(e) => e.stopPropagation()}
-                            >
-                              <GripVertical className="w-2.5 h-2.5" />
-                            </div>
-                            <div className="flex-1 min-w-0">
-                              <div className="font-semibold truncate leading-tight">{event.title}</div>
-                              {displayHeight > 25 && (
-                                <div className="opacity-90 mt-0.5 leading-tight">
-                                  {format(event.startDate, "HH:mm")}
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                        </div>
-                      </div>
+                        event={event}
+                        onTaskClick={onTaskClick}
+                        calendars={calendars}
+                        top={topOffset}
+                        height={displayHeight}
+                        onResize={handleEventResize}
+                      />
                     );
                   })}
                 </div>

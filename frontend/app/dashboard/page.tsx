@@ -387,6 +387,62 @@ export default function DashboardPage() {
     }
   }, [events, dispatch, currentDate]);
 
+  const handleTaskResize = useCallback(async (taskId: number, newEndDate: Date) => {
+    const task = events.find(t => t.id === taskId);
+    if (!task) return;
+
+    const startDate = new Date(task.start_date);
+
+    console.log(`🎯 handleTaskResize appelé: taskId=${taskId}, startDate=${startDate.toISOString()}, newEndDate=${newEndDate.toISOString()}`);
+
+    // Optimistic update immédiat
+    dispatch(optimisticUpdateEvent({
+      id: taskId,
+      data: {
+        start_date: startDate.toISOString(),
+        end_date: newEndDate.toISOString(),
+        // ✅ Préserver les informations du calendrier
+        calendar_source_color: task.calendar_source_color,
+        calendar_source_name: task.calendar_source_name,
+        calendar_source_id: task.calendar_source_id,
+        calendar_source_uri: task.calendar_source_uri,
+      }
+    }));
+
+    try {
+      // Dispatch updateEvent thunk en arrière-plan
+      await dispatch(updateEvent({
+        id: taskId,
+        data: {
+          start_date: startDate.toISOString(),
+          end_date: newEndDate.toISOString(),
+          url: task.url,
+          // ✅ Préserver les informations du calendrier
+          calendar_source_color: task.calendar_source_color,
+          calendar_source_name: task.calendar_source_name,
+          calendar_source_id: task.calendar_source_id,
+          calendar_source_uri: task.calendar_source_uri,
+        }
+      })).unwrap();
+
+      console.log(`✅ Événement ${taskId} redimensionné`);
+
+    } catch (error) {
+      console.error('Erreur lors du redimensionnement de l\'événement:', error);
+
+      // En cas d'erreur, recharger
+      const year = currentDate.getFullYear();
+      const month = currentDate.getMonth();
+      const start = new Date(year, month, -7);
+      const end = new Date(year, month + 1, 7);
+
+      dispatch(fetchEvents({
+        start_date: start.toISOString().split('T')[0],
+        end_date: end.toISOString().split('T')[0]
+      }));
+    }
+  }, [events, dispatch, currentDate]);
+
   // Séparation des calendriers pour l'affichage
   const ownCalendars = useMemo(() =>
     calendarsToUse.filter(cal => cal.user_id === user?.id),
@@ -791,6 +847,7 @@ export default function DashboardPage() {
                 onTaskClick={handleTaskClick}
                 onAddTask={handleAddTask}
                 onTaskDrop={handleTaskDrop}
+                onTaskResize={handleTaskResize}
                 calendars={calendars}
               />
             </div>

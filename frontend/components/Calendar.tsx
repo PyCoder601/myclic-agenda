@@ -320,42 +320,39 @@ export default function Calendar({
     }
   }, [viewMode, currentDate]);
 
-  const tasksByDateTime = useMemo(() => {
-    const map = new Map<string, Task[]>();
+  // Calculer les événements positionnés pour la vue jour/semaine
+  const positionedEvents = useMemo(() => {
+    return tasks.map(task => {
+      const startDate = new Date(task.start_date);
+      const endDate = new Date(task.end_date);
 
-    tasks.forEach((task) => {
-      const taskStart = new Date(task.start_date);
-      const taskEnd = new Date(task.end_date);
+      // Calculer la position en pixels (60px par heure)
+      const startHour = startDate.getHours();
+      const startMinute = startDate.getMinutes();
+      const top = (startHour * 60) + startMinute; // pixels from top
 
-      let current = new Date(taskStart);
-      while (current < taskEnd) {
-        const dateKey = format(current, "yyyy-MM-dd");
-        const hour = current.getHours();
-        const key = `${dateKey}-${hour}`;
+      const endHour = endDate.getHours();
+      const endMinute = endDate.getMinutes();
 
-        if (!map.has(key)) {
-          map.set(key, []);
-        }
-        if (!map.get(key)!.find((t) => t.id === task.id)) {
-          map.get(key)!.push(task);
-        }
+      // Si l'événement se termine le jour suivant ou plus tard
+      const daysDiff = Math.floor((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24));
+      const totalEndMinutes = (endHour * 60) + endMinute + (daysDiff * 24 * 60);
+      const totalStartMinutes = (startHour * 60) + startMinute;
 
-        current = new Date(current.getTime() + 60 * 60 * 1000);
-      }
+      const height = totalEndMinutes - totalStartMinutes; // duration in minutes
+
+      return {
+        ...task,
+        top,
+        height: Math.max(height, 15), // minimum 15px de hauteur
+        startDate,
+        endDate,
+      };
     });
-
-    return map;
   }, [tasks]);
 
   const getTasksForDate = useCallback(
-    (date: Date, hour?: number) => {
-      const dateKey = format(date, "yyyy-MM-dd");
-
-      if (hour !== undefined) {
-        const key = `${dateKey}-${hour}`;
-        return tasksByDateTime.get(key) || [];
-      }
-
+    (date: Date) => {
       const dayStart = startOfDay(date);
       const dayEnd = endOfDay(date);
 
@@ -365,7 +362,20 @@ export default function Calendar({
         return taskStart <= dayEnd && taskEnd >= dayStart;
       });
     },
-    [tasks, tasksByDateTime],
+    [tasks],
+  );
+
+  // Obtenir les événements positionnés pour une journée spécifique
+  const getPositionedEventsForDay = useCallback(
+    (date: Date) => {
+      const dayStart = startOfDay(date);
+      const dayEnd = endOfDay(date);
+
+      return positionedEvents.filter((event) => {
+        return event.startDate <= dayEnd && event.endDate >= dayStart;
+      });
+    },
+    [positionedEvents],
   );
 
   const navigatePrevious = useCallback(() => {
@@ -522,51 +532,133 @@ export default function Calendar({
 
   const renderDayView = () => {
     const currentHour = new Date().getHours();
+    const currentMinute = new Date().getMinutes();
     const isToday = isSameDay(currentDate, new Date());
+    const dayEvents = getPositionedEventsForDay(currentDate);
 
     return (
       <div
         ref={dayViewRef}
         className="flex-1 overflow-y-scroll bg-gradient-to-br from-slate-50/30 to-blue-50/20"
       >
-        <div className="min-h-full">
-          {hours.map((hour) => {
-            const hourTasks = getTasksForDate(currentDate, hour);
-            const isCurrentHour = hour === currentHour;
-            const shouldHighlight = isToday && isCurrentHour;
-            const cellDate = new Date(currentDate);
-            cellDate.setHours(hour);
+        <div className="min-h-full flex relative">
+          {/* Colonne des heures */}
+          <div className="w-16 flex-shrink-0 bg-gradient-to-r from-slate-50 to-blue-50/50 border-r border-slate-300">
+            {hours.map((hour) => {
+              const isCurrentHour = isToday && hour === currentHour;
 
-            return (
-              <div
-                key={hour}
-                ref={isCurrentHour ? currentHourRef : null}
-                className={`group flex border-b border-slate-200/50 transition-all duration-200 ${
-                  shouldHighlight ? "bg-blue-50/70 shadow-inner" : ""
-                }`}
-                style={{ minHeight: "50px" }}
-              >
+              return (
                 <div
-                  className={`w-16 flex-shrink-0 bg-gradient-to-r from-slate-50 to-blue-50/50 px-2 py-1 text-xs font-semibold border-r border-slate-200/50 transition-all duration-200 ${
-                    shouldHighlight
-                      ? "text-[#005f82] font-bold"
-                      : "text-slate-700 group-hover:text-[#005f82]"
-                  }`}
+                  key={hour}
+                  ref={isCurrentHour ? currentHourRef : null}
+                  className="relative"
+                  style={{ height: "60px" }}
                 >
-                  {`${hour.toString().padStart(2, "0")}:00`}
+                  <div
+                    className={`px-2 py-1 text-xs font-semibold transition-all duration-200 ${
+                      isCurrentHour
+                        ? "text-[#005f82] font-bold"
+                        : "text-slate-700"
+                    }`}
+                  >
+                    {`${hour.toString().padStart(2, "0")}:00`}
+                  </div>
                 </div>
+              );
+            })}
+          </div>
+
+          {/* Zone des événements avec grille */}
+          <div className="flex-1 relative">
+            {/* Grille de fond avec lignes pour les quarts d'heure */}
+            {hours.map((hour) => (
+              <div key={hour} className="relative" style={{ height: "60px" }}>
+                {/* Ligne principale de l'heure (épaisse) */}
+                <div className="absolute top-0 left-0 right-0 border-t-2 border-slate-300"></div>
+
+                {/* Lignes des quarts d'heure (fines) */}
+                <div className="absolute left-0 right-0 border-t border-slate-200" style={{ top: "15px" }}></div>
+                <div className="absolute left-0 right-0 border-t border-slate-200" style={{ top: "30px" }}></div>
+                <div className="absolute left-0 right-0 border-t border-slate-200" style={{ top: "45px" }}></div>
+
+                {/* Zone cliquable pour ajouter un événement */}
                 <DroppableCell
                   id={`${format(currentDate, "yyyy-MM-dd")}-${hour}`}
-                  date={cellDate}
-                  className="flex-1 p-2 cursor-pointer"
+                  date={new Date(currentDate.setHours(hour, 0, 0, 0))}
+                  className="absolute inset-0 hover:bg-blue-50/30 transition-colors cursor-pointer"
                 >
-                  {hourTasks.map((task) => (
-                    <Draggable key={task.id} task={task} type="week" />
-                  ))}
+                  <div className="w-full h-full" onClick={() => onAddTask(currentDate, hour)}></div>
                 </DroppableCell>
               </div>
-            );
-          })}
+            ))}
+
+            {/* Ligne de l'heure actuelle */}
+            {isToday && (
+              <div
+                className="absolute left-0 right-0 z-20 pointer-events-none"
+                style={{ top: `${currentHour * 60 + currentMinute}px` }}
+              >
+                <div className="flex items-center">
+                  <div className="w-2 h-2 rounded-full bg-red-500 -ml-1"></div>
+                  <div className="flex-1 h-0.5 bg-red-500"></div>
+                </div>
+              </div>
+            )}
+
+            {/* Événements positionnés en absolu */}
+            <div className="absolute inset-0 pointer-events-none" style={{ paddingLeft: "4px", paddingRight: "4px" }}>
+              {dayEvents.map((event) => {
+                const taskColor = getTaskColor(event, calendars);
+                const eventStartOfDay = startOfDay(currentDate).getTime();
+                const eventStart = event.startDate.getTime();
+                const topOffset = Math.max(0, (eventStart - eventStartOfDay) / (1000 * 60)); // minutes depuis le début du jour
+
+                return (
+                  <div
+                    key={event.id}
+                    className="absolute left-1 right-1 pointer-events-auto"
+                    style={{
+                      top: `${topOffset}px`,
+                      height: `${event.height}px`,
+                      zIndex: 10,
+                    }}
+                  >
+                    <div
+                      className="h-full rounded-lg shadow-md hover:shadow-lg transition-all cursor-pointer p-2 overflow-hidden group"
+                      style={{
+                        background: `linear-gradient(135deg, ${taskColor} 0%, ${taskColor}dd 100%)`,
+                        borderLeft: `4px solid ${taskColor}`,
+                      }}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onTaskClick(event);
+                      }}
+                    >
+                      <div className="flex items-start gap-1 h-full">
+                        <div
+                          className="cursor-grab active:cursor-grabbing shrink-0 opacity-0 group-hover:opacity-100 transition-opacity p-0.5 hover:bg-white/20 rounded"
+                          onMouseDown={(e) => e.stopPropagation()}
+                        >
+                          <GripVertical className="w-3 h-3 text-white" />
+                        </div>
+                        <div className="flex-1 min-w-0 text-white">
+                          <div className="font-semibold text-sm truncate">{event.title}</div>
+                          <div className="text-xs opacity-90 mt-0.5">
+                            {format(event.startDate, "HH:mm")} - {format(event.endDate, "HH:mm")}
+                          </div>
+                          {event.height > 50 && event.description && (
+                            <div className="text-xs opacity-80 mt-1 line-clamp-2">
+                              {event.description.replace(/<[^>]*>/g, '')}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
         </div>
       </div>
     );
@@ -574,24 +666,27 @@ export default function Calendar({
 
   const renderWeekView = () => {
     const currentHour = new Date().getHours();
+    const currentMinute = new Date().getMinutes();
+    const today = new Date();
 
     return (
       <div ref={dayViewRef} className="flex-1 overflow-auto bg-white">
-        <div className="flex border-b border-slate-200 sticky top-0 z-10 bg-gradient-to-r from-slate-50 to-blue-50">
-          <div className="w-16 flex-shrink-0 border-r border-slate-200"></div>
+        {/* En-tête avec les jours de la semaine */}
+        <div className="flex border-b-2 border-slate-300 sticky top-0 z-20 bg-gradient-to-r from-slate-50 to-blue-50">
+          <div className="w-16 flex-shrink-0 border-r border-slate-300"></div>
           {weekDays.map((day) => (
             <div
               key={day.toString()}
               className="flex-1 min-w-[100px] p-2 text-center border-r border-slate-200"
             >
               <div
-                className={`font-semibold text-xs ${isSameDay(day, new Date()) ? "text-[#005f82]" : "text-slate-600"}`}
+                className={`font-semibold text-xs ${isSameDay(day, today) ? "text-[#005f82]" : "text-slate-600"}`}
               >
                 {format(day, "EEE", { locale: fr })}
               </div>
               <div
                 className={`text-lg font-bold mt-0.5 ${
-                  isSameDay(day, new Date())
+                  isSameDay(day, today)
                     ? "bg-gradient-to-r from-[#005f82] to-[#007ba8] text-white w-8 h-8 rounded-xl flex items-center justify-center mx-auto shadow-md text-sm"
                     : "text-slate-800"
                 }`}
@@ -601,46 +696,134 @@ export default function Calendar({
             </div>
           ))}
         </div>
-        <div className="min-h-full">
-          {hours.map((hour) => {
-            const isCurrentHour = hour === currentHour;
+
+        {/* Contenu avec grille horaire */}
+        <div className="min-h-full flex relative">
+          {/* Colonne des heures */}
+          <div className="w-16 flex-shrink-0 bg-gradient-to-r from-slate-50 to-blue-50/50 border-r border-slate-300 sticky left-0 z-10">
+            {hours.map((hour) => {
+              const isCurrentHour = hour === currentHour;
+
+              return (
+                <div
+                  key={hour}
+                  ref={isCurrentHour ? currentHourRef : null}
+                  className="relative"
+                  style={{ height: "60px" }}
+                >
+                  <div
+                    className={`px-2 py-1 text-xs font-semibold transition-all duration-200 ${
+                      isCurrentHour
+                        ? "text-[#005f82] font-bold"
+                        : "text-slate-700"
+                    }`}
+                  >
+                    {`${hour.toString().padStart(2, "0")}:00`}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Colonnes des jours */}
+          {weekDays.map((day, dayIndex) => {
+            const dayEvents = getPositionedEventsForDay(day);
+            const isToday = isSameDay(day, today);
 
             return (
               <div
-                key={hour}
-                ref={isCurrentHour ? currentHourRef : null}
-                className={`flex border-b border-slate-200 transition-all duration-200 ${
-                  isCurrentHour ? "bg-blue-50/70 shadow-inner" : ""
-                }`}
-                style={{ minHeight: "50px" }}
+                key={day.toString()}
+                className="flex-1 min-w-[100px] border-r border-slate-200 relative"
               >
-                <div
-                  className={`w-16 flex-shrink-0 bg-gradient-to-r from-slate-50 to-blue-50 px-2 py-1 text-xs font-semibold border-r border-slate-200 transition-all duration-200 ${
-                    isCurrentHour
-                      ? "text-[#005f82] font-bold"
-                      : "text-slate-700"
-                  }`}
-                >
-                  {`${hour.toString().padStart(2, "0")}:00`}
-                </div>
-                {weekDays.map((day) => {
-                  const dayTasks = getTasksForDate(day, hour);
-                  const cellDate = new Date(day);
-                  cellDate.setHours(hour);
+                {/* Grille de fond avec lignes pour les quarts d'heure */}
+                {hours.map((hour) => (
+                  <div key={hour} className="relative" style={{ height: "60px" }}>
+                    {/* Ligne principale de l'heure (épaisse) */}
+                    <div className="absolute top-0 left-0 right-0 border-t-2 border-slate-300"></div>
 
-                  return (
+                    {/* Lignes des quarts d'heure (fines) */}
+                    <div className="absolute left-0 right-0 border-t border-slate-200" style={{ top: "15px" }}></div>
+                    <div className="absolute left-0 right-0 border-t border-slate-200" style={{ top: "30px" }}></div>
+                    <div className="absolute left-0 right-0 border-t border-slate-200" style={{ top: "45px" }}></div>
+
+                    {/* Zone cliquable pour ajouter un événement */}
                     <DroppableCell
-                      key={day.toString()}
                       id={`${format(day, "yyyy-MM-dd")}-${hour}`}
-                      date={cellDate}
-                      className="flex-1 min-w-[100px] p-1 border-r border-slate-200 cursor-pointer"
+                      date={new Date(day.setHours(hour, 0, 0, 0))}
+                      className="absolute inset-0 hover:bg-blue-50/30 transition-colors cursor-pointer"
                     >
-                      {dayTasks.map((task) => (
-                        <Draggable key={task.id} task={task} type="week" />
-                      ))}
+                      <div className="w-full h-full" onClick={() => onAddTask(day, hour)}></div>
                     </DroppableCell>
-                  );
-                })}
+                  </div>
+                ))}
+
+                {/* Ligne de l'heure actuelle pour aujourd'hui */}
+                {isToday && (
+                  <div
+                    className="absolute left-0 right-0 z-20 pointer-events-none"
+                    style={{ top: `${currentHour * 60 + currentMinute}px` }}
+                  >
+                    <div className="flex items-center">
+                      <div className="w-2 h-2 rounded-full bg-red-500 -ml-1"></div>
+                      <div className="flex-1 h-0.5 bg-red-500"></div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Événements positionnés en absolu */}
+                <div className="absolute inset-0 pointer-events-none" style={{ paddingLeft: "2px", paddingRight: "2px" }}>
+                  {dayEvents.map((event) => {
+                    const taskColor = getTaskColor(event, calendars);
+                    const eventStartOfDay = startOfDay(day).getTime();
+                    const eventStart = event.startDate.getTime();
+                    const topOffset = Math.max(0, (eventStart - eventStartOfDay) / (1000 * 60)); // minutes depuis le début du jour
+
+                    // Limiter la hauteur à la fin de la journée
+                    const maxHeight = (24 * 60) - topOffset;
+                    const displayHeight = Math.min(event.height, maxHeight);
+
+                    return (
+                      <div
+                        key={event.id}
+                        className="absolute left-1 right-1 pointer-events-auto"
+                        style={{
+                          top: `${topOffset}px`,
+                          height: `${displayHeight}px`,
+                          zIndex: 10,
+                        }}
+                      >
+                        <div
+                          className="h-full rounded-md shadow-sm hover:shadow-md transition-all cursor-pointer p-1 overflow-hidden group text-white text-[10px]"
+                          style={{
+                            background: `linear-gradient(135deg, ${taskColor} 0%, ${taskColor}dd 100%)`,
+                            borderLeft: `3px solid ${taskColor}`,
+                          }}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onTaskClick(event);
+                          }}
+                        >
+                          <div className="flex items-start gap-0.5 h-full">
+                            <div
+                              className="cursor-grab active:cursor-grabbing shrink-0 opacity-0 group-hover:opacity-100 transition-opacity p-0.5 hover:bg-white/20 rounded"
+                              onMouseDown={(e) => e.stopPropagation()}
+                            >
+                              <GripVertical className="w-2.5 h-2.5" />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <div className="font-semibold truncate leading-tight">{event.title}</div>
+                              {displayHeight > 25 && (
+                                <div className="opacity-90 mt-0.5 leading-tight">
+                                  {format(event.startDate, "HH:mm")}
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
             );
           })}

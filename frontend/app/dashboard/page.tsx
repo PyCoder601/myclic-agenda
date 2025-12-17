@@ -9,6 +9,7 @@ import {
   fetchEvents,
   fetchAllGroupEvents,
   fetchAllCalendars,
+  fetchAllEventsBackground,
   createEvent,
   updateEvent,
   deleteEvent,
@@ -28,6 +29,7 @@ export default function DashboardPage() {
     calendars,
     events,
     allCalendars,
+    allEvents,
     allCalendarsLoaded
   } = useAppSelector((state) => state.calendar);
   const dispatch = useAppDispatch();
@@ -47,6 +49,7 @@ export default function DashboardPage() {
   const [showRappels, setShowRappels] = useState(false);
 
   const calendarsLoaded = useRef(false);
+  const allEventsBackgroundLoaded = useRef(false);
 
   // Redirection si non authentifié
   useEffect(() => {
@@ -84,6 +87,23 @@ export default function DashboardPage() {
       dispatch(fetchAllCalendars());
     }
   }, [user, calendars.length, allCalendarsLoaded, dispatch]);
+
+  // Charger TOUS les événements en arrière-plan après le chargement des calendriers et événements initiaux
+  useEffect(() => {
+    if (user && calendars.length > 0 && events.length > 0 && !allEventsBackgroundLoaded.current) {
+      allEventsBackgroundLoaded.current = true;
+      console.log('🔄 [Arrière-plan] Chargement de TOUS les événements');
+      const year = currentDate.getFullYear();
+      const month = currentDate.getMonth();
+      const start = new Date(year, month - 3, 1); // 3 mois avant
+      const end = new Date(year, month + 4, 0); // 3 mois après
+
+      dispatch(fetchAllEventsBackground({
+        start_date: start.toISOString().split('T')[0],
+        end_date: end.toISOString().split('T')[0]
+      }));
+    }
+  }, [user, calendars.length, events.length, currentDate, dispatch]);
 
 
   // // ✅ Activer/désactiver les calendriers selon le mode de vue
@@ -198,9 +218,11 @@ export default function DashboardPage() {
     const start = new Date(year, month, -7);
     const end = new Date(year, month + 1, 7);
 
-    // Utiliser le cache global (events) qui contient tous les événements chargés
+    // Utiliser allEvents en mode groupe, events en mode personnel
+    const sourceEvents = mainViewMode === 'group' ? allEvents : events;
+
     // Filtrer par la plage de dates visible
-    const filteredByDate = events.filter(event => {
+    const filteredByDate = sourceEvents.filter(event => {
       const eventStart = new Date(event.start_date);
       const eventEnd = new Date(event.end_date);
 
@@ -210,9 +232,9 @@ export default function DashboardPage() {
              (eventStart <= start && eventEnd >= end);
     });
 
-    console.log(`📊 ${filteredByDate.length} événements dans la plage visible (${events.length} en cache)`);
+    console.log(`📊 Mode: ${mainViewMode} - ${filteredByDate.length} événements dans la plage visible (${sourceEvents.length} en cache)`);
     return filteredByDate;
-  }, [events, currentDate]);
+  }, [events, allEvents, currentDate, mainViewMode]);
 
   // Sélectionner les calendriers à utiliser selon le mode
   const calendarsToUse = useMemo(() => {
@@ -306,11 +328,17 @@ export default function DashboardPage() {
       const start = new Date(year, month, -7);
       const end = new Date(year, month + 1, 7);
 
-      const fetchAction = mainViewMode === 'group' ? fetchAllGroupEvents : fetchEvents;
-      dispatch(fetchAction({
-        start_date: start.toISOString().split('T')[0],
-        end_date: end.toISOString().split('T')[0]
-      }));
+      if (mainViewMode === 'group') {
+        dispatch(fetchAllGroupEvents({
+          start_date: start.toISOString().split('T')[0],
+          end_date: end.toISOString().split('T')[0]
+        }));
+      } else {
+        dispatch(fetchEvents({
+          start_date: start.toISOString().split('T')[0],
+          end_date: end.toISOString().split('T')[0]
+        }));
+      }
     }
   }, [dispatch, currentDate, mainViewMode]);
 
@@ -392,11 +420,17 @@ export default function DashboardPage() {
       const start = new Date(year, month, -7);
       const end = new Date(year, month + 1, 7);
 
-      const fetchAction = mainViewMode === 'group' ? fetchAllGroupEvents : fetchEvents;
-      dispatch(fetchAction({
-        start_date: start.toISOString().split('T')[0],
-        end_date: end.toISOString().split('T')[0]
-      }));
+      if (mainViewMode === 'group') {
+        dispatch(fetchAllGroupEvents({
+          start_date: start.toISOString().split('T')[0],
+          end_date: end.toISOString().split('T')[0]
+        }));
+      } else {
+        dispatch(fetchEvents({
+          start_date: start.toISOString().split('T')[0],
+          end_date: end.toISOString().split('T')[0]
+        }));
+      }
     }
   }, [events, dispatch, currentDate, mainViewMode]);
 
@@ -449,11 +483,17 @@ export default function DashboardPage() {
       const start = new Date(year, month, -7);
       const end = new Date(year, month + 1, 7);
 
-      const fetchAction = mainViewMode === 'group' ? fetchAllGroupEvents : fetchEvents;
-      dispatch(fetchAction({
-        start_date: start.toISOString().split('T')[0],
-        end_date: end.toISOString().split('T')[0]
-      }));
+      if (mainViewMode === 'group') {
+        dispatch(fetchAllGroupEvents({
+          start_date: start.toISOString().split('T')[0],
+          end_date: end.toISOString().split('T')[0]
+        }));
+      } else {
+        dispatch(fetchEvents({
+          start_date: start.toISOString().split('T')[0],
+          end_date: end.toISOString().split('T')[0]
+        }));
+      }
     }
   }, [events, dispatch, currentDate, mainViewMode]);
 

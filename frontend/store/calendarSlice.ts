@@ -12,7 +12,8 @@ interface CalendarState {
     events: Task[]; // TOUS les événements accumulés (cache global)
     allCalendars: CalendarSource[]; // TOUS les calendriers (même display == 0)
     allEvents: Task[]; // TOUS les événements de tous les calendriers
-    loadedRanges: DateRange[]; // Plages de dates déjà chargées pour éviter les fetches
+    loadedRanges: DateRange[]; // Plages de dates déjà chargées pour éviter les fetches (mode personnel)
+    groupLoadedRanges: DateRange[]; // Plages de dates déjà chargées pour le mode groupe
     loading: boolean;
     eventsLoading: boolean;
     groupEventsLoading: boolean; // État de chargement spécifique pour les événements du mode groupe
@@ -29,6 +30,7 @@ const initialState: CalendarState = {
     allCalendars: [],
     allEvents: [],
     loadedRanges: [],
+    groupLoadedRanges: [],
     loading: false,
     eventsLoading: false,
     groupEventsLoading: false,
@@ -137,8 +139,16 @@ export const fetchEvents = createAsyncThunk(
 // Récupérer TOUS les événements de TOUS les calendriers (pour le mode groupe)
 export const fetchAllGroupEvents = createAsyncThunk(
     'calendar/fetchAllGroupEvents',
-    async (params: { start_date: string; end_date: string }, {rejectWithValue}) => {
+    async (params: { start_date: string; end_date: string }, {rejectWithValue, getState}) => {
         try {
+            const state = getState() as { calendar: CalendarState };
+
+            // Vérifier si la plage est déjà chargée
+            if (isRangeLoaded(state.calendar.groupLoadedRanges, params.start_date, params.end_date)) {
+                console.log(`✅ [Cache] Événements de groupe déjà en cache pour ${params.start_date} à ${params.end_date}`);
+                return { fromCache: true, events: [] }; // Retourner un indicateur de cache
+            }
+
             console.log(`🔄 Fetch TOUS les événements de groupe pour ${params.start_date} à ${params.end_date}`);
             const response = await baikalAPI.getEvents({
                 start_date: params.start_date,
@@ -146,7 +156,11 @@ export const fetchAllGroupEvents = createAsyncThunk(
                 include_all: true  // ✅ Récupérer TOUS les calendriers sans filtre display
             });
 
-            return response.data;
+            return {
+                fromCache: false,
+                events: response.data,
+                dateRange: { start: params.start_date, end: params.end_date }
+            };
         } catch (error: any) {
             return rejectWithValue(error.response?.data || 'Erreur lors de la récupération des événements de groupe');
         }
@@ -459,11 +473,28 @@ const calendarSlice = createSlice({
         builder.addCase(fetchAllGroupEvents.fulfilled, (state, action) => {
             state.groupEventsLoading = false;
 
-            // Remplacer tous les événements par les nouveaux
-            state.events = action.payload as Task[];
+            const payload = action.payload as any;
+
+            // Si les données viennent du cache, ne rien faire
+            if (payload.fromCache) {
+                console.log(`✅ [Cache] Utilisation du cache pour le mode groupe`);
+                return;
+            }
+
+            // Accumuler les nouveaux événements au lieu de remplacer
+            const newEvents = payload.events as Task[];
+            const existingIds = new Set(state.allEvents.map(e => e.id));
+            const eventsToAdd = newEvents.filter(event => !existingIds.has(event.id));
+
+            state.allEvents = [...state.allEvents, ...eventsToAdd];
             state.lastFetch = Date.now();
 
-            console.log(`✅ ${state.events.length} événements de groupe chargés`);
+            // Mettre à jour les plages chargées pour le mode groupe
+            if (payload.dateRange) {
+                state.groupLoadedRanges = mergeRanges(state.groupLoadedRanges, payload.dateRange);
+                console.log(`✅ [Fetch] ${eventsToAdd.length} nouveaux événements de groupe ajoutés (total: ${state.allEvents.length})`);
+                console.log(`📊 Plages groupe chargées:`, state.groupLoadedRanges);
+            }
         });
         builder.addCase(fetchAllGroupEvents.rejected, (state, action) => {
             state.groupEventsLoading = false;

@@ -119,6 +119,15 @@ const DayTasksModal = memo(
                       <div className="font-semibold text-slate-800 text-sm">
                         {task.title}
                       </div>
+                      {task.location && (
+                        <div className="flex items-center gap-1 mt-1 text-xs text-slate-500">
+                          <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                          </svg>
+                          <span>{task.location}</span>
+                        </div>
+                      )}
                       {task.description && (
                         <div
                           className="prose prose-sm mt-1 text-slate-600 max-w-none"
@@ -347,6 +356,15 @@ const PositionedEventItem = ({
             <div className="text-xs opacity-90 mt-0.5">
               {format(new Date(event.start_date), "HH:mm")} - {format(new Date(event.end_date), "HH:mm")}
             </div>
+            {event.location && resizeHeight > 35 && (
+              <div className="flex items-center gap-1 text-xs opacity-80 mt-0.5">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-2.5 w-2.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                </svg>
+                <span className="truncate">{event.location}</span>
+              </div>
+            )}
             {resizeHeight > 50 && event.description && (
               <div className="text-xs opacity-80 mt-1 line-clamp-2">
                 {event.description.replace(/<[^>]*>/g, '')}
@@ -468,6 +486,15 @@ const PositionedWeekEventItem = ({
             {resizeHeight > 25 && (
               <div className="opacity-90 mt-0.5 leading-tight">
                 {format(new Date(event.start_date), "HH:mm")}
+              </div>
+            )}
+            {event.location && resizeHeight > 40 && (
+              <div className="flex items-center gap-0.5 opacity-80 mt-0.5 leading-tight truncate">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-2 w-2 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                </svg>
+                <span className="truncate">{event.location}</span>
               </div>
             )}
           </div>

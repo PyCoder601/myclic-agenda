@@ -55,6 +55,7 @@ export default function TaskModal({ isOpen, onClose, onSave, onDelete, task, ini
       return {
         title: task.title,
         description: task.description || '',
+        location: task.location || '',
         start_date: task.start_date.slice(0, 16),
         end_date: task.end_date.slice(0, 16),
         calendar_source: calendarSourceId,
@@ -89,6 +90,7 @@ export default function TaskModal({ isOpen, onClose, onSave, onDelete, task, ini
     return {
       title: '',
       description: '',
+      location: '',
       start_date: formatDateTimeLocal(start),
       end_date: formatDateTimeLocal(end),
       calendar_source: defaultCalendarSource,
@@ -198,6 +200,7 @@ export default function TaskModal({ isOpen, onClose, onSave, onDelete, task, ini
     onSave({
       title: formData.title,
       description: formData.description,
+      location: formData.location,
       start_date: new Date(formData.start_date).toISOString(),
       end_date: new Date(formData.end_date).toISOString(),
       calendar_source_name: selectedCalendar.displayname,
@@ -244,6 +247,19 @@ export default function TaskModal({ isOpen, onClose, onSave, onDelete, task, ini
               onChange={(e) => setFormData({ ...formData, title: e.target.value })}
               className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#005f82] focus:border-transparent text-slate-800 font-medium transition-all"
               placeholder="Titre de l'événement"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-semibold text-slate-700 mb-2">
+              Lieu
+            </label>
+            <input
+              type="text"
+              value={formData.location}
+              onChange={(e) => setFormData({ ...formData, location: e.target.value })}
+              className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#005f82] focus:border-transparent text-slate-800 font-medium transition-all"
+              placeholder="Lieu de l'événement (optionnel)"
             />
           </div>
 

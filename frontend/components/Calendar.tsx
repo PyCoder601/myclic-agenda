@@ -436,6 +436,12 @@ export default function Calendar({
   const calendarsByUser = useMemo(() => {
     const grouped: { [key: string]: CalendarSource[] } = {};
     calendars.forEach((cal) => {
+      // Filtrer les calendriers de type ressource (description contient "Ressources")
+      console.log(cal)
+      if (cal.description && cal.description.includes("Resource")) {
+        return; // Ne pas inclure les calendriers de ressource
+      }
+
       const username = cal.displayname || "Unknown";
       if (!grouped[username]) {
         grouped[username] = [];

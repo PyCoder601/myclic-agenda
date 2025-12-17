@@ -221,124 +221,136 @@ export default function TaskModal({ isOpen, onClose, onSave, onDelete, task, ini
   };
 
   return (
-    <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto shadow-2xl border border-slate-200">
-        <div className="flex items-center justify-between p-6 border-b border-slate-200 bg-linear-to-r from-slate-50 to-blue-50">
-          <h2 className="text-2xl font-bold bg-linear-to-r from-[#005f82] to-[#007ba8] bg-clip-text text-transparent">
+    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-3 sm:p-4 animate-fadeIn">
+      <div className="bg-white max-w-2xl w-full max-h-[85vh] overflow-hidden shadow-xl border border-slate-200/80 flex flex-col">
+        {/* Header compact */}
+        <div className="flex items-center justify-between px-4 py-2.5 border-b border-slate-200 bg-gradient-to-r from-slate-50 to-white flex-shrink-0">
+          <h2 className="text-lg font-bold text-[#005f82] flex items-center gap-2">
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+            </svg>
             {task ? 'Modifier l\'événement' : 'Nouvel événement'}
           </h2>
           <button
             onClick={onClose}
-            className="p-2 hover:bg-white rounded-xl transition-all text-slate-600 hover:text-slate-800"
+            className="p-1.5 hover:bg-slate-100 transition-colors text-slate-500 hover:text-slate-700 rounded"
+            type="button"
           >
-            <X className="w-6 h-6" />
+            <X className="w-5 h-5" />
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-6 space-y-6">
-          <div>
-            <label className="block text-sm font-semibold text-slate-700 mb-2">
-              Titre *
-            </label>
-            <input
-              type="text"
-              required
-              value={formData.title}
-              onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-              className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#005f82] focus:border-transparent text-slate-800 font-medium transition-all"
-              placeholder="Titre de l'événement"
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-semibold text-slate-700 mb-2">
-              Lieu
-            </label>
-            <input
-              type="text"
-              value={formData.location}
-              onChange={(e) => setFormData({ ...formData, location: e.target.value })}
-              className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#005f82] focus:border-transparent text-slate-800 font-medium transition-all"
-              placeholder="Lieu de l'événement (optionnel)"
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-semibold text-slate-700 mb-2">
-              Calendrier
-            </label>
-            <div className="relative">
-              <select
-                value={formData.calendar_source}
-                onChange={(e) => setFormData({ ...formData, calendar_source: e.target.value })}
-                className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#005f82] focus:border-transparent text-slate-800 font-medium transition-all appearance-none"
-              >
-                {calendars.map(cal => {
-                  // ✅ Toujours utiliser cal.id comme valeur pour uniformité
-                  const calId = String(cal.id);
-                  const calName = cal.displayname || 'Calendrier';
-                  return (
-                    <option key={calId} value={calId}>
-                      {calName}
-                    </option>
-                  );
-                })}
-              </select>
-            </div>
-          </div>
-
-          <div>
-            <label className="block text-sm font-semibold text-slate-700 mb-2">
-              Description
-            </label>
-            <RichTextEditor
-              content={formData.description}
-              onChange={(newContent) => setFormData({ ...formData, description: newContent })}
-            />
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {/* Formulaire avec scroll */}
+        <form onSubmit={handleSubmit} className="overflow-y-auto flex-1">
+          <div className="p-4 space-y-3">
+            {/* Titre */}
             <div>
-              <label className="block text-sm font-semibold text-slate-700 mb-2">
-                Date et heure de début *
+              <label className="block text-xs font-semibold text-slate-700 mb-1">
+                Titre <span className="text-red-500">*</span>
               </label>
               <input
-                type="datetime-local"
+                type="text"
                 required
-                value={formData.start_date}
-                onChange={(e) => setFormData({ ...formData, start_date: e.target.value })}
-                className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#005f82] focus:border-transparent text-slate-800 font-medium transition-all"
+                value={formData.title}
+                onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                className="w-full px-3 py-2 text-sm bg-white border border-slate-300 focus:outline-none focus:ring-1 focus:ring-[#005f82] focus:border-[#005f82] text-slate-900 transition-shadow"
+                placeholder="Ex: Réunion d'équipe"
               />
             </div>
 
+            {/* Grille compacte : Lieu + Calendrier */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">
+                  Lieu
+                </label>
+                <input
+                  type="text"
+                  value={formData.location}
+                  onChange={(e) => setFormData({ ...formData, location: e.target.value })}
+                  className="w-full px-3 py-2 text-sm bg-white border border-slate-300 focus:outline-none focus:ring-1 focus:ring-[#005f82] focus:border-[#005f82] text-slate-900 transition-shadow"
+                  placeholder="Salle 201"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">
+                  Calendrier <span className="text-red-500">*</span>
+                </label>
+                <select
+                  value={formData.calendar_source}
+                  onChange={(e) => setFormData({ ...formData, calendar_source: e.target.value })}
+                  className="w-full px-3 py-2 text-sm bg-white border border-slate-300 focus:outline-none focus:ring-1 focus:ring-[#005f82] focus:border-[#005f82] text-slate-900 transition-shadow"
+                >
+                  {calendars.map(cal => {
+                    const calId = String(cal.id);
+                    const calName = cal.displayname || 'Calendrier';
+                    return (
+                      <option key={calId} value={calId}>
+                        {calName}
+                      </option>
+                    );
+                  })}
+                </select>
+              </div>
+            </div>
+
+            {/* Dates compactes */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">
+                  Début <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="datetime-local"
+                  required
+                  value={formData.start_date}
+                  onChange={(e) => setFormData({ ...formData, start_date: e.target.value })}
+                  className="w-full px-3 py-2 text-sm bg-white border border-slate-300 focus:outline-none focus:ring-1 focus:ring-[#005f82] focus:border-[#005f82] text-slate-900 transition-shadow"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">
+                  Fin <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="datetime-local"
+                  required
+                  value={formData.end_date}
+                  onChange={(e) => setFormData({ ...formData, end_date: e.target.value })}
+                  className="w-full px-3 py-2 text-sm bg-white border border-slate-300 focus:outline-none focus:ring-1 focus:ring-[#005f82] focus:border-[#005f82] text-slate-900 transition-shadow"
+                />
+              </div>
+            </div>
+
+            {/* Description */}
             <div>
-              <label className="block text-sm font-semibold text-slate-700 mb-2">
-                Date et heure de fin *
+              <label className="block text-xs font-semibold text-slate-700 mb-1">
+                Description
               </label>
-              <input
-                type="datetime-local"
-                required
-                value={formData.end_date}
-                onChange={(e) => setFormData({ ...formData, end_date: e.target.value })}
-                className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#005f82] focus:border-transparent text-slate-800 font-medium transition-all"
-              />
+              <div className="border border-slate-300 focus-within:ring-1 focus-within:ring-[#005f82] focus-within:border-[#005f82] transition-shadow">
+                <RichTextEditor
+                  content={formData.description}
+                  onChange={(newContent) => setFormData({ ...formData, description: newContent })}
+                />
+              </div>
             </div>
           </div>
 
-
-
-          <div className="flex gap-3 pt-4">
+          {/* Footer avec boutons */}
+          <div className="border-t border-slate-200 bg-slate-50 px-4 py-3 flex gap-2 flex-shrink-0">
             <button
               type="submit"
-              className="flex-1 bg-gradient-to-r from-[#005f82] to-[#007ba8] hover:shadow-lg text-white font-semibold py-3 px-4 rounded-xl transition-all hover:scale-105 active:scale-95"
+              className="flex-1 bg-[#005f82] hover:bg-[#004a65] text-white font-medium py-2 px-4 text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-[#005f82] focus:ring-offset-2"
             >
-              {task ? 'Mettre à jour' : 'Créer'}
+              {task ? 'Mettre à jour' : 'Créer l\'événement'}
             </button>
             {task && onDelete && (
               <button
                 type="button"
                 onClick={handleDelete}
-                className="bg-gradient-to-r from-red-500 to-red-600 hover:shadow-lg text-white font-semibold py-3 px-4 rounded-xl transition-all hover:scale-105 active:scale-95"
+                className="bg-red-600 hover:bg-red-700 text-white font-medium py-2 px-4 text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-red-600 focus:ring-offset-2"
               >
                 Supprimer
               </button>
@@ -346,7 +358,7 @@ export default function TaskModal({ isOpen, onClose, onSave, onDelete, task, ini
             <button
               type="button"
               onClick={onClose}
-              className="bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold py-3 px-4 rounded-xl transition-all border border-slate-200"
+              className="bg-white hover:bg-slate-100 text-slate-700 font-medium py-2 px-4 text-sm border border-slate-300 transition-colors focus:outline-none focus:ring-2 focus:ring-slate-400 focus:ring-offset-2"
             >
               Annuler
             </button>

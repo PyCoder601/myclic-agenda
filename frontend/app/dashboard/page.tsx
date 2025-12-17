@@ -43,6 +43,7 @@ export default function DashboardPage() {
   const [isCalendarDropdownOpen, setIsCalendarDropdownOpen] = useState(false);
   const [isNavigating, setIsNavigating] = useState(false);
   const [pendingDate, setPendingDate] = useState<Date | null>(null);
+  const [showRappels, setShowRappels] = useState(false);
 
   const calendarsLoaded = useRef(false);
 
@@ -216,6 +217,11 @@ export default function DashboardPage() {
     if (calendarsToUse.length === 0) return eventsToUse;
 
     return eventsToUse.filter(task => {
+      // Filtrer par type d'événement : masquer les rappels par défaut
+      if (task.type === 'rappel_event' && !showRappels) {
+        return false;
+      }
+
       // On identifie le calendrier par son displayname, qui correspond à calendar_source_name côté événements
       const calendarName = task.calendar_source_name || '';
       if (!calendarName) return true; // si pas d'info, on n'exclut pas
@@ -227,7 +233,7 @@ export default function DashboardPage() {
       // on respecte le toggle manuel de l'utilisateur (calendar.display)
       return calendar.display
     });
-  }, [eventsToUse, calendarsToUse]);
+  }, [eventsToUse, calendarsToUse, showRappels]);
 
   const handleLogout = useCallback(() => {
     dispatch(logout());
@@ -527,6 +533,25 @@ export default function DashboardPage() {
               {/*>*/}
               {/*  <Settings className="w-4 h-4 transition-transform duration-300 group-hover:rotate-90" />*/}
               {/*</button>*/}
+              <div className="flex items-center gap-2 bg-white px-3 py-2 rounded-xl shadow-sm border border-slate-200 transition-all duration-300">
+                <svg className="w-4 h-4 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+                </svg>
+                <span className="hidden sm:inline text-xs sm:text-sm font-medium text-slate-700">Rappels</span>
+                <button
+                  onClick={() => setShowRappels(!showRappels)}
+                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors duration-300 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 ${
+                    showRappels ? 'bg-gradient-to-r from-purple-500 to-purple-600' : 'bg-slate-300'
+                  }`}
+                  title={showRappels ? 'Masquer les rappels' : 'Afficher les rappels'}
+                >
+                  <span
+                    className={`inline-block h-4 w-4 transform rounded-full bg-white shadow-lg transition-transform duration-300 ${
+                      showRappels ? 'translate-x-6' : 'translate-x-1'
+                    }`}
+                  />
+                </button>
+              </div>
               <button
                 onClick={() => {
                   setSelectedTask(null);

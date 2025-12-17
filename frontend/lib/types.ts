@@ -35,6 +35,7 @@ export interface Task {
     calendar_source_id: number | string;
     calendar_source_uri: number | string;
     calendar_source_color?: string;
+    type?: 'agenda_event' | 'rappel_event';
 }
 
 export interface CalDAVConfig {

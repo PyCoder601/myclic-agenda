@@ -330,4 +330,3 @@ export default function TaskModal({ isOpen, onClose, onSave, onDelete, task, ini
     </div>
   );
 }
-

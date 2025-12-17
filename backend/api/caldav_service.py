@@ -116,13 +116,12 @@ class BaikalCalDAVClient:
                     if not vevent:
                         continue
 
-                    print(f'VEVENT: {vevent}')
-
                     formatted_event = {
                         'id': str(vevent.get('uid', event.url)),
                         'title': str(vevent.get('summary', 'Sans titre')),
                         'description': str(vevent.get('description', '')),
                         'location': str(vevent.get('location', '')),
+                        'type': str(vevent.get('eventtype', 'agenda_event')),
                         'start_date': self._parse_ical_date(vevent.get('dtstart')) if vevent.get('dtstart') else None,
                         'end_date': self._parse_ical_date(vevent.get('dtend')) if vevent.get('dtend') else None,
                         'lastmodified': self._parse_ical_date(vevent.get('last-modified')) if vevent.get('last-modified') else None,

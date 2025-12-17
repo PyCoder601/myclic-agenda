@@ -63,14 +63,24 @@ export default function TaskModal({ isOpen, onClose, onSave, onDelete, task, ini
     
     const baseDate = initialDate ? new Date(initialDate) : new Date();
     const currentTime = new Date();
-    const hour = initialHour !== undefined ? initialHour : currentTime.getHours();
 
+    // Si initialDate contient déjà une heure/minute spécifique, les utiliser
     const start = new Date(baseDate);
-    start.setHours(hour, 0, 0, 0);
+    if (initialHour !== undefined) {
+      // Si initialHour est fourni séparément (ancien comportement), l'utiliser avec minutes = 0
+      start.setHours(initialHour, 0, 0, 0);
+    } else if (initialDate && (initialDate.getHours() !== 0 || initialDate.getMinutes() !== 0)) {
+      // Si initialDate a déjà une heure/minute spécifique (nouveau comportement), les préserver
+      // Ne rien faire, on garde l'heure/minute de initialDate
+      console.log(`📅 Préservation de l'heure: ${initialDate.getHours()}:${initialDate.getMinutes()}`);
+    } else {
+      // Sinon, utiliser l'heure actuelle avec minutes = 0
+      start.setHours(currentTime.getHours(), 0, 0, 0);
+    }
 
     const end = new Date(start);
-    end.setHours(hour + 1, 0, 0, 0);
-    
+    end.setTime(start.getTime() + 60 * 60 * 1000); // +1 heure
+
     // ✅ Utiliser le premier calendrier disponible comme défaut
     const defaultCalendarSource = calendars.length > 0
       ? String(calendars[0].id)

@@ -852,7 +852,21 @@ export default function Calendar({
                   date={new Date(currentDate.setHours(hour, 0, 0, 0))}
                   className="absolute inset-0 hover:bg-blue-50/30 transition-colors cursor-pointer"
                 >
-                  <div className="w-full h-full" onClick={() => onAddTask(currentDate, hour)}></div>
+                  <div
+                    className="w-full h-full"
+                    onClick={(e) => {
+                      // Calculer la minute exacte basée sur la position du clic
+                      const rect = e.currentTarget.getBoundingClientRect();
+                      const clickY = e.clientY - rect.top;
+                      const minute = Math.floor((clickY / 60) * 60); // 60px = 60 minutes
+
+                      const newDate = new Date(currentDate);
+                      newDate.setHours(hour, minute, 0, 0);
+
+                      console.log(`➕ Clic pour créer événement: ${hour}:${minute.toString().padStart(2, '0')}`);
+                      onAddTask(newDate);
+                    }}
+                  ></div>
                 </DroppableCell>
               </div>
             ))}
@@ -984,7 +998,21 @@ export default function Calendar({
                       date={new Date(day.setHours(hour, 0, 0, 0))}
                       className="absolute inset-0 hover:bg-blue-50/30 transition-colors cursor-pointer"
                     >
-                      <div className="w-full h-full" onClick={() => onAddTask(day, hour)}></div>
+                      <div
+                        className="w-full h-full"
+                        onClick={(e) => {
+                          // Calculer la minute exacte basée sur la position du clic
+                          const rect = e.currentTarget.getBoundingClientRect();
+                          const clickY = e.clientY - rect.top;
+                          const minute = Math.floor((clickY / 60) * 60); // 60px = 60 minutes
+
+                          const newDate = new Date(day);
+                          newDate.setHours(hour, minute, 0, 0);
+
+                          console.log(`➕ Clic pour créer événement: ${format(day, 'dd/MM')} ${hour}:${minute.toString().padStart(2, '0')}`);
+                          onAddTask(newDate);
+                        }}
+                      ></div>
                     </DroppableCell>
                   </div>
                 ))}

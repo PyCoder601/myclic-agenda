@@ -241,6 +241,9 @@ class BaikalEventViewSet(viewsets.ViewSet):
             start_date_str = request.query_params.get('start_date')
             end_date_str = request.query_params.get('end_date')
 
+            print(start_date_str)
+            print(end_date_str)
+
             # Parser les dates
             start_date = None
             end_date = None
@@ -267,7 +270,9 @@ class BaikalEventViewSet(viewsets.ViewSet):
             calendars = client.list_calendars()
 
             # Paramètre pour inclure tous les calendriers (mode groupe)
-            include_all = request.query_params.get('include_all', 'false').lower() == 'true'
+            include_all = request.query_params.get('include_all', False)
+
+            print("include all", include_all)
 
             # Récupérer les événements de chaque calendrier
             all_events = []

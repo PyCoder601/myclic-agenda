@@ -7,6 +7,7 @@ import { logout } from '@/store/authSlice';
 import {
   fetchCalendars,
   fetchEvents,
+  fetchAllGroupEvents,
   fetchAllCalendars,
   createEvent,
   updateEvent,
@@ -114,24 +115,34 @@ export default function DashboardPage() {
     const startStr = start.toISOString().split('T')[0];
     const endStr = end.toISOString().split('T')[0];
 
-    console.log(`📡 Chargement des événements pour ${startStr} à ${endStr}...`);
+    console.log(`📡 Chargement des événements pour ${startStr} à ${endStr}... (Mode: ${mainViewMode})`);
 
     try {
-      const result = await dispatch(fetchEvents({
-        start_date: startStr,
-        end_date: endStr
-      })).unwrap();
+      // Utiliser fetchAllGroupEvents en mode groupe, fetchEvents en mode personnel
+      if (mainViewMode === 'group') {
+        await dispatch(fetchAllGroupEvents({
+          start_date: startStr,
+          end_date: endStr
+        })).unwrap();
+        console.log(`✅ Événements de groupe chargés depuis le backend`);
+        return true; // Toujours depuis le backend en mode groupe
+      } else {
+        const result = await dispatch(fetchEvents({
+          start_date: startStr,
+          end_date: endStr
+        })).unwrap();
 
-      // Vérifier si les données viennent du cache
-      const fromCache = (result as any)?.fromCache === true;
-      console.log(`✅ Événements chargés ${fromCache ? '(depuis le cache)' : '(depuis le backend)'}`);
+        // Vérifier si les données viennent du cache
+        const fromCache = (result as any)?.fromCache === true;
+        console.log(`✅ Événements chargés ${fromCache ? '(depuis le cache)' : '(depuis le backend)'}`);
 
-      return !fromCache; // Retourne true si fetch backend, false si cache
+        return !fromCache; // Retourne true si fetch backend, false si cache
+      }
     } catch (error) {
       console.error('❌ Erreur lors du chargement des événements:', error);
       return false;
     }
-  }, [dispatch]);
+  }, [dispatch, mainViewMode]);
 
   // Activer/désactiver les calendriers selon le mode de vue
   useEffect(() => {
@@ -295,12 +306,13 @@ export default function DashboardPage() {
       const start = new Date(year, month, -7);
       const end = new Date(year, month + 1, 7);
 
-      dispatch(fetchEvents({
+      const fetchAction = mainViewMode === 'group' ? fetchAllGroupEvents : fetchEvents;
+      dispatch(fetchAction({
         start_date: start.toISOString().split('T')[0],
         end_date: end.toISOString().split('T')[0]
       }));
     }
-  }, [dispatch, currentDate]);
+  }, [dispatch, currentDate, mainViewMode]);
 
   const handleTaskClick = useCallback((task: Task) => {
     // ✅ D'abord fermer le modal pour réinitialiser l'état
@@ -380,12 +392,13 @@ export default function DashboardPage() {
       const start = new Date(year, month, -7);
       const end = new Date(year, month + 1, 7);
 
-      dispatch(fetchEvents({
+      const fetchAction = mainViewMode === 'group' ? fetchAllGroupEvents : fetchEvents;
+      dispatch(fetchAction({
         start_date: start.toISOString().split('T')[0],
         end_date: end.toISOString().split('T')[0]
       }));
     }
-  }, [events, dispatch, currentDate]);
+  }, [events, dispatch, currentDate, mainViewMode]);
 
   const handleTaskResize = useCallback(async (taskId: number, newEndDate: Date) => {
     const task = events.find(t => t.id === taskId);
@@ -436,12 +449,13 @@ export default function DashboardPage() {
       const start = new Date(year, month, -7);
       const end = new Date(year, month + 1, 7);
 
-      dispatch(fetchEvents({
+      const fetchAction = mainViewMode === 'group' ? fetchAllGroupEvents : fetchEvents;
+      dispatch(fetchAction({
         start_date: start.toISOString().split('T')[0],
         end_date: end.toISOString().split('T')[0]
       }));
     }
-  }, [events, dispatch, currentDate]);
+  }, [events, dispatch, currentDate, mainViewMode]);
 
   // Séparation des calendriers pour l'affichage
   const ownCalendars = useMemo(() =>
@@ -650,7 +664,7 @@ export default function DashboardPage() {
                   }`}
                 >
                   {(mainViewMode === 'personal' ? viewMode : groupViewMode) === 'day' && (
-                    <span className="absolute inset-0 bg-gradient-to-r from-[#005f82] to-[#007ba8]"></span>
+                    <span className="absolute inset-0 bg-linear-to-r from-[#005f82] to-[#007ba8]"></span>
                   )}
                   <span className="relative z-10">Jour</span>
                 </button>
@@ -663,7 +677,7 @@ export default function DashboardPage() {
                   }`}
                 >
                   {(mainViewMode === 'personal' ? viewMode : groupViewMode) === 'week' && (
-                    <span className="absolute inset-0 bg-gradient-to-r from-[#005f82] to-[#007ba8]"></span>
+                    <span className="absolute inset-0 bg-linear-to-r from-[#005f82] to-[#007ba8]"></span>
                   )}
                   <span className="relative z-10">Semaine</span>
                 </button>

@@ -13,6 +13,7 @@ export interface CalendarSource {
     displayname?: string;
     principaluri?: string;
     uri?: string;
+    defined_name?: string;
     description?: string;
     calendarcolor?: string;
     access?: number;

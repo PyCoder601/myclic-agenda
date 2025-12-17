@@ -53,6 +53,7 @@ class BaikalCalDAVClient:
                 'uri': cal.uri,
                 'description': cal.description,
                 'calendarcolor': cal.calendarcolor or '#005f82',
+                'defined_name': cal.defined_name,
                 'access': cal.access,
                 'share_href': cal.share_href,
                 'share_displayname': cal.share_displayname,

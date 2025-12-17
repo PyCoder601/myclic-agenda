@@ -1209,7 +1209,7 @@ export default function Calendar({
               <div
                 className={`text-lg font-bold mt-0.5 ${
                   isSameDay(day, new Date())
-                    ? "bg-gradient-to-r from-[#005f82] to-[#007ba8] text-white w-8 h-8 rounded-xl flex items-center justify-center mx-auto shadow-md text-sm"
+                    ? "bg-linear-to-r from-[#005f82] to-[#007ba8] text-white w-8 h-8 rounded-xl flex items-center justify-center mx-auto shadow-md text-sm"
                     : "text-slate-800"
                 }`}
               >
@@ -1242,7 +1242,7 @@ export default function Calendar({
                       className="w-3 h-3 rounded-full shadow-sm"
                       style={{ backgroundColor: calendar.calendarcolor }}
                     ></div>
-                    <span className="truncate">{calendar.displayname}</span>
+                    <span className="truncate">{calendar.defined_name || calendar.displayname}</span>
                   </div>
                   {daysToDisplay.map((day) => {
                     const dayTasks = tasks.filter(

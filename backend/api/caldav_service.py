@@ -8,7 +8,7 @@ import niquests
 from niquests.auth import HTTPDigestAuth
 from typing import List, Optional, Dict, Any
 
-from .baikal_models import BaikalCalendarInstance
+from .baikal_models import BaikalCalendarInstance, BaikalCalendar
 
 # Configuration du logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
@@ -42,6 +42,9 @@ class BaikalCalDAVClient:
         )
         calendar_list = []
         for cal in calendars:
+            cal_parent = BaikalCalendar.objects.using('baikal').get(id=cal.calendarid)
+            if not cal_parent.is_visible:
+                continue
             calendar_list.append({
                 'id': cal.id,
                 'calendarid': cal.calendarid,

@@ -225,7 +225,7 @@ const WeekTaskItem = ({
       <div
         {...dragListeners}
         {...dragAttributes}
-        className="cursor-grab active:cursor-grabbing flex-shrink-0 opacity-0 group-hover/item:opacity-100 transition-opacity p-0.5 hover:bg-white/20 rounded mt-0.5"
+        className="cursor-grab active:cursor-grabbing shrink-0 opacity-0 group-hover/item:opacity-100 transition-opacity p-0.5 hover:bg-white/20 rounded mt-0.5"
         onClick={(e) => e.stopPropagation()}
       >
         <GripVertical className="w-3 h-3 text-white" />

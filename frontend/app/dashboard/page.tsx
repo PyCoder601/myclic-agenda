@@ -478,13 +478,15 @@ export default function DashboardPage() {
 
   // Séparation des calendriers pour l'affichage
   const ownCalendars = useMemo(() =>
-    calendarsToUse.filter(cal => cal.access === 1 && !cal.description?.toLowerCase().includes("resouce")),
+    calendarsToUse.filter(cal => (cal.share_displayname === "" && !cal.description?.toLowerCase().includes("resource"))),
     [calendarsToUse]
   );
+
   const sharedUserCalendars = useMemo(() => 
-    calendarsToUse.filter(cal => cal.access && cal.access > 1),
+    calendarsToUse.filter(cal => (cal.share_displayname !== "" && !cal.description?.toLowerCase().includes("resource"))),
     [calendarsToUse]
   );
+
   const sharedResourceCalendars = useMemo(() =>
     calendarsToUse.filter(cal => (cal.description || '').toLowerCase().includes('resource')),
     [calendarsToUse]
@@ -847,7 +849,7 @@ export default function DashboardPage() {
                                       style={{ backgroundColor: calendar.calendarcolor }}
                                     />
                                     <span className={`text-sm font-medium ${calendar.display ? 'text-slate-800' : 'text-slate-400'}`}>
-                                      {calendar.defined_name || calendar.share_href || calendar.displayname}
+                                      {calendar.displayname}
                                     </span>
                                   </div>
                                 </button>

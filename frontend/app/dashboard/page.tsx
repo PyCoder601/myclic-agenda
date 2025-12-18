@@ -707,7 +707,7 @@ export default function DashboardPage() {
                   }`}
                 >
                   {(mainViewMode === 'personal' ? viewMode : groupViewMode) === 'month' && (
-                    <span className="absolute inset-0 bg-gradient-to-r from-[#005f82] to-[#007ba8]"></span>
+                    <span className="absolute inset-0 bg-linear-to-r from-[#005f82] to-[#007ba8]"></span>
                   )}
                   <span className="relative z-10">Mois</span>
                 </button>
@@ -825,7 +825,7 @@ export default function DashboardPage() {
                         )}
 
                         {/* Ressources partagées */}
-                        {sharedResourceCalendars.length > 0 && (
+                        {mainViewMode === "personal" && sharedResourceCalendars.length > 0 && (
                           <div>
                             <div className="text-xs font-semibold text-purple-600 mb-2 px-2 border-t border-slate-200 pt-4 uppercase tracking-wider">
                               Ressources partagées avec moi

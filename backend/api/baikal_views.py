@@ -278,6 +278,10 @@ class BaikalEventViewSet(viewsets.ViewSet):
             all_events = []
 
             for cal in calendars:
+                # Filtrer les ressources (description contient "Resource")
+                if cal.get('description') and 'Resource' in cal.get('description', ''):
+                    continue  # Ignorer les ressources
+
                 # En mode "include_all", on ignore le filtre display
                 if not include_all and (cal['display'] == 0 or cal['display'] == 'O'):
                     continue  # Calendrier masqué

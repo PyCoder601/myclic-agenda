@@ -14,7 +14,6 @@ import {
   updateEvent,
   deleteEvent,
   optimisticUpdateEvent,
-  optimisticDeleteEvent,
   toggleCalendarEnabled,
   setCalendarsEnabledByMode,
 } from '@/store/calendarSlice';
@@ -499,20 +498,16 @@ export default function DashboardPage() {
 
   // Séparation des calendriers pour l'affichage
   const ownCalendars = useMemo(() =>
-    calendarsToUse.filter(cal => cal.user_id === user?.id),
-    [calendarsToUse, user]
-  );
-  const sharedCalendars = useMemo(() => 
-    calendarsToUse.filter(cal => cal.user_id !== user?.id),
-    [calendarsToUse, user]
+    calendarsToUse.filter(cal => cal.access === 1 && !cal.description?.toLowerCase().includes("resouce")),
+    [calendarsToUse]
   );
   const sharedUserCalendars = useMemo(() => 
-    sharedCalendars.filter(cal => !(cal.displayname || '').toLowerCase().includes('kubicom')),
-    [sharedCalendars]
+    calendarsToUse.filter(cal => cal.access && cal.access > 1),
+    [calendarsToUse]
   );
   const sharedResourceCalendars = useMemo(() =>
-    sharedCalendars.filter(cal => (cal.displayname || '').toLowerCase().includes('kubicom')),
-    [sharedCalendars]
+    calendarsToUse.filter(cal => (cal.description || '').toLowerCase().includes('resource')),
+    [calendarsToUse]
   );
 
   if (authLoading) {
@@ -805,7 +800,7 @@ export default function DashboardPage() {
                                     style={{ backgroundColor: calendar.calendarcolor }}
                                   />
                                   <span className={`text-sm font-medium transition-all duration-200 ${calendar.display ? 'text-slate-800' : 'text-slate-400'}`}>
-                                    {calendar.displayname}
+                                    {calendar.defined_name || calendar.share_href || calendar.displayname}
                                   </span>
                                 </div>
                               </button>
@@ -838,7 +833,7 @@ export default function DashboardPage() {
                                       style={{ backgroundColor: calendar.calendarcolor }}
                                     />
                                     <span className={`text-sm font-medium ${calendar.display ? 'text-slate-800' : 'text-slate-400'}`}>
-                                      {calendar.displayname}
+                                      {calendar.defined_name || calendar.share_href || calendar.displayname}
                                     </span>
                                   </div>
                                 </button>
@@ -872,7 +867,7 @@ export default function DashboardPage() {
                                       style={{ backgroundColor: calendar.calendarcolor }}
                                     />
                                     <span className={`text-sm font-medium ${calendar.display ? 'text-slate-800' : 'text-slate-400'}`}>
-                                      {calendar.displayname}
+                                      {calendar.defined_name || calendar.share_href || calendar.displayname}
                                     </span>
                                   </div>
                                 </button>

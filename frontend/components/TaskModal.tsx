@@ -32,6 +32,16 @@ export default function TaskModal({ isOpen, onClose, onSave, onDelete, task, ini
   const dispatch = useAppDispatch();
   const { calendars } = useAppSelector((state) => state.calendar);
 
+  // États pour la recherche et le dropdown
+  const [searchQuery, setSearchQuery] = useState('');
+  const [showCalendarDropdown, setShowCalendarDropdown] = useState(false);
+
+  // Filtrer les calendriers selon la recherche
+  const filteredCalendars = calendars.filter(cal => {
+    const calName = (cal.defined_name || cal.share_href || cal.displayname || '').toLowerCase();
+    return calName.includes(searchQuery.toLowerCase());
+  });
+
   // Calculer les valeurs initiales du formulaire
   const getInitialFormData = () => {
     if (task) {
@@ -59,6 +69,7 @@ export default function TaskModal({ isOpen, onClose, onSave, onDelete, task, ini
         start_date: task.start_date.slice(0, 16),
         end_date: task.end_date.slice(0, 16),
         calendar_source: calendarSourceId,
+        calendar_sources: [calendarSourceId], // Pour la sélection multiple
       };
     }
     
@@ -94,6 +105,7 @@ export default function TaskModal({ isOpen, onClose, onSave, onDelete, task, ini
       start_date: formatDateTimeLocal(start),
       end_date: formatDateTimeLocal(end),
       calendar_source: defaultCalendarSource,
+      calendar_sources: [defaultCalendarSource], // Pour la sélection multiple
     };
   };
 
@@ -120,6 +132,10 @@ export default function TaskModal({ isOpen, onClose, onSave, onDelete, task, ini
 
       setFormData(newFormData);
 
+      // Réinitialiser la recherche
+      setSearchQuery('');
+      setShowCalendarDropdown(false);
+
       console.log('📋 Initialisation du modal avec:', {
         isEdit: !!task,
         taskId: task?.id,
@@ -131,57 +147,57 @@ export default function TaskModal({ isOpen, onClose, onSave, onDelete, task, ini
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen, task?.id, initialDate, initialHour]);
 
+  // Fermer le dropdown lors du clic en dehors
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as HTMLElement;
+      if (!target.closest('.calendar-dropdown-container')) {
+        setShowCalendarDropdown(false);
+      }
+    };
+
+    if (showCalendarDropdown) {
+      document.addEventListener('mousedown', handleClickOutside);
+      return () => document.removeEventListener('mousedown', handleClickOutside);
+    }
+  }, [showCalendarDropdown]);
+
   if (!isOpen) return null;
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
-    // ✅ Logging détaillé pour déboguer
-    console.log('=== DEBUG TaskModal Submit ===');
-    console.log('formData.calendar_source:', formData.calendar_source);
-    console.log('Calendriers disponibles:', calendars.map(cal => ({
-      id: cal.id,
-      calendarid: cal.calendarid,
-      displayname: cal.displayname,
-      stringId: String(cal.id),
-      stringCalendarId: String(cal.calendarid || cal.id)
-    })));
-
-    // Trouver le calendrier sélectionné dans le state global
-    // ✅ Rechercher par id OU calendarid
-    const selectedCalendar = calendars.find(
-      cal => String(cal.id) === formData.calendar_source ||
-             String(cal.calendarid) === formData.calendar_source
-    );
-
-    if (!selectedCalendar) {
-      console.error('❌ Calendrier sélectionné non trouvé');
-      console.error('Valeur recherchée:', formData.calendar_source);
-      console.error('Calendriers disponibles:', calendars);
-
-      // ✅ Fallback : utiliser le premier calendrier disponible
-      if (calendars.length > 0) {
-        console.warn('⚠️ Utilisation du premier calendrier par défaut');
-        const fallbackCalendar = calendars[0];
-
-        // Mettre à jour formData pour la prochaine fois
-        setFormData({ ...formData, calendar_source: String(fallbackCalendar.id) });
-
-        // Utiliser ce calendrier
-        const selectedCalendar = fallbackCalendar;
-
-        // Continuer avec ce calendrier
-        console.log('✅ Calendrier de secours utilisé:', selectedCalendar);
-        submitWithCalendar(selectedCalendar);
-        return;
-      }
-
-      // Si vraiment aucun calendrier, impossible de continuer
-      alert('Aucun calendrier disponible. Veuillez créer ou activer un calendrier.');
+    // ✅ Vérifier qu'au moins un calendrier est sélectionné
+    if (!formData.calendar_sources || formData.calendar_sources.length === 0) {
+      alert('Veuillez sélectionner au moins un calendrier.');
       return;
     }
 
-    submitWithCalendar(selectedCalendar);
+    // ✅ Trouver tous les calendriers sélectionnés
+    const selectedCalendars = calendars.filter(
+      cal => formData.calendar_sources?.includes(String(cal.id))
+    );
+
+    if (selectedCalendars.length === 0) {
+      console.error('❌ Aucun calendrier sélectionné trouvé');
+      alert('Erreur: calendriers sélectionnés non trouvés.');
+      return;
+    }
+
+    console.log('=== DEBUG TaskModal Submit ===');
+    console.log('Calendriers sélectionnés:', selectedCalendars.map(cal => ({
+      id: cal.id,
+      displayname: cal.displayname,
+      defined_name: cal.defined_name,
+    })));
+
+    // Si c'est une modification, on garde un seul calendrier (le premier)
+    if (task) {
+      submitWithCalendar(selectedCalendars[0]);
+    } else {
+      // Si c'est une création, on crée dans tous les calendriers sélectionnés
+      submitWithMultipleCalendars(selectedCalendars);
+    }
   };
 
   const submitWithCalendar = (selectedCalendar: any) => {
@@ -210,6 +226,31 @@ export default function TaskModal({ isOpen, onClose, onSave, onDelete, task, ini
       // ✅ IMPORTANT : Inclure l'URL de l'événement pour les mises à jour
       ...(task && { url: task.url }),
     });
+    onClose();
+  };
+
+  const submitWithMultipleCalendars = (selectedCalendars: any[]) => {
+    console.log('=== TaskModal Submit Multiple Calendars ===');
+    console.log('Calendriers sélectionnés:', selectedCalendars);
+
+    // Créer l'événement dans chaque calendrier sélectionné
+    // Note: chaque appel sera traité individuellement par le store Redux
+    selectedCalendars.forEach(calendar => {
+      console.log('Création dans:', calendar.displayname || calendar.defined_name);
+
+      onSave({
+        title: formData.title,
+        description: formData.description,
+        location: formData.location,
+        start_date: new Date(formData.start_date).toISOString(),
+        end_date: new Date(formData.end_date).toISOString(),
+        calendar_source_name: calendar.displayname,
+        calendar_source_id: calendar.id,
+        calendar_source_uri: calendar.uri || '',
+        calendar_source_color: calendar.calendarcolor,
+      });
+    });
+
     onClose();
   };
 
@@ -273,25 +314,110 @@ export default function TaskModal({ isOpen, onClose, onSave, onDelete, task, ini
                 />
               </div>
 
-              <div>
+              <div className="calendar-dropdown-container">
                 <label className="block text-sm font-semibold text-slate-700 mb-1">
-                  Calendrier <span className="text-red-500">*</span>
+                  Calendrier(s) <span className="text-red-500">*</span>
                 </label>
-                <select
-                  value={formData.calendar_source}
-                  onChange={(e) => setFormData({ ...formData, calendar_source: e.target.value })}
-                  className="w-full px-3.5 py-2.5 text-base bg-white border border-slate-300 focus:outline-none focus:ring-1 focus:ring-[#005f82] focus:border-[#005f82] text-slate-900 transition-shadow"
-                >
-                  {calendars.map(cal => {
-                    const calId = String(cal.id);
-                    const calName = cal.displayname || 'Calendrier';
-                    return (
-                      <option key={calId} value={calId}>
-                        {calName}
-                      </option>
-                    );
-                  })}
-                </select>
+
+                {/* Champ de recherche */}
+                <div className="relative">
+                  <input
+                    type="text"
+                    placeholder="Rechercher et sélectionner des calendriers..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    onFocus={() => setShowCalendarDropdown(true)}
+                    className="w-full px-3.5 py-2.5 text-base bg-white border border-slate-300 focus:outline-none focus:ring-1 focus:ring-[#005f82] focus:border-[#005f82] text-slate-900"
+                  />
+
+                  {/* Dropdown de sélection */}
+                  {showCalendarDropdown && (
+                    <div className="absolute z-50 w-full mt-1 bg-white border border-slate-300 shadow-lg max-h-60 overflow-y-auto">
+                      {filteredCalendars.length === 0 ? (
+                        <div className="p-3 text-sm text-slate-500 text-center">
+                          Aucun calendrier trouvé
+                        </div>
+                      ) : (
+                        filteredCalendars.map(cal => {
+                          const calId = String(cal.id);
+                          const calName = cal.defined_name || cal.share_href || cal.displayname || 'Calendrier';
+                          const isSelected = formData.calendar_sources?.includes(calId) || false;
+
+                          return (
+                            <button
+                              key={calId}
+                              type="button"
+                              onClick={() => {
+                                const newSources = isSelected
+                                  ? (formData.calendar_sources || []).filter(id => id !== calId)
+                                  : [...(formData.calendar_sources || []), calId];
+                                setFormData({
+                                  ...formData,
+                                  calendar_sources: newSources,
+                                  calendar_source: newSources[0] || ''
+                                });
+                              }}
+                              className={`w-full px-3 py-2 text-left text-sm flex items-center gap-2 hover:bg-slate-50 transition-colors ${
+                                isSelected ? 'bg-[#005f82]/5' : ''
+                              }`}
+                            >
+                              <div
+                                className="w-3 h-3 rounded-full shrink-0"
+                                style={{ backgroundColor: cal.calendarcolor || '#005f82' }}
+                              />
+                              <span className={`flex-1 ${isSelected ? 'font-medium text-[#005f82]' : 'text-slate-700'}`}>
+                                {calName}
+                              </span>
+                              {isSelected && (
+                                <svg className="w-4 h-4 text-[#005f82]" fill="currentColor" viewBox="0 0 20 20">
+                                  <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                                </svg>
+                              )}
+                            </button>
+                          );
+                        })
+                      )}
+                    </div>
+                  )}
+                </div>
+
+                {/* Calendriers sélectionnés (badges) */}
+                {formData.calendar_sources && formData.calendar_sources.length > 0 && (
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    {formData.calendar_sources.map(calId => {
+                      const cal = calendars.find(c => String(c.id) === calId);
+                      if (!cal) return null;
+                      const calName = cal.defined_name || cal.share_href || cal.displayname || 'Calendrier';
+
+                      return (
+                        <span
+                          key={calId}
+                          className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-[#005f82]/10 text-[#005f82] text-sm rounded-full"
+                        >
+                          <div
+                            className="w-2 h-2 rounded-full"
+                            style={{ backgroundColor: cal.calendarcolor || '#005f82' }}
+                          />
+                          <span className="font-medium">{calName}</span>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const newSources = formData.calendar_sources?.filter(id => id !== calId) || [];
+                              setFormData({
+                                ...formData,
+                                calendar_sources: newSources,
+                                calendar_source: newSources[0] || ''
+                              });
+                            }}
+                            className="ml-1 hover:bg-[#005f82]/20 rounded-full p-0.5 transition-colors"
+                          >
+                            <X className="w-3 h-3" />
+                          </button>
+                        </span>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
             </div>
 

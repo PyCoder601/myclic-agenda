@@ -42,6 +42,10 @@ class BaikalCalDAVClient:
         )
         calendar_list = []
         for cal in calendars:
+            # Filtrer les ressources (description contient "Resource")
+            if cal.description and 'Resource' in cal.description:
+                continue
+
             cal_parent = BaikalCalendar.objects.using('baikal').get(id=cal.calendarid)
             if not cal_parent.is_visible:
                 continue

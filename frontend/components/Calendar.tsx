@@ -1192,8 +1192,8 @@ export default function Calendar({
 
     return (
       <div className="flex-1 overflow-auto bg-white">
-        <div className="flex border-b border-slate-200 sticky top-0 z-10 bg-gradient-to-r from-slate-50 to-blue-50">
-          <div className="w-48 flex-shrink-0 border-r border-slate-200 p-2 text-left font-semibold text-slate-700">
+        <div className="flex border-b border-slate-200 sticky top-0 z-10 bg-linear-to-r from-slate-50 to-blue-50">
+          <div className="w-48 shrink-0 border-r border-slate-200 p-2 text-left font-semibold text-slate-700">
             Collaborateur / Calendrier
           </div>
           {daysToDisplay.map((day) => (
@@ -1242,7 +1242,7 @@ export default function Calendar({
                       className="w-3 h-3 rounded-full shadow-sm"
                       style={{ backgroundColor: calendar.calendarcolor }}
                     ></div>
-                    <span className="truncate">{calendar.defined_name || calendar.displayname}</span>
+                    <span className="truncate">{calendar.defined_name || calendar.share_href || calendar.displayname}</span>
                   </div>
                   {daysToDisplay.map((day) => {
                     const dayTasks = tasks.filter(

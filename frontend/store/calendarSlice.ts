@@ -347,9 +347,6 @@ const calendarSlice = createSlice({
         setCalendarsEnabledByMode: (state, action: PayloadAction<'personal' | 'group'>) => {
             const mode = action.payload;
             state.calendars = state.calendars.map(cal => {
-                const calendarName = cal.displayname || '';
-                const hasParentheses = calendarName.includes('(') || calendarName.includes(')');
-
                 if (mode === 'group') {
                     // En mode groupe, activer tous les calendriers visibles par défaut
                     return {
@@ -358,16 +355,10 @@ const calendarSlice = createSlice({
                     };
                 }
 
-                // En mode personnel : désactiver par défaut ceux avec parenthèses
-                return {
-                    ...cal,
-                    display: !hasParentheses,
-                };
+                return cal
             });
             // Aussi mettre à jour allCalendars
             state.allCalendars = state.allCalendars.map(cal => {
-                const calendarName = cal.displayname || '';
-                const hasParentheses = calendarName.includes('(') || calendarName.includes(')');
 
                 if (mode === 'group') {
                     // En mode groupe, activer tous les calendriers visibles par défaut
@@ -377,11 +368,7 @@ const calendarSlice = createSlice({
                     };
                 }
 
-                // En mode personnel : désactiver par défaut ceux avec parenthèses
-                return {
-                    ...cal,
-                    display: !hasParentheses,
-                };
+               return cal
             });
         },
     },
@@ -393,34 +380,7 @@ const calendarSlice = createSlice({
         });
         builder.addCase(fetchCalendars.fulfilled, (state, action) => {
             state.loading = false;
-
-            // Si c'est le premier chargement (calendars vide), initialiser display
-            const isFirstLoad = state.calendars.length === 0;
-
-            if (isFirstLoad) {
-                state.calendars = (action.payload as CalendarSource[]).map((cal) => {
-                    const calendarName = cal.displayname || '';
-                    const hasParentheses = calendarName.includes('(') || calendarName.includes(')');
-
-                    // Par défaut (mode "Mes calendriers"), désactiver ceux avec parenthèses
-                    return {
-                        ...cal,
-                        display: !hasParentheses,
-                    };
-                });
-            } else {
-                // Rechargement : conserver les préférences display de l'utilisateur
-                const previousDisplayStates = new Map(
-                    state.calendars.map(cal => [cal.id, cal.display])
-                );
-
-                state.calendars = (action.payload as CalendarSource[]).map((cal) => ({
-                    ...cal,
-                    display: previousDisplayStates.has(cal.id)
-                        ? previousDisplayStates.get(cal.id)
-                        : !((cal.displayname || '').includes('(') || (cal.displayname || '').includes(')')),
-                }));
-            }
+            state.calendars = action.payload as CalendarSource[];
         });
         builder.addCase(fetchCalendars.rejected, (state, action) => {
             state.loading = false;
@@ -619,7 +579,6 @@ export const {
     addOptimisticEvent,
     removeOptimisticEvent,
     optimisticUpdateEvent,
-    optimisticDeleteEvent,
     setCalendarsEnabledByMode,
     toggleCalendarEnabled
 } = calendarSlice.actions;

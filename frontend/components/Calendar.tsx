@@ -183,7 +183,7 @@ const TaskItem = ({
   const taskColor = getTaskColor(task, calendars);
   return (
     <div
-      className="text-xs p-1.5 pr-1 text-white rounded-lg flex items-center gap-1 group/item"
+      className="text-xs p-1.5 pr-1 text-black flex items-center gap-1 group/item"
       style={{
         background: `linear-gradient(to right, ${taskColor}, ${taskColor}dd)`,
         borderLeft: `3px solid ${taskColor}`,
@@ -192,7 +192,7 @@ const TaskItem = ({
       <div
         {...dragListeners}
         {...dragAttributes}
-        className="cursor-grab active:cursor-grabbing flex-shrink-0 opacity-0 group-hover/item:opacity-100 transition-opacity p-0.5 hover:bg-white/20 rounded"
+        className="cursor-grab active:cursor-grabbing shrink-0 opacity-0 group-hover/item:opacity-100 transition-opacity p-0.5 hover:bg-white/20 rounded"
         onClick={(e) => e.stopPropagation()}
       >
         <GripVertical className="w-3 h-3" />
@@ -226,7 +226,7 @@ const WeekTaskItem = ({
   const taskColor = getTaskColor(task, calendars);
   return (
     <div
-      className="mb-0.5 p-1.5 pl-1 rounded-lg hover:shadow-md transition-all text-[10px] flex items-start gap-1 group/item"
+      className="text-xs p-1.5 pr-1 text-black flex items-center gap-1 group/item"
       style={{
         background: `linear-gradient(to right, ${taskColor}, ${taskColor}dd)`,
         borderLeft: `3px solid ${taskColor}`,
@@ -247,8 +247,8 @@ const WeekTaskItem = ({
           onTaskClick(task);
         }}
       >
-        <div className="font-semibold text-white truncate">{task.title}</div>
-        <div className="text-white/80 font-medium mt-0.5">
+        <div className="font-semibold  truncate">{task.title}</div>
+        <div className="font-medium mt-0.5">
           {format(new Date(task.start_date), "HH:mm")}
         </div>
       </div>
@@ -330,7 +330,7 @@ const PositionedEventItem = ({
       }}
     >
       <div
-        className="h-full rounded-lg shadow-md hover:shadow-lg transition-shadow cursor-pointer p-2 overflow-hidden group relative"
+        className="h-full shadow-md hover:shadow-lg transition-shadow cursor-pointer p-2 overflow-hidden group relative"
         style={{
           background: `linear-gradient(135deg, ${taskColor} 0%, ${taskColor}dd 100%)`,
           borderLeft: `4px solid ${taskColor}`,
@@ -351,7 +351,7 @@ const PositionedEventItem = ({
           >
             <GripVertical className="w-3 h-3 text-white" />
           </div>
-          <div className="flex-1 min-w-0 text-white">
+          <div className="flex-1 min-w-0 text-black">
             <div className="font-semibold text-sm truncate">{event.title}</div>
             <div className="text-xs opacity-90 mt-0.5">
               {format(new Date(event.start_date), "HH:mm")} - {format(new Date(event.end_date), "HH:mm")}
@@ -460,7 +460,7 @@ const PositionedWeekEventItem = ({
       }}
     >
       <div
-        className="h-full rounded-md shadow-sm hover:shadow-md transition-shadow cursor-pointer p-1 overflow-hidden group text-white text-[10px] relative"
+        className="h-full shadow-sm hover:shadow-md transition-shadow cursor-pointer p-1 overflow-hidden group text-black text-[10px] relative"
         style={{
           background: `linear-gradient(135deg, ${taskColor} 0%, ${taskColor}dd 100%)`,
           borderLeft: `3px solid ${taskColor}`,
@@ -490,7 +490,7 @@ const PositionedWeekEventItem = ({
             )}
             {event.location && resizeHeight > 40 && (
               <div className="flex items-center gap-0.5 opacity-80 mt-0.5 leading-tight truncate">
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-2 w-2 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-2 w-2 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
                 </svg>
@@ -831,11 +831,11 @@ export default function Calendar({
     return (
       <div
         ref={dayViewRef}
-        className="flex-1 overflow-y-scroll bg-gradient-to-br from-slate-50/30 to-blue-50/20"
+        className="flex-1 overflow-y-scroll bg-linear-to-br from-slate-50/30 to-blue-50/20"
       >
         <div className="min-h-full flex relative">
           {/* Colonne des heures */}
-          <div className="w-16 flex-shrink-0 bg-gradient-to-r from-slate-50 to-blue-50/50 border-r border-slate-300">
+          <div className="w-16 shrink-0 bg-linear-to-r from-slate-50 to-blue-50/50 border-r border-slate-300">
             {hours.map((hour) => {
               const isCurrentHour = isToday && hour === currentHour;
 
@@ -946,7 +946,7 @@ export default function Calendar({
       <div ref={dayViewRef} className="flex-1 overflow-auto bg-white">
         {/* En-tête avec les jours de la semaine */}
         <div className="flex border-b-2 border-slate-300 sticky top-0 z-20 bg-gradient-to-r from-slate-50 to-blue-50">
-          <div className="w-16 flex-shrink-0 border-r border-slate-300"></div>
+          <div className="w-16 shrink-0 border-r border-slate-300"></div>
           {weekDays.map((day) => (
             <div
               key={day.toString()}

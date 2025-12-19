@@ -134,11 +134,22 @@ DATABASES = {
         'OPTIONS': {
             'charset': 'utf8mb4',
         }
+    },
+'myclic': {
+        'ENGINE': 'django.db.backends.mysql',
+        'NAME': os.getenv('BAIKAL_DB_NAME', 'baikal'),
+        'USER': os.getenv('BAIKAL_DB_USER'),
+        'PASSWORD': os.getenv('MYCLIC_DB_NAME'),
+        'HOST': os.getenv('BAIKAL_DB_HOST'),
+        'PORT': os.getenv('BAIKAL_DB_PORT', 3306),
+        'OPTIONS': {
+            'charset': 'utf8mb4',
+        }
     }
 }
 
 # Database Router pour utiliser MySQL Baikal pour les modèles Baikal
-DATABASE_ROUTERS = ['config.db_router.BaikalRouter']
+DATABASE_ROUTERS = ['config.db_router.DatabaseRouter']
 
 
 # Password validation

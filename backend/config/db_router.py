@@ -1,49 +1,49 @@
-"""
-Routeur de base de données pour diriger les requêtes vers la bonne DB
-- Modèles Baikal -> MySQL Baikal
-- Autres modèles -> PostgreSQL
-"""
-
-
-class BaikalRouter:
+class DatabaseRouter:
     """
-    Routeur pour diriger les opérations sur les modèles Baikal vers MySQL
-    et les autres vers PostgreSQL
+    Router multi-DB :
+    - default : PostgreSQL (users, auth, core)
+    - baikal  : MySQL Baikal (read/write, no migrations)
+    - legacy  : MySQL legacy Application (read/write, no migrations)
     """
-    
-    baikal_models = {
-        'baikaluser',
-        'baikalcalendar',
-        'baikalcalendarinstance',
-        'baikalcalendarobject',
-        'baikalprincipal',
-    }
-    
+
+    baikal_models = { 'baikaluser', 'baikalcalendar', 'baikalcalendarinstance', 'baikalcalendarobject', 'baikalprincipal', }
+    myclic_models = {"application"}  # app contenant Application
+
+    # -------------------------
+    # READ
+    # -------------------------
     def db_for_read(self, model, **hints):
-        """Diriger les lectures"""
-        if model._meta.model_name in self.baikal_models:
-            return 'baikal'
-        return 'default'
-    
-    def db_for_write(self, model, **hints):
-        """Diriger les écritures"""
-        if model._meta.model_name in self.baikal_models:
-            return 'baikal'
-        return 'default'
-    
-    def allow_relation(self, obj1, obj2, **hints):
-        """Autoriser les relations entre modèles de la même DB"""
-        db_set = {'baikal', 'default'}
-        if obj1._state.db in db_set and obj2._state.db in db_set:
-            return True
-        return None
-    
-    def allow_migrate(self, db, app_label, model_name=None, **hints):
-        """
-        Ne pas appliquer les migrations sur la DB Baikal
-        Les modèles Baikal sont en lecture seule (unmanaged)
-        """
-        if model_name in self.baikal_models:
-            return db == 'baikal'
-        return db == 'default'
+        if model._meta.app_label in self.baikal_models:
+            return "baikal"
+        if model._meta.app_label in self.myclic_models:
+            return "myclic"
+        return "default"
 
+    # -------------------------
+    # WRITE
+    # -------------------------
+    def db_for_write(self, model, **hints):
+        if model._meta.app_label in self.baikal_models:
+            return "baikal"
+        if model._meta.app_label in self.myclic_models:
+            return "myclic"
+        return "default"
+
+    # -------------------------
+    # RELATIONS
+    # -------------------------
+    def allow_relation(self, obj1, obj2, **hints):
+        # Autoriser relations UNIQUEMENT dans la même DB
+        if obj1._state.db == obj2._state.db:
+            return True
+        return False
+
+    # -------------------------
+    # MIGRATIONS
+    # -------------------------
+    def allow_migrate(self, db, app_label, model_name=None, **hints):
+        # ❌ Jamais de migration sur MySQL
+        if db in {"baikal", "myclic"}:
+            return False
+        # ✅ Migrations uniquement sur PostgreSQL
+        return db == "default"

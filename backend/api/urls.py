@@ -4,7 +4,8 @@ from rest_framework_simplejwt.views import TokenRefreshView
 from rest_framework.routers import DefaultRouter
 from .views import (
     login,
-    user_profile
+    user_profile,
+    UserUpdateApplicationIdView,
 )
 from .baikal_views import (
     BaikalCalendarViewSet,
@@ -21,6 +22,7 @@ urlpatterns = [
     # path('auth/signup/', csrf_exempt(signup), name='signup'),
     path('auth/login/', csrf_exempt(login), name='login'),
     path('auth/token/refresh/', csrf_exempt(TokenRefreshView.as_view()), name='token_refresh'),
+    path('auth/update_application_id/<str:email>/', csrf_exempt(UserUpdateApplicationIdView.as_view()), name='update_application_id'),
 
     # Profil utilisateur
     path('auth/profile/', csrf_exempt(user_profile), name='user_profile'),

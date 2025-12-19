@@ -2,10 +2,11 @@
 
 import {createSlice, createAsyncThunk, PayloadAction} from '@reduxjs/toolkit';
 import api from '@/lib/api';
-import {User, AuthResponse} from '@/lib/types';
+import {User, AuthResponse, Application} from '@/lib/types';
 
 interface AuthState {
     user: User | null;
+    application: Application | null;
     loading: boolean;
     error: string | null;
     token: string | null;
@@ -13,6 +14,7 @@ interface AuthState {
 
 const initialState: AuthState = {
     user: null,
+    application: null,
     loading: true,
     error: null,
     token: null,
@@ -38,10 +40,10 @@ export const login = createAsyncThunk(
     async ({email, password}: { email: string; password: string }, {rejectWithValue}) => {
         try {
             const response = await api.post<AuthResponse>('/auth/login/', {email, password});
-            const {user, access, refresh} = response.data;
+            const {user, application, access, refresh} = response.data;
             localStorage.setItem('access_token', access);
             localStorage.setItem('refresh_token', refresh);
-            return {user, token: access};
+            return {user, application, token: access};
         } catch (err: unknown) {
             const error = err as { response?: { data?: { error?: string } } };
             return rejectWithValue(error.response?.data?.error || 'Erreur de connexion');
@@ -111,8 +113,9 @@ const authSlice = createSlice({
                 state.loading = true;
                 state.error = null;
             })
-            .addCase(login.fulfilled, (state, action: PayloadAction<{ user: User; token: string }>) => {
+            .addCase(login.fulfilled, (state, action: PayloadAction<{ user: User; application: Application; token: string }>) => {
                 state.user = action.payload.user;
+                state.application = action.payload.application;
                 state.token = action.payload.token;
                 state.loading = false;
             })

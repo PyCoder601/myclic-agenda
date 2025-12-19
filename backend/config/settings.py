@@ -137,9 +137,9 @@ DATABASES = {
     },
 'myclic': {
         'ENGINE': 'django.db.backends.mysql',
-        'NAME': os.getenv('BAIKAL_DB_NAME', 'baikal'),
+        'NAME': os.getenv('MYCLIC_DB_NAME', 'baikal'),
         'USER': os.getenv('BAIKAL_DB_USER'),
-        'PASSWORD': os.getenv('MYCLIC_DB_NAME'),
+        'PASSWORD': os.getenv('BAIKAL_DB_PASSWORD'),
         'HOST': os.getenv('BAIKAL_DB_HOST'),
         'PORT': os.getenv('BAIKAL_DB_PORT', 3306),
         'OPTIONS': {

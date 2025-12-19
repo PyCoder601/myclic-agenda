@@ -1,5 +1,5 @@
 from django.contrib.auth import authenticate
-from rest_framework import status, generics, serializers
+from rest_framework import status, generics
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.response import Response
@@ -7,6 +7,7 @@ from rest_framework_simplejwt.tokens import RefreshToken
 
 
 from .models import User
+from .myclic_model import Application
 from .serializers import (
     UserSerializer,
 )
@@ -30,6 +31,10 @@ def login(request):
 
     user = authenticate(username=user_for_auth.username, password=password)
 
+    application = Application.objects.using("myclic").get(id=user_for_auth.application_id)
+
+    print(f"Application: {application.id} (ID: {application.entreprise}), {application}")
+
     print(f"User for auth: {user_for_auth}")
 
     print("User", type(user.id))
@@ -41,7 +46,20 @@ def login(request):
 
         refresh = RefreshToken.for_user(user)
         return Response({
-            'user': UserSerializer(user).data,
+            'user': {
+                'id': user.id,
+                'email': user.email,
+                'username': user.username,
+                'prenom': user.prenom,
+                'application_id': user.application_id,
+            },
+            'application': {
+                'id': application.id,
+                'entreprise': application.entreprise,
+                'adresse': application.adresse,
+                'telephone': application.telephone,
+                'mail_resp': application.mail_resp,
+            },
             'refresh': str(refresh),
             'access': str(refresh.access_token),
         })

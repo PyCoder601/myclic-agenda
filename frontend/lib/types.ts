@@ -6,6 +6,14 @@ export interface User {
     nom: string;
 }
 
+export interface Application {
+    id: number;
+    entreprise: string;
+    adresse : string;
+    telephone: string;
+    mail_resp: string;
+}
+
 
 export interface CalendarSource {
     id: number;
@@ -52,6 +60,7 @@ export interface CalDAVConfig {
 
 export interface AuthResponse {
     user: User;
+    application: Application;
     access: string;
     refresh: string;
 }

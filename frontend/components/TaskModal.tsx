@@ -37,8 +37,10 @@ export default function TaskModal({ isOpen, onClose, onSave, onDelete, task, ini
   const [searchQuery, setSearchQuery] = useState('');
   const [showCalendarDropdown, setShowCalendarDropdown] = useState(false);
 
+  const calToRender = calendars.filter(cal => !cal.description?.toLowerCase().includes("resource"));
+
   // Filtrer les calendriers selon la recherche
-  const filteredCalendars = calendars.filter(cal => {
+  const filteredCalendars = calToRender.filter(cal => {
     const calName = (cal.defined_name || cal.share_href || cal.displayname || '').toLowerCase();
     return calName.includes(searchQuery.toLowerCase());
   });

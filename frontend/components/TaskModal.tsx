@@ -36,14 +36,25 @@ export default function TaskModal({ isOpen, onClose, onSave, onDelete, task, ini
   // États pour la recherche et le dropdown
   const [searchQuery, setSearchQuery] = useState('');
   const [showCalendarDropdown, setShowCalendarDropdown] = useState(false);
+  const [showRessourceDropdown, setShowRessourceDropdown] = useState(false);
+  const [resourceSearchQuery, setRessourceSearchQuery] = useState('');
 
-  const calToRender = calendars.filter(cal => !cal.description?.toLowerCase().includes("resource"));
 
   // Filtrer les calendriers selon la recherche
-  const filteredCalendars = calToRender.filter(cal => {
+  const filteredCalendars = calendars.filter(cal => {
     const calName = (cal.defined_name || cal.share_href || cal.displayname || '').toLowerCase();
-    return calName.includes(searchQuery.toLowerCase());
+    return calName.includes(searchQuery.toLowerCase()) && !cal.description?.toLowerCase().includes("resource");
   });
+
+
+   const ressourceCalendars = calendars.filter(cal => {
+    const calName = (cal.defined_name || cal.share_href || cal.displayname || '').toLowerCase();
+    return calName.includes(resourceSearchQuery.toLowerCase()) && cal.description?.toLowerCase().includes("resource");
+  });
+
+  console.log('Calendriers disponibles:', ressourceCalendars);
+
+
 
   // Calculer les valeurs initiales du formulaire
   const getInitialFormData = () => {
@@ -137,7 +148,9 @@ export default function TaskModal({ isOpen, onClose, onSave, onDelete, task, ini
 
       // Réinitialiser la recherche
       setSearchQuery('');
+      setRessourceSearchQuery('')
       setShowCalendarDropdown(false);
+      setShowRessourceDropdown(false)
 
       console.log('📋 Initialisation du modal avec:', {
         isEdit: !!task,
@@ -157,13 +170,20 @@ export default function TaskModal({ isOpen, onClose, onSave, onDelete, task, ini
       if (!target.closest('.calendar-dropdown-container')) {
         setShowCalendarDropdown(false);
       }
+      if (!target.closest('.resource-dropdown-container')) {
+        setShowRessourceDropdown(false)
+      }
     };
 
     if (showCalendarDropdown) {
       document.addEventListener('mousedown', handleClickOutside);
       return () => document.removeEventListener('mousedown', handleClickOutside);
     }
-  }, [showCalendarDropdown]);
+    if (showRessourceDropdown) {
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }
+  }, [showCalendarDropdown, showRessourceDropdown]);
 
   if (!isOpen) return null;
 
@@ -399,7 +419,7 @@ export default function TaskModal({ isOpen, onClose, onSave, onDelete, task, ini
                 {formData.calendar_sources && formData.calendar_sources.length > 0 && (
                   <div className="mt-2 flex flex-wrap gap-2">
                     {formData.calendar_sources.map(calId => {
-                      const cal = calendars.find(c => String(c.id) === calId);
+                      const cal = calendars.filter(cal => !cal.description?.toLowerCase().includes("resource")).find(c => String(c.id) === calId);
                       if (!cal) return null;
                       const calName = cal.defined_name || cal.share_href || cal.displayname || 'Calendrier';
 
@@ -434,6 +454,112 @@ export default function TaskModal({ isOpen, onClose, onSave, onDelete, task, ini
                 )}
               </div>
             </div>
+
+             <div className="resource-dropdown-container">
+                <label className="block text-sm font-semibold text-slate-700 mb-1">
+                  Ressource(s)
+                </label>
+
+                {/* Champ de recherche */}
+                <div className="relative">
+                  <input
+                    type="text"
+                    placeholder="Rechercher et sélectionner des ressources ..."
+                    value={resourceSearchQuery}
+                    onChange={(e) => setRessourceSearchQuery(e.target.value)}
+                    onFocus={() => setShowRessourceDropdown(true)}
+                    className="w-full px-3.5 py-2.5 text-base bg-white border border-slate-300 focus:outline-none focus:ring-1 focus:ring-[#005f82] focus:border-[#005f82] text-slate-900"
+                  />
+
+                  {/* Dropdown de sélection */}
+                  {showRessourceDropdown && (
+                    <div className="absolute z-50 w-full mt-1 bg-white border border-slate-300 shadow-lg max-h-60 overflow-y-auto">
+                      {ressourceCalendars.length === 0 ? (
+                        <div className="p-3 text-sm text-slate-500 text-center">
+                          Aucun calendrier trouvé
+                        </div>
+                      ) : (
+                        ressourceCalendars.map(cal => {
+                          const calId = String(cal.id);
+                          const calName = cal.displayname || 'Calendrier';
+                          const isSelected = formData.calendar_sources?.includes(calId) || false;
+
+                          return (
+                            <button
+                              key={calId}
+                              type="button"
+                              onClick={() => {
+                                const newSources = isSelected
+                                  ? (formData.calendar_sources || []).filter(id => id !== calId)
+                                  : [...(formData.calendar_sources || []), calId];
+                                setFormData({
+                                  ...formData,
+                                  calendar_sources: newSources,
+                                  calendar_source: newSources[0] || ''
+                                });
+                              }}
+                              className={`w-full px-3 py-2 text-left text-sm flex items-center gap-2 hover:bg-slate-50 transition-colors ${
+                                isSelected ? 'bg-[#005f82]/5' : ''
+                              }`}
+                            >
+                              <div
+                                className="w-3 h-3 rounded-full shrink-0"
+                                style={{ backgroundColor: cal.calendarcolor || '#005f82' }}
+                              />
+                              <span className={`flex-1 ${isSelected ? 'font-medium text-[#005f82]' : 'text-slate-700'}`}>
+                                {calName}
+                              </span>
+                              {isSelected && (
+                                <svg className="w-4 h-4 text-[#005f82]" fill="currentColor" viewBox="0 0 20 20">
+                                  <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                                </svg>
+                              )}
+                            </button>
+                          );
+                        })
+                      )}
+                    </div>
+                  )}
+                </div>
+
+                {/* Calendriers sélectionnés (badges) */}
+                {formData.calendar_sources && formData.calendar_sources.length > 0 && (
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    {formData.calendar_sources.map(calId => {
+                      const cal = calendars.filter(cal => cal.description?.toLowerCase().includes("resource")).find(c => String(c.id) === calId);
+                      if (!cal) return null;
+                      const calName = cal.displayname || 'Calendrier';
+
+                      return (
+                        <span
+                          key={calId}
+                          className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-[#005f82]/10 text-[#005f82] text-sm rounded-full"
+                        >
+                          <div
+                            className="w-2 h-2 rounded-full"
+                            style={{ backgroundColor: cal.calendarcolor || '#005f82' }}
+                          />
+                          <span className="font-medium">{calName}</span>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const newSources = formData.calendar_sources?.filter(id => id !== calId) || [];
+                              setFormData({
+                                ...formData,
+                                calendar_sources: newSources,
+                                calendar_source: newSources[0] || ''
+                              });
+                            }}
+                            className="ml-1 hover:bg-[#005f82]/20 rounded-full p-0.5 transition-colors"
+                          >
+                            <X className="w-3 h-3" />
+                          </button>
+                        </span>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
 
             {/* Dates compactes */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">

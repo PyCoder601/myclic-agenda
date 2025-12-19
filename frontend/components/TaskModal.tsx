@@ -31,6 +31,7 @@ export default function TaskModal({ isOpen, onClose, onSave, onDelete, task, ini
   // ✅ Utiliser les calendriers depuis le store Redux
   const dispatch = useAppDispatch();
   const { calendars } = useAppSelector((state) => state.calendar);
+  const { application } = useAppSelector((state) => state.auth);
 
   // États pour la recherche et le dropdown
   const [searchQuery, setSearchQuery] = useState('');
@@ -265,7 +266,7 @@ export default function TaskModal({ isOpen, onClose, onSave, onDelete, task, ini
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-3 sm:p-4 animate-fadeIn">
       <div className="bg-white max-w-2xl w-full max-h-[85vh] overflow-hidden shadow-xl border border-slate-200/80 flex flex-col">
         {/* Header compact */}
-        <div className="flex items-center justify-between px-4 py-3 border-b border-slate-200 bg-gradient-to-r from-slate-50 to-white flex-shrink-0">
+        <div className="flex items-center justify-between px-4 py-3 border-b border-slate-200 bg-linear-to-r from-slate-50 to-white flex-shrink-0">
           <h2 className="text-xl font-bold text-[#005f82] flex items-center gap-2">
             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
@@ -312,6 +313,17 @@ export default function TaskModal({ isOpen, onClose, onSave, onDelete, task, ini
                   className="w-full px-3.5 py-2.5 text-base bg-white border border-slate-300 focus:outline-none focus:ring-1 focus:ring-[#005f82] focus:border-[#005f82] text-slate-900 transition-shadow"
                   placeholder="Salle 201"
                 />
+                  {application?.entreprise && (
+                      <div className="mt-2 text-right">
+                          <button
+                              type="button"
+                              onClick={() => setFormData({ ...formData, location: application.adresse || '' })}
+                              className="text-xs font-medium text-slate-500 hover:text-[#005f82] transition-colors"
+                          >
+                              <span className="font-semibold">Chez {application.entreprise}</span>
+                          </button>
+                      </div>
+                  )}
               </div>
 
               <div className="calendar-dropdown-container">

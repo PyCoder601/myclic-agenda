@@ -45,6 +45,22 @@ export interface Task {
     calendar_source_uri: number | string;
     calendar_source_color?: string;
     type?: 'agenda_event' | 'rappel_event';
+    client_id?: number;
+    affair_id?: number;
+}
+
+export interface Client {
+    id: number;
+    nom: string;
+    email?: string;
+    telephone?: string;
+}
+
+export interface Affaire {
+    id: number;
+    nom: string;
+    descriptif?: string;
+    statut?: string;
 }
 
 export interface CalDAVConfig {

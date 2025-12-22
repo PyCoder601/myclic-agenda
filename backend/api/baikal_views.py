@@ -12,6 +12,7 @@ from datetime import datetime, timedelta
 
 from .baikal_models import BaikalCalendarInstance
 from .caldav_service import BaikalCalDAVClient
+from .myclic_model import Compte, Affaire
 
 logger = logging.getLogger(__name__)
 
@@ -61,6 +62,13 @@ class BaikalCalendarViewSet(viewsets.ViewSet):
 
     def retrieve(self, request, pk=None):
         """Récupère un calendrier spécifique"""
+        # Vérifier que pk est numérique pour éviter les conflits avec les actions personnalisées
+        if pk and not str(pk).isdigit():
+            return Response(
+                {'error': f'ID de calendrier invalide: {pk}'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
         client = self._get_caldav_client()
         if not client:
             return Response(
@@ -568,4 +576,102 @@ class BaikalEventViewSet(viewsets.ViewSet):
                 {'error': str(e)},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
+
+
+class SearchClientsViewSet(viewsets.ViewSet):
+    """
+    ViewSet pour la recherche de clients
+    """
+    permission_classes = [IsAuthenticated]
+
+    def list(self, request):
+        """
+        Recherche de clients (comptes) avec genre=1 (strict)
+        Paramètres:
+        - q: terme de recherche (minimum 3 caractères)
+        """
+        search_query = request.query_params.get('q', '').strip()
+
+        if len(search_query) < 3:
+            return Response(
+                {'error': 'Veuillez saisir au moins 3 caractères pour effectuer une recherche'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        try:
+            # Rechercher les comptes avec genre=1 et nom correspondant
+            clients = Compte.objects.using('myclic').filter(
+                application_id=request.user.application_id,
+                genre=1,
+                nom__icontains=search_query
+            ).values('id', 'nom', 'email', 'telephone')[:20]  # Limiter à 20 résultats
+
+            logger.info(f"Recherche clients pour '{search_query}': {len(clients)} résultats")
+
+            return Response({
+                'clients': list(clients),
+                'count': len(clients)
+            })
+
+        except Exception as e:
+            logger.error(f"Erreur recherche clients: {e}", exc_info=True)
+            return Response(
+                {'error': 'Erreur lors de la recherche de clients'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+
+class SearchAffairsViewSet(viewsets.ViewSet):
+    """
+    ViewSet pour la recherche d'affaires
+    """
+    permission_classes = [IsAuthenticated]
+
+    def list(self, request):
+        """
+        Recherche d'affaires liées à un client (compte)
+        Paramètres:
+        - client_id: ID du client (requis)
+        - q: terme de recherche optionnel
+        """
+        client_id = request.query_params.get('client_id')
+        search_query = request.query_params.get('q', '').strip()
+
+        if not client_id:
+            return Response(
+                {'error': 'L\'ID du client est requis'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        try:
+            # Rechercher les affaires liées au client via compte_id
+            affaires = Affaire.objects.using('myclic').filter(
+                compte_id=client_id,
+                application_id=request.user.application_id
+            )
+
+            # Filtrer par terme de recherche si fourni
+            if search_query:
+                affaires = affaires.filter(nom__icontains=search_query)
+
+            affaires = affaires.values('id', 'nom', 'descriptif', 'statut')[:20]
+
+            logger.info(f"Recherche affaires pour client {client_id}: {len(affaires)} résultats")
+
+            return Response({
+                'affairs': list(affaires),
+                'count': len(affaires)
+            })
+
+        except Exception as e:
+            logger.error(f"Erreur recherche affaires: {e}", exc_info=True)
+            return Response(
+                {'error': 'Erreur lors de la recherche d\'affaires'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+
+
+
+
 

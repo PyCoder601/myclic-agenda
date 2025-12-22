@@ -175,6 +175,19 @@ export const baikalAPI = {
             data: url ? { url: url } : {}
         });
     },
+
+    // Rechercher des clients
+    searchClients: (query: string) =>
+        api.get('/search-clients/', { params: { q: query } }),
+
+    // Rechercher des affaires liées à un client
+    searchAffairs: (clientId: number, query?: string) =>
+        api.get('/search-affairs/', {
+            params: {
+                client_id: clientId,
+                ...(query && { q: query })
+            }
+        }),
 };
 
 export default api;

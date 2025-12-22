@@ -10,12 +10,16 @@ from .views import (
 from .baikal_views import (
     BaikalCalendarViewSet,
     BaikalEventViewSet,
+    SearchClientsViewSet,
+    SearchAffairsViewSet,
 )
 
 # Router pour les ViewSets Baikal
 router = DefaultRouter()
 router.register(r'baikal/calendars', BaikalCalendarViewSet, basename='baikal-calendar')
 router.register(r'baikal/events', BaikalEventViewSet, basename='baikal-event')
+router.register(r'search-clients', SearchClientsViewSet, basename='search-clients')
+router.register(r'search-affairs', SearchAffairsViewSet, basename='search-affairs')
 
 urlpatterns = [
     # Authentification
@@ -26,6 +30,7 @@ urlpatterns = [
 
     # Profil utilisateur
     path('auth/profile/', csrf_exempt(user_profile), name='user_profile'),
+
 
     # API Baikal - Routes REST
     path('', include(router.urls)),

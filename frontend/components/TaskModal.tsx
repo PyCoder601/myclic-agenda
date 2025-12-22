@@ -2,10 +2,11 @@
 
 import { useState, useEffect } from 'react';
 import { X } from 'lucide-react';
-import { Task, CalendarSource } from '@/lib/types';
+import { Task, CalendarSource, Client, Affaire } from '@/lib/types';
 import RichTextEditor from './RichTextEditor';
 import { useAppSelector, useAppDispatch } from '@/store/hooks';
 import { fetchCalendars } from '@/store/calendarSlice';
+import { baikalAPI } from '@/lib/api';
 
 interface TaskModalProps {
   isOpen: boolean;
@@ -49,6 +50,20 @@ export default function TaskModal({ isOpen, onClose, onSave, onDelete, task, ini
 
   // État pour le préréglage horaire sélectionné
   const [timePreset, setTimePreset] = useState<'morning' | 'afternoon' | 'fullday' | 'custom'>('custom');
+
+  // États pour la recherche de clients
+  const [clientSearchQuery, setClientSearchQuery] = useState('');
+  const [showClientDropdown, setShowClientDropdown] = useState(false);
+  const [clients, setClients] = useState<Client[]>([]);
+  const [selectedClient, setSelectedClient] = useState<Client | null>(null);
+  const [clientSearchLoading, setClientSearchLoading] = useState(false);
+
+  // États pour la recherche d'affaires
+  const [affairSearchQuery, setAffairSearchQuery] = useState('');
+  const [showAffairDropdown, setShowAffairDropdown] = useState(false);
+  const [affairs, setAffairs] = useState<Affaire[]>([]);
+  const [selectedAffair, setSelectedAffair] = useState<Affaire | null>(null);
+  const [affairSearchLoading, setAffairSearchLoading] = useState(false);
 
   // Filtrer les calendriers (non-ressources) selon la recherche
   const filteredCalendars = calendars.filter(cal => {
@@ -212,13 +227,67 @@ export default function TaskModal({ isOpen, onClose, onSave, onDelete, task, ini
       if (!target.closest('.resource-dropdown-container')) {
         setShowResourceDropdown(false);
       }
+      if (!target.closest('.client-dropdown-container')) {
+        setShowClientDropdown(false);
+      }
+      if (!target.closest('.affair-dropdown-container')) {
+        setShowAffairDropdown(false);
+      }
     };
 
-    if (showCalendarDropdown || showResourceDropdown) {
+    if (showCalendarDropdown || showResourceDropdown || showClientDropdown || showAffairDropdown) {
       document.addEventListener('mousedown', handleClickOutside);
       return () => document.removeEventListener('mousedown', handleClickOutside);
     }
-  }, [showCalendarDropdown, showResourceDropdown]);
+  }, [showCalendarDropdown, showResourceDropdown, showClientDropdown, showAffairDropdown]);
+
+  // Rechercher les clients
+  useEffect(() => {
+    const searchClients = async () => {
+      if (clientSearchQuery.length < 3) {
+        setClients([]);
+        return;
+      }
+
+      setClientSearchLoading(true);
+      try {
+        const response = await baikalAPI.searchClients(clientSearchQuery);
+        setClients(response.data.clients || []);
+      } catch (error) {
+        console.error('Erreur recherche clients:', error);
+        setClients([]);
+      } finally {
+        setClientSearchLoading(false);
+      }
+    };
+
+    const debounceTimer = setTimeout(searchClients, 300);
+    return () => clearTimeout(debounceTimer);
+  }, [clientSearchQuery]);
+
+  // Rechercher les affaires quand un client est sélectionné
+  useEffect(() => {
+    const searchAffairs = async () => {
+      if (!selectedClient) {
+        setAffairs([]);
+        return;
+      }
+
+      setAffairSearchLoading(true);
+      try {
+        const response = await baikalAPI.searchAffairs(selectedClient.id, affairSearchQuery);
+        setAffairs(response.data.affairs || []);
+      } catch (error) {
+        console.error('Erreur recherche affaires:', error);
+        setAffairs([]);
+      } finally {
+        setAffairSearchLoading(false);
+      }
+    };
+
+    const debounceTimer = setTimeout(searchAffairs, 300);
+    return () => clearTimeout(debounceTimer);
+  }, [selectedClient, affairSearchQuery]);
 
   // Synchroniser les dates/heures avec formData
   useEffect(() => {
@@ -318,6 +387,9 @@ export default function TaskModal({ isOpen, onClose, onSave, onDelete, task, ini
       calendar_source_id: selectedCalendar.id,
       calendar_source_uri: selectedCalendar.uri || '',
       calendar_source_color: selectedCalendar.calendarcolor,
+      // ✅ Ajouter client et affaire
+      ...(selectedClient && { client_id: selectedClient.id }),
+      ...(selectedAffair && { affair_id: selectedAffair.id }),
       // ✅ IMPORTANT : Inclure l'URL de l'événement pour les mises à jour
       ...(task && { url: task.url }),
     });
@@ -343,6 +415,9 @@ export default function TaskModal({ isOpen, onClose, onSave, onDelete, task, ini
         calendar_source_id: calendar.id,
         calendar_source_uri: calendar.uri || '',
         calendar_source_color: calendar.calendarcolor,
+        // ✅ Ajouter client et affaire
+        ...(selectedClient && { client_id: selectedClient.id }),
+        ...(selectedAffair && { affair_id: selectedAffair.id }),
       });
     });
 
@@ -677,7 +752,7 @@ export default function TaskModal({ isOpen, onClose, onSave, onDelete, task, ini
                   Plage horaire
                 </label>
                 <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
-                  <label className="flex items-center gap-2 px-3 py-2.5 bg-white border-2 border-slate-300 cursor-pointer hover:border-[#005f82] hover:bg-slate-50 transition-all has-[:checked]:border-[#005f82] has-[:checked]:bg-[#005f82]/5">
+                  <label className="flex items-center gap-2 px-3 py-2.5 bg-white border-2 border-slate-300 rounded-lg cursor-pointer hover:border-[#005f82] hover:bg-slate-50 transition-all has-checked:border-[#005f82] has-checked:bg-[#005f82]/5">
                     <input
                       type="radio"
                       name="timePreset"
@@ -691,7 +766,7 @@ export default function TaskModal({ isOpen, onClose, onSave, onDelete, task, ini
                     </span>
                   </label>
 
-                  <label className="flex items-center gap-2 px-3 py-2.5 bg-white border-2 border-slate-300 cursor-pointer hover:border-[#005f82] hover:bg-slate-50 transition-all has-[:checked]:border-[#005f82] has-[:checked]:bg-[#005f82]/5">
+                  <label className="flex items-center gap-2 px-3 py-2.5 bg-white border-2 border-slate-300 rounded-lg cursor-pointer hover:border-[#005f82] hover:bg-slate-50 transition-all has-checked:border-[#005f82] has-checked:bg-[#005f82]/5">
                     <input
                       type="radio"
                       name="timePreset"
@@ -705,7 +780,7 @@ export default function TaskModal({ isOpen, onClose, onSave, onDelete, task, ini
                     </span>
                   </label>
 
-                  <label className="flex items-center gap-2 px-3 py-2.5 bg-white border-2 border-slate-300 cursor-pointer hover:border-[#005f82] hover:bg-slate-50 transition-all has-checked:border-[#005f82] has-checked:bg-[#005f82]/5">
+                  <label className="flex items-center gap-2 px-3 py-2.5 bg-white border-2 border-slate-300 rounded-lg cursor-pointer hover:border-[#005f82] hover:bg-slate-50 transition-all has-checked:border-[#005f82] has-checked:bg-[#005f82]/5">
                     <input
                       type="radio"
                       name="timePreset"
@@ -762,6 +837,173 @@ export default function TaskModal({ isOpen, onClose, onSave, onDelete, task, ini
                     />
                   </div>
                 </div>
+              </div>
+            </div>
+
+            {/* Client et Affaire */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+              {/* Recherche Client */}
+              <div className="client-dropdown-container">
+                <label className="block text-sm font-semibold text-slate-700 mb-2">
+                  Client
+                </label>
+
+                {selectedClient ? (
+                  <div className="flex items-center gap-2 px-4 py-3 bg-blue-50 border border-blue-200 rounded-lg">
+                    <div className="flex-1">
+                      <div className="font-semibold text-slate-900">
+                        {selectedClient.nom}
+                      </div>
+                      {(selectedClient.email || selectedClient.telephone) && (
+                        <div className="text-sm text-slate-600">
+                          {selectedClient.email && <span>{selectedClient.email}</span>}
+                          {selectedClient.email && selectedClient.telephone && <span> • </span>}
+                          {selectedClient.telephone && <span>{selectedClient.telephone}</span>}
+                        </div>
+                      )}
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSelectedClient(null);
+                        setSelectedAffair(null);
+                        setClientSearchQuery('');
+                        setAffairs([]);
+                      }}
+                      className="p-1 hover:bg-blue-200 rounded-full transition-colors"
+                    >
+                      <X className="w-4 h-4 text-blue-700" />
+                    </button>
+                  </div>
+                ) : (
+                  <div className="relative">
+                    <input
+                      type="text"
+                      placeholder="Rechercher un client (min. 3 caractères)..."
+                      value={clientSearchQuery}
+                      onChange={(e) => setClientSearchQuery(e.target.value)}
+                      onFocus={() => setShowClientDropdown(true)}
+                      className="w-full px-4 py-3 text-base bg-white border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#005f82] focus:border-[#005f82] text-slate-900 transition-all"
+                    />
+
+                    {showClientDropdown && (
+                      <div className="absolute z-50 w-full mt-1 bg-white border border-slate-300 rounded-lg shadow-lg max-h-60 overflow-y-auto">
+                        {clientSearchLoading ? (
+                          <div className="p-3 text-sm text-slate-500 text-center">
+                            Recherche en cours...
+                          </div>
+                        ) : clientSearchQuery.length < 3 ? (
+                          <div className="p-3 text-sm text-slate-500 text-center">
+                            Saisissez au moins 3 caractères
+                          </div>
+                        ) : clients.length === 0 ? (
+                          <div className="p-3 text-sm text-slate-500 text-center">
+                            Aucun client trouvé
+                          </div>
+                        ) : (
+                          clients.map(client => (
+                            <button
+                              key={client.id}
+                              type="button"
+                              onClick={() => {
+                                setSelectedClient(client);
+                                setShowClientDropdown(false);
+                                setClientSearchQuery('');
+                              }}
+                              className="w-full px-3 py-2 text-left text-sm hover:bg-slate-50 transition-colors"
+                            >
+                              <div className="font-medium text-slate-900">
+                                {client.nom}
+                              </div>
+                              {(client.email || client.telephone) && (
+                                <div className="text-xs text-slate-600">
+                                  {client.email && <span>{client.email}</span>}
+                                  {client.email && client.telephone && <span> • </span>}
+                                  {client.telephone && <span>{client.telephone}</span>}
+                                </div>
+                              )}
+                            </button>
+                          ))
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              {/* Recherche Affaire */}
+              <div className="affair-dropdown-container">
+                <label className="block text-sm font-semibold text-slate-700 mb-2">
+                  Affaire
+                </label>
+
+                {!selectedClient ? (
+                  <div className="px-4 py-3 bg-slate-50 border border-slate-200 rounded-lg text-sm text-slate-500">
+                    Sélectionnez d&apos;abord un client
+                  </div>
+                ) : selectedAffair ? (
+                  <div className="flex items-center gap-2 px-4 py-3 bg-green-50 border border-green-200 rounded-lg">
+                    <div className="flex-1">
+                      <div className="font-semibold text-slate-900">{selectedAffair.nom}</div>
+                      {selectedAffair.descriptif && (
+                        <div className="text-sm text-slate-600">{selectedAffair.descriptif}</div>
+                      )}
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSelectedAffair(null);
+                        setAffairSearchQuery('');
+                      }}
+                      className="p-1 hover:bg-green-200 rounded-full transition-colors"
+                    >
+                      <X className="w-4 h-4 text-green-700" />
+                    </button>
+                  </div>
+                ) : (
+                  <div className="relative">
+                    <input
+                      type="text"
+                      placeholder="Rechercher une affaire..."
+                      value={affairSearchQuery}
+                      onChange={(e) => setAffairSearchQuery(e.target.value)}
+                      onFocus={() => setShowAffairDropdown(true)}
+                      className="w-full px-4 py-3 text-base bg-white border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#005f82] focus:border-[#005f82] text-slate-900 transition-all"
+                    />
+
+                    {showAffairDropdown && (
+                      <div className="absolute z-50 w-full mt-1 bg-white border border-slate-300 rounded-lg shadow-lg max-h-60 overflow-y-auto">
+                        {affairSearchLoading ? (
+                          <div className="p-3 text-sm text-slate-500 text-center">
+                            Recherche en cours...
+                          </div>
+                        ) : affairs.length === 0 ? (
+                          <div className="p-3 text-sm text-slate-500 text-center">
+                            Aucune affaire trouvée
+                          </div>
+                        ) : (
+                          affairs.map(affair => (
+                            <button
+                              key={affair.id}
+                              type="button"
+                              onClick={() => {
+                                setSelectedAffair(affair);
+                                setShowAffairDropdown(false);
+                                setAffairSearchQuery('');
+                              }}
+                              className="w-full px-3 py-2 text-left text-sm hover:bg-slate-50 transition-colors"
+                            >
+                              <div className="font-medium text-slate-900">{affair.nom}</div>
+                              {affair.descriptif && (
+                                <div className="text-xs text-slate-600">{affair.descriptif}</div>
+                              )}
+                            </button>
+                          ))
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             </div>
 

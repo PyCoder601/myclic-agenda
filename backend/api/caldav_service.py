@@ -208,7 +208,16 @@ DTEND:{self._format_ical_date(end_date)}
 SUMMARY:{event_data.get('title', 'Nouvel événement')}
 DESCRIPTION:{event_data.get('description', '')}
 LOCATION:{event_data.get('location', '')}
-STATUS:CONFIRMED
+STATUS:CONFIRMED"""
+
+            # Ajouter CLIENT et AFFAIR si présents
+            if 'client_id' in event_data and event_data['client_id']:
+                ical_content += f"\nCLIENT:{event_data['client_id']}"
+
+            if 'affair_id' in event_data and event_data['affair_id']:
+                ical_content += f"\nAFFAIR:{event_data['affair_id']}"
+
+            ical_content += """
 END:VEVENT
 END:VCALENDAR"""
 
@@ -400,6 +409,19 @@ END:VCALENDAR"""
                 elif isinstance(end_date, (int, float)):
                     end_date = datetime.fromtimestamp(end_date)
                 vevent['dtend'].dt = end_date
+
+            # Mettre à jour CLIENT et AFFAIR si fournis
+            if 'client_id' in event_data:
+                if event_data['client_id']:
+                    vevent['client'] = str(event_data['client_id'])
+                elif 'client' in vevent:
+                    del vevent['client']
+
+            if 'affair_id' in event_data:
+                if event_data['affair_id']:
+                    vevent['affair'] = str(event_data['affair_id'])
+                elif 'affair' in vevent:
+                    del vevent['affair']
 
             # Mettre à jour LAST-MODIFIED et DTSTAMP
             from icalendar import vDatetime

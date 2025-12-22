@@ -705,7 +705,7 @@ export default function TaskModal({ isOpen, onClose, onSave, onDelete, task, ini
                     </span>
                   </label>
 
-                  <label className="flex items-center gap-2 px-3 py-2.5 bg-white border-2 border-slate-300 cursor-pointer hover:border-[#005f82] hover:bg-slate-50 transition-all has-[:checked]:border-[#005f82] has-[:checked]:bg-[#005f82]/5">
+                  <label className="flex items-center gap-2 px-3 py-2.5 bg-white border-2 border-slate-300 cursor-pointer hover:border-[#005f82] hover:bg-slate-50 transition-all has-checked:border-[#005f82] has-checked:bg-[#005f82]/5">
                     <input
                       type="radio"
                       name="timePreset"
@@ -719,7 +719,7 @@ export default function TaskModal({ isOpen, onClose, onSave, onDelete, task, ini
                     </span>
                   </label>
 
-                  <label className="flex items-center gap-2 px-3 py-2.5 bg-white border-2 border-slate-300 cursor-pointer hover:border-[#005f82] hover:bg-slate-50 transition-all has-[:checked]:border-[#005f82] has-[:checked]:bg-[#005f82]/5">
+                  <label className="flex items-center gap-2 px-3 py-2.5 bg-white border-2 border-slate-300 cursor-pointer hover:border-[#005f82] hover:bg-slate-50 transition-all has-checked:border-[#005f82] has-checked:bg-[#005f82]/5">
                     <input
                       type="radio"
                       name="timePreset"

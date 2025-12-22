@@ -6,8 +6,8 @@ class DatabaseRouter:
     - legacy  : MySQL legacy Application (read/write, no migrations)
     """
 
-    baikal_models = { 'baikaluser', 'baikalcalendar', 'baikalcalendarinstance', 'baikalcalendarobject', 'baikalprincipal', }
-    myclic_models = {"application"}  # app contenant Application
+    baikal_models = { 'baikaluser', 'baikalcalendar', 'baikalcalendarinstance', 'baikalcalendarobject', 'baikalprincipal'}
+    myclic_models = {"application", "compte", "affaire"}
 
     # -------------------------
     # READ

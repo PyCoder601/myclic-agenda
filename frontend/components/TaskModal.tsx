@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { X } from 'lucide-react';
-import { Task } from '@/lib/types';
+import { Task, CalendarSource } from '@/lib/types';
 import RichTextEditor from './RichTextEditor';
 import { useAppSelector, useAppDispatch } from '@/store/hooks';
 import { fetchCalendars } from '@/store/calendarSlice';
@@ -33,28 +33,45 @@ export default function TaskModal({ isOpen, onClose, onSave, onDelete, task, ini
   const { calendars } = useAppSelector((state) => state.calendar);
   const { application } = useAppSelector((state) => state.auth);
 
-  // États pour la recherche et le dropdown
+  // États pour la recherche et le dropdown - Calendriers
   const [searchQuery, setSearchQuery] = useState('');
   const [showCalendarDropdown, setShowCalendarDropdown] = useState(false);
-  const [showRessourceDropdown, setShowRessourceDropdown] = useState(false);
-  const [resourceSearchQuery, setRessourceSearchQuery] = useState('');
 
+  // États pour la recherche et le dropdown - Ressources
+  const [resourceSearchQuery, setResourceSearchQuery] = useState('');
+  const [showResourceDropdown, setShowResourceDropdown] = useState(false);
 
-  // Filtrer les calendriers selon la recherche
+  // États pour les dates et heures séparées
+  const [startDate, setStartDate] = useState('');
+  const [startTime, setStartTime] = useState('');
+  const [endDate, setEndDate] = useState('');
+  const [endTime, setEndTime] = useState('');
+
+  // État pour le préréglage horaire sélectionné
+  const [timePreset, setTimePreset] = useState<'morning' | 'afternoon' | 'fullday' | 'custom'>('custom');
+
+  // Filtrer les calendriers (non-ressources) selon la recherche
   const filteredCalendars = calendars.filter(cal => {
     const calName = (cal.defined_name || cal.share_href || cal.displayname || '').toLowerCase();
     return calName.includes(searchQuery.toLowerCase()) && !cal.description?.toLowerCase().includes("resource");
   });
 
-
-   const ressourceCalendars = calendars.filter(cal => {
-    const calName = (cal.defined_name || cal.share_href || cal.displayname || '').toLowerCase();
+  // Filtrer les ressources selon la recherche
+  const filteredResources = calendars.filter(cal => {
+    const calName = (cal.displayname || cal.defined_name || cal.share_href || '').toLowerCase();
     return calName.includes(resourceSearchQuery.toLowerCase()) && cal.description?.toLowerCase().includes("resource");
   });
 
-  console.log('Calendriers disponibles:', ressourceCalendars);
+  console.log('📅 Calendriers disponibles:', filteredCalendars.length);
+  console.log('🔧 Ressources disponibles:', filteredResources.length);
 
 
+
+  // Helper pour extraire date et heure d'un datetime-local string
+  const extractDateAndTime = (dateTimeString: string) => {
+    const [date, time] = dateTimeString.split('T');
+    return { date: date || '', time: time || '09:00' };
+  };
 
   // Calculer les valeurs initiales du formulaire
   const getInitialFormData = () => {
@@ -76,14 +93,27 @@ export default function TaskModal({ isOpen, onClose, onSave, onDelete, task, ini
         }
       }
 
+      // Extraire dates et heures séparées
+      const startDateTime = task.start_date.slice(0, 16);
+      const endDateTime = task.end_date.slice(0, 16);
+      const { date: sDate, time: sTime } = extractDateAndTime(startDateTime);
+      const { date: eDate, time: eTime } = extractDateAndTime(endDateTime);
+
+      // Initialiser les états de date/heure
+      setStartDate(sDate);
+      setStartTime(sTime);
+      setEndDate(eDate);
+      setEndTime(eTime);
+      setTimePreset('custom');
+
       return {
         title: task.title,
         description: task.description || '',
         location: task.location || '',
-        start_date: task.start_date.slice(0, 16),
-        end_date: task.end_date.slice(0, 16),
+        start_date: startDateTime,
+        end_date: endDateTime,
         calendar_source: calendarSourceId,
-        calendar_sources: [calendarSourceId], // Pour la sélection multiple
+        calendar_sources: [calendarSourceId],
       };
     }
     
@@ -93,19 +123,28 @@ export default function TaskModal({ isOpen, onClose, onSave, onDelete, task, ini
     // Si initialDate contient déjà une heure/minute spécifique, les utiliser
     const start = new Date(baseDate);
     if (initialHour !== undefined) {
-      // Si initialHour est fourni séparément (ancien comportement), l'utiliser avec minutes = 0
       start.setHours(initialHour, 0, 0, 0);
     } else if (initialDate && (initialDate.getHours() !== 0 || initialDate.getMinutes() !== 0)) {
-      // Si initialDate a déjà une heure/minute spécifique (nouveau comportement), les préserver
-      // Ne rien faire, on garde l'heure/minute de initialDate
       console.log(`📅 Préservation de l'heure: ${initialDate.getHours()}:${initialDate.getMinutes()}`);
     } else {
-      // Sinon, utiliser l'heure actuelle avec minutes = 0
       start.setHours(currentTime.getHours(), 0, 0, 0);
     }
 
     const end = new Date(start);
     end.setTime(start.getTime() + 60 * 60 * 1000); // +1 heure
+
+    const startDateTimeLocal = formatDateTimeLocal(start);
+    const endDateTimeLocal = formatDateTimeLocal(end);
+
+    const { date: sDate, time: sTime } = extractDateAndTime(startDateTimeLocal);
+    const { date: eDate, time: eTime } = extractDateAndTime(endDateTimeLocal);
+
+    // Initialiser les états de date/heure
+    setStartDate(sDate);
+    setStartTime(sTime);
+    setEndDate(eDate);
+    setEndTime(eTime);
+    setTimePreset('custom');
 
     // ✅ Utiliser le premier calendrier disponible comme défaut
     const defaultCalendarSource = calendars.length > 0
@@ -116,10 +155,10 @@ export default function TaskModal({ isOpen, onClose, onSave, onDelete, task, ini
       title: '',
       description: '',
       location: '',
-      start_date: formatDateTimeLocal(start),
-      end_date: formatDateTimeLocal(end),
+      start_date: startDateTimeLocal,
+      end_date: endDateTimeLocal,
       calendar_source: defaultCalendarSource,
-      calendar_sources: [defaultCalendarSource], // Pour la sélection multiple
+      calendar_sources: [defaultCalendarSource],
     };
   };
 
@@ -146,11 +185,11 @@ export default function TaskModal({ isOpen, onClose, onSave, onDelete, task, ini
 
       setFormData(newFormData);
 
-      // Réinitialiser la recherche
+      // Réinitialiser les recherches et dropdowns
       setSearchQuery('');
-      setRessourceSearchQuery('')
+      setResourceSearchQuery('');
       setShowCalendarDropdown(false);
-      setShowRessourceDropdown(false)
+      setShowResourceDropdown(false);
 
       console.log('📋 Initialisation du modal avec:', {
         isEdit: !!task,
@@ -171,19 +210,52 @@ export default function TaskModal({ isOpen, onClose, onSave, onDelete, task, ini
         setShowCalendarDropdown(false);
       }
       if (!target.closest('.resource-dropdown-container')) {
-        setShowRessourceDropdown(false)
+        setShowResourceDropdown(false);
       }
     };
 
-    if (showCalendarDropdown) {
+    if (showCalendarDropdown || showResourceDropdown) {
       document.addEventListener('mousedown', handleClickOutside);
       return () => document.removeEventListener('mousedown', handleClickOutside);
     }
-    if (showRessourceDropdown) {
-        document.addEventListener('mousedown', handleClickOutside);
-        return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [showCalendarDropdown, showResourceDropdown]);
+
+  // Synchroniser les dates/heures avec formData
+  useEffect(() => {
+    if (startDate && startTime && endDate && endTime) {
+      setFormData(prev => ({
+        ...prev,
+        start_date: `${startDate}T${startTime}`,
+        end_date: `${endDate}T${endTime}`,
+      }));
     }
-  }, [showCalendarDropdown, showRessourceDropdown]);
+  }, [startDate, startTime, endDate, endTime]);
+
+  // Gérer les préréglages horaires
+  const handleTimePreset = (preset: 'morning' | 'afternoon' | 'fullday') => {
+    setTimePreset(preset);
+
+    if (preset === 'morning') {
+      setStartTime('09:00');
+      setEndTime('12:30');
+    } else if (preset === 'afternoon') {
+      setStartTime('14:00');
+      setEndTime('18:00');
+    } else if (preset === 'fullday') {
+      setStartTime('09:00');
+      setEndTime('17:30');
+    }
+  };
+
+  // Gérer les changements manuels d'heure
+  const handleTimeChange = (field: 'start' | 'end', value: string) => {
+    if (field === 'start') {
+      setStartTime(value);
+    } else {
+      setEndTime(value);
+    }
+    setTimePreset('custom'); // Passer en mode personnalisé si l'utilisateur modifie
+  };
 
   if (!isOpen) return null;
 
@@ -223,7 +295,7 @@ export default function TaskModal({ isOpen, onClose, onSave, onDelete, task, ini
     }
   };
 
-  const submitWithCalendar = (selectedCalendar: any) => {
+  const submitWithCalendar = (selectedCalendar: CalendarSource) => {
 
     console.log('=== TaskModal Submit ===');
     console.log('Selected calendar:', selectedCalendar);
@@ -252,7 +324,7 @@ export default function TaskModal({ isOpen, onClose, onSave, onDelete, task, ini
     onClose();
   };
 
-  const submitWithMultipleCalendars = (selectedCalendars: any[]) => {
+  const submitWithMultipleCalendars = (selectedCalendars: CalendarSource[]) => {
     console.log('=== TaskModal Submit Multiple Calendars ===');
     console.log('Calendriers sélectionnés:', selectedCalendars);
 
@@ -286,18 +358,18 @@ export default function TaskModal({ isOpen, onClose, onSave, onDelete, task, ini
 
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-3 sm:p-4 animate-fadeIn">
-      <div className="bg-white max-w-2xl w-full max-h-[85vh] overflow-hidden shadow-xl border border-slate-200/80 flex flex-col">
+      <div className="bg-white max-w-4xl w-full max-h-[90vh] overflow-hidden shadow-xl border border-slate-200/80 flex flex-col">
         {/* Header compact */}
-        <div className="flex items-center justify-between px-4 py-3 border-b border-slate-200 bg-linear-to-r from-slate-50 to-white flex-shrink-0">
-          <h2 className="text-xl font-bold text-[#005f82] flex items-center gap-2">
-            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <div className="flex items-center justify-between px-2 py-2 border-b border-slate-200 bg-linear-to-r from-slate-50 to-white shrink-0">
+          <h2 className="text-2xl font-bold text-[#005f82] flex items-center gap-3">
+            <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
             </svg>
             {task ? 'Modifier l\'événement' : 'Nouvel événement'}
           </h2>
           <button
             onClick={onClose}
-            className="p-2 hover:bg-slate-100 transition-colors text-slate-500 hover:text-slate-700 rounded"
+            className="p-2 hover:bg-slate-100 transition-colors text-slate-500 hover:text-slate-700"
             type="button"
           >
             <X className="w-6 h-6" />
@@ -306,10 +378,10 @@ export default function TaskModal({ isOpen, onClose, onSave, onDelete, task, ini
 
         {/* Formulaire avec scroll */}
         <form onSubmit={handleSubmit} className="overflow-y-auto flex-1">
-          <div className="p-5 space-y-4">
+          <div className="p-6 space-y-5">
             {/* Titre */}
             <div>
-              <label className="block text-sm font-semibold text-slate-700 mb-1">
+              <label className="block text-sm font-semibold text-slate-700 mb-2">
                 Titre <span className="text-red-500">*</span>
               </label>
               <input
@@ -317,22 +389,22 @@ export default function TaskModal({ isOpen, onClose, onSave, onDelete, task, ini
                 required
                 value={formData.title}
                 onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                className="w-full px-3.5 py-2.5 text-base bg-white border border-slate-300 focus:outline-none focus:ring-1 focus:ring-[#005f82] focus:border-[#005f82] text-slate-900 transition-shadow"
+                className="w-full px-4 py-3 text-base bg-white border border-slate-300 focus:outline-none focus:ring-2 focus:ring-[#005f82] focus:border-[#005f82] text-slate-900 transition-all"
                 placeholder="Ex: Réunion d'équipe"
               />
             </div>
 
             {/* Grille compacte : Lieu + Calendrier */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
               <div>
-                <label className="block text-sm font-semibold text-slate-700 mb-1">
+                <label className="block text-sm font-semibold text-slate-700 mb-2">
                   Lieu
                 </label>
                 <input
                   type="text"
                   value={formData.location}
                   onChange={(e) => setFormData({ ...formData, location: e.target.value })}
-                  className="w-full px-3.5 py-2.5 text-base bg-white border border-slate-300 focus:outline-none focus:ring-1 focus:ring-[#005f82] focus:border-[#005f82] text-slate-900 transition-shadow"
+                  className="w-full px-4 py-3 text-base bg-white border border-slate-300 focus:outline-none focus:ring-2 focus:ring-[#005f82] focus:border-[#005f82] text-slate-900 transition-all"
                   placeholder="Salle 201"
                 />
                   {application?.entreprise && (
@@ -349,7 +421,7 @@ export default function TaskModal({ isOpen, onClose, onSave, onDelete, task, ini
               </div>
 
               <div className="calendar-dropdown-container">
-                <label className="block text-sm font-semibold text-slate-700 mb-1">
+                <label className="block text-sm font-semibold text-slate-700 mb-2">
                   Calendrier(s) <span className="text-red-500">*</span>
                 </label>
 
@@ -357,11 +429,11 @@ export default function TaskModal({ isOpen, onClose, onSave, onDelete, task, ini
                 <div className="relative">
                   <input
                     type="text"
-                    placeholder="Rechercher et sélectionner des calendriers..."
+                    placeholder="Rechercher et sélectionner..."
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                     onFocus={() => setShowCalendarDropdown(true)}
-                    className="w-full px-3.5 py-2.5 text-base bg-white border border-slate-300 focus:outline-none focus:ring-1 focus:ring-[#005f82] focus:border-[#005f82] text-slate-900"
+                    className="w-full px-4 py-3 text-base bg-white border border-slate-300 focus:outline-none focus:ring-2 focus:ring-[#005f82] focus:border-[#005f82] text-slate-900 transition-all"
                   />
 
                   {/* Dropdown de sélection */}
@@ -396,7 +468,7 @@ export default function TaskModal({ isOpen, onClose, onSave, onDelete, task, ini
                               }`}
                             >
                               <div
-                                className="w-3 h-3 rounded-full shrink-0"
+                                className="w-3 h-3 shrink-0"
                                 style={{ backgroundColor: cal.calendarcolor || '#005f82' }}
                               />
                               <span className={`flex-1 ${isSelected ? 'font-medium text-[#005f82]' : 'text-slate-700'}`}>
@@ -426,10 +498,10 @@ export default function TaskModal({ isOpen, onClose, onSave, onDelete, task, ini
                       return (
                         <span
                           key={calId}
-                          className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-[#005f82]/10 text-[#005f82] text-sm rounded-full"
+                          className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-[#005f82]/10 text-[#005f82] text-sm"
                         >
                           <div
-                            className="w-2 h-2 rounded-full"
+                            className="w-2 h-2"
                             style={{ backgroundColor: cal.calendarcolor || '#005f82' }}
                           />
                           <span className="font-medium">{calName}</span>
@@ -443,7 +515,7 @@ export default function TaskModal({ isOpen, onClose, onSave, onDelete, task, ini
                                 calendar_source: newSources[0] || ''
                               });
                             }}
-                            className="ml-1 hover:bg-[#005f82]/20 rounded-full p-0.5 transition-colors"
+                            className="ml-1 hover:bg-[#005f82]/20 p-0.5 transition-colors"
                           >
                             <X className="w-3 h-3" />
                           </button>
@@ -456,7 +528,7 @@ export default function TaskModal({ isOpen, onClose, onSave, onDelete, task, ini
             </div>
 
              <div className="resource-dropdown-container">
-                <label className="block text-sm font-semibold text-slate-700 mb-1">
+                <label className="block text-sm font-semibold text-slate-700 mb-2">
                   Ressource(s)
                 </label>
 
@@ -464,24 +536,24 @@ export default function TaskModal({ isOpen, onClose, onSave, onDelete, task, ini
                 <div className="relative">
                   <input
                     type="text"
-                    placeholder="Rechercher et sélectionner des ressources ..."
+                    placeholder="Rechercher des ressources..."
                     value={resourceSearchQuery}
-                    onChange={(e) => setRessourceSearchQuery(e.target.value)}
-                    onFocus={() => setShowRessourceDropdown(true)}
-                    className="w-full px-3.5 py-2.5 text-base bg-white border border-slate-300 focus:outline-none focus:ring-1 focus:ring-[#005f82] focus:border-[#005f82] text-slate-900"
+                    onChange={(e) => setResourceSearchQuery(e.target.value)}
+                    onFocus={() => setShowResourceDropdown(true)}
+                    className="w-full px-4 py-3 text-base bg-white border border-slate-300 focus:outline-none focus:ring-2 focus:ring-[#005f82] focus:border-[#005f82] text-slate-900 transition-all"
                   />
 
                   {/* Dropdown de sélection */}
-                  {showRessourceDropdown && (
+                  {showResourceDropdown && (
                     <div className="absolute z-50 w-full mt-1 bg-white border border-slate-300 shadow-lg max-h-60 overflow-y-auto">
-                      {ressourceCalendars.length === 0 ? (
+                      {filteredResources.length === 0 ? (
                         <div className="p-3 text-sm text-slate-500 text-center">
-                          Aucun calendrier trouvé
+                          Aucune ressource trouvée
                         </div>
                       ) : (
-                        ressourceCalendars.map(cal => {
+                        filteredResources.map(cal => {
                           const calId = String(cal.id);
-                          const calName = cal.displayname || 'Calendrier';
+                          const calName = cal.displayname || cal.defined_name || cal.share_href || 'Ressource';
                           const isSelected = formData.calendar_sources?.includes(calId) || false;
 
                           return (
@@ -503,7 +575,7 @@ export default function TaskModal({ isOpen, onClose, onSave, onDelete, task, ini
                               }`}
                             >
                               <div
-                                className="w-3 h-3 rounded-full shrink-0"
+                                className="w-3 h-3 shrink-0"
                                 style={{ backgroundColor: cal.calendarcolor || '#005f82' }}
                               />
                               <span className={`flex-1 ${isSelected ? 'font-medium text-[#005f82]' : 'text-slate-700'}`}>
@@ -522,22 +594,22 @@ export default function TaskModal({ isOpen, onClose, onSave, onDelete, task, ini
                   )}
                 </div>
 
-                {/* Calendriers sélectionnés (badges) */}
+                {/* Ressources sélectionnées (badges) */}
                 {formData.calendar_sources && formData.calendar_sources.length > 0 && (
                   <div className="mt-2 flex flex-wrap gap-2">
                     {formData.calendar_sources.map(calId => {
-                      const cal = calendars.filter(cal => cal.description?.toLowerCase().includes("resource")).find(c => String(c.id) === calId);
+                      const cal = calendars.find(c => String(c.id) === calId && c.description?.toLowerCase().includes("resource"));
                       if (!cal) return null;
-                      const calName = cal.displayname || 'Calendrier';
+                      const calName = cal.displayname || cal.defined_name || cal.share_href || 'Ressource';
 
                       return (
                         <span
                           key={calId}
-                          className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-[#005f82]/10 text-[#005f82] text-sm rounded-full"
+                          className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-amber-50 text-amber-700 text-sm border border-amber-200"
                         >
                           <div
-                            className="w-2 h-2 rounded-full"
-                            style={{ backgroundColor: cal.calendarcolor || '#005f82' }}
+                            className="w-2 h-2"
+                            style={{ backgroundColor: cal.calendarcolor || '#f59e0b' }}
                           />
                           <span className="font-medium">{calName}</span>
                           <button
@@ -550,7 +622,7 @@ export default function TaskModal({ isOpen, onClose, onSave, onDelete, task, ini
                                 calendar_source: newSources[0] || ''
                               });
                             }}
-                            className="ml-1 hover:bg-[#005f82]/20 rounded-full p-0.5 transition-colors"
+                            className="ml-1 hover:bg-amber-200 p-0.5 transition-colors"
                           >
                             <X className="w-3 h-3" />
                           </button>
@@ -561,32 +633,135 @@ export default function TaskModal({ isOpen, onClose, onSave, onDelete, task, ini
                 )}
               </div>
 
-            {/* Dates compactes */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-semibold text-slate-700 mb-1">
-                  Début <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="datetime-local"
-                  required
-                  value={formData.start_date}
-                  onChange={(e) => setFormData({ ...formData, start_date: e.target.value })}
-                  className="w-full px-3.5 py-2.5 text-base bg-white border border-slate-300 focus:outline-none focus:ring-1 focus:ring-[#005f82] focus:border-[#005f82] text-slate-900 transition-shadow"
-                />
+            {/* Dates et heures séparées */}
+            <div className="space-y-5">
+              {/* Dates */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+                <div>
+                  <label className="block text-sm font-semibold text-slate-700 mb-2">
+                    Date de début <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="date"
+                    required
+                    value={startDate}
+                    onChange={(e) => {
+                      setStartDate(e.target.value);
+                      // Si la date de fin est vide ou antérieure, la synchroniser
+                      if (!endDate || e.target.value > endDate) {
+                        setEndDate(e.target.value);
+                      }
+                    }}
+                    className="w-full px-4 py-3 text-base bg-white border border-slate-300 focus:outline-none focus:ring-2 focus:ring-[#005f82] focus:border-[#005f82] text-slate-900 transition-all"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-semibold text-slate-700 mb-2">
+                    Date de fin <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="date"
+                    required
+                    value={endDate}
+                    onChange={(e) => setEndDate(e.target.value)}
+                    min={startDate}
+                    className="w-full px-4 py-3 text-base bg-white border border-slate-300 focus:outline-none focus:ring-2 focus:ring-[#005f82] focus:border-[#005f82] text-slate-900 transition-all"
+                  />
+                </div>
               </div>
 
+              {/* Préréglages horaires */}
               <div>
-                <label className="block text-sm font-semibold text-slate-700 mb-1">
-                  Fin <span className="text-red-500">*</span>
+                <label className="block text-sm font-semibold text-slate-700 mb-3">
+                  Plage horaire
                 </label>
-                <input
-                  type="datetime-local"
-                  required
-                  value={formData.end_date}
-                  onChange={(e) => setFormData({ ...formData, end_date: e.target.value })}
-                  className="w-full px-3.5 py-2.5 text-base bg-white border border-slate-300 focus:outline-none focus:ring-1 focus:ring-[#005f82] focus:border-[#005f82] text-slate-900 transition-shadow"
-                />
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
+                  <label className="flex items-center gap-2 px-3 py-2.5 bg-white border-2 border-slate-300 cursor-pointer hover:border-[#005f82] hover:bg-slate-50 transition-all has-[:checked]:border-[#005f82] has-[:checked]:bg-[#005f82]/5">
+                    <input
+                      type="radio"
+                      name="timePreset"
+                      checked={timePreset === 'morning'}
+                      onChange={() => handleTimePreset('morning')}
+                      className="text-[#005f82] focus:ring-[#005f82]"
+                    />
+                    <span className="text-sm flex-1">
+                      <span className="font-semibold block">Matinée</span>
+                      <span className="text-slate-500 text-xs">9h - 12h30</span>
+                    </span>
+                  </label>
+
+                  <label className="flex items-center gap-2 px-3 py-2.5 bg-white border-2 border-slate-300 cursor-pointer hover:border-[#005f82] hover:bg-slate-50 transition-all has-[:checked]:border-[#005f82] has-[:checked]:bg-[#005f82]/5">
+                    <input
+                      type="radio"
+                      name="timePreset"
+                      checked={timePreset === 'afternoon'}
+                      onChange={() => handleTimePreset('afternoon')}
+                      className="text-[#005f82] focus:ring-[#005f82]"
+                    />
+                    <span className="text-sm flex-1">
+                      <span className="font-semibold block">Après-midi</span>
+                      <span className="text-slate-500 text-xs">14h - 18h</span>
+                    </span>
+                  </label>
+
+                  <label className="flex items-center gap-2 px-3 py-2.5 bg-white border-2 border-slate-300 cursor-pointer hover:border-[#005f82] hover:bg-slate-50 transition-all has-[:checked]:border-[#005f82] has-[:checked]:bg-[#005f82]/5">
+                    <input
+                      type="radio"
+                      name="timePreset"
+                      checked={timePreset === 'fullday'}
+                      onChange={() => handleTimePreset('fullday')}
+                      className="text-[#005f82] focus:ring-[#005f82]"
+                    />
+                    <span className="text-sm flex-1">
+                      <span className="font-semibold block">Journée</span>
+                      <span className="text-slate-500 text-xs">9h - 17h30</span>
+                    </span>
+                  </label>
+
+                  <label className="flex items-center gap-2 px-3 py-2.5 bg-white border-2 border-slate-300 cursor-pointer hover:border-[#005f82] hover:bg-slate-50 transition-all has-[:checked]:border-[#005f82] has-[:checked]:bg-[#005f82]/5">
+                    <input
+                      type="radio"
+                      name="timePreset"
+                      checked={timePreset === 'custom'}
+                      onChange={() => setTimePreset('custom')}
+                      className="text-[#005f82] focus:ring-[#005f82]"
+                    />
+                    <span className="text-sm flex-1">
+                      <span className="font-semibold block">Personnalisé</span>
+                      <span className="text-slate-500 text-xs invisible">--</span>
+                    </span>
+                  </label>
+                </div>
+
+                {/* Champs d'heure */}
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+                  <div>
+                    <label className="block text-sm font-semibold text-slate-700 mb-2">
+                      Heure de début <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="time"
+                      required
+                      value={startTime}
+                      onChange={(e) => handleTimeChange('start', e.target.value)}
+                      className="w-full px-4 py-3 text-base bg-white border border-slate-300 focus:outline-none focus:ring-2 focus:ring-[#005f82] focus:border-[#005f82] text-slate-900 transition-all"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-semibold text-slate-700 mb-2">
+                      Heure de fin <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="time"
+                      required
+                      value={endTime}
+                      onChange={(e) => handleTimeChange('end', e.target.value)}
+                      className="w-full px-4 py-3 text-base bg-white border border-slate-300 focus:outline-none focus:ring-2 focus:ring-[#005f82] focus:border-[#005f82] text-slate-900 transition-all"
+                    />
+                  </div>
+                </div>
               </div>
             </div>
 
@@ -605,10 +780,10 @@ export default function TaskModal({ isOpen, onClose, onSave, onDelete, task, ini
           </div>
 
           {/* Footer avec boutons */}
-          <div className="border-t border-slate-200 bg-slate-50 px-5 py-3.5 flex gap-2.5 flex-shrink-0">
+          <div className="border-t border-slate-200 bg-slate-50 px-6 py-4 flex gap-3 shrink-0">
             <button
               type="submit"
-              className="flex-1 bg-[#005f82] hover:bg-[#004a65] text-white font-medium py-2.5 px-5 text-base transition-colors focus:outline-none focus:ring-2 focus:ring-[#005f82] focus:ring-offset-2"
+              className="flex-1 bg-[#005f82] hover:bg-[#004a65] text-white font-semibold py-3 px-6 text-base transition-colors focus:outline-none focus:ring-2 focus:ring-[#005f82] focus:ring-offset-2 shadow-sm"
             >
               {task ? 'Mettre à jour' : 'Créer l\'événement'}
             </button>
@@ -616,7 +791,7 @@ export default function TaskModal({ isOpen, onClose, onSave, onDelete, task, ini
               <button
                 type="button"
                 onClick={handleDelete}
-                className="bg-red-600 hover:bg-red-700 text-white font-medium py-2.5 px-5 text-base transition-colors focus:outline-none focus:ring-2 focus:ring-red-600 focus:ring-offset-2"
+                className="bg-red-600 hover:bg-red-700 text-white font-semibold py-3 px-6 text-base transition-colors focus:outline-none focus:ring-2 focus:ring-red-600 focus:ring-offset-2 shadow-sm"
               >
                 Supprimer
               </button>
@@ -624,7 +799,7 @@ export default function TaskModal({ isOpen, onClose, onSave, onDelete, task, ini
             <button
               type="button"
               onClick={onClose}
-              className="bg-white hover:bg-slate-100 text-slate-700 font-medium py-2.5 px-5 text-base border border-slate-300 transition-colors focus:outline-none focus:ring-2 focus:ring-slate-400 focus:ring-offset-2"
+              className="bg-white hover:bg-slate-100 text-slate-700 font-semibold py-3 px-6 text-base border border-slate-300 transition-colors focus:outline-none focus:ring-2 focus:ring-slate-400 focus:ring-offset-2"
             >
               Annuler
             </button>

@@ -1241,225 +1241,284 @@ export default function TaskModal({ isOpen, onClose, onSave, onDelete, task, ini
 
             {/* Contenu de l'onglet Récurrence */}
             {activeTab === 'recurrence' && (
-              <div className="space-y-5">
-                {/* Dropdown principal : Type de récurrence */}
-                <div className="recurrence-dropdown-container">
-                  <label className="block text-sm font-semibold text-slate-700 mb-2">
-                    Répéter l&apos;événement
-                  </label>
+              <div className="space-y-8">
+                {/* Section principale : Type de récurrence */}
+                <div className="recurrence-dropdown-container space-y-4">
+                  <div>
+                    <h3 className="text-base font-bold text-slate-800 mb-1">Fréquence de répétition</h3>
+                    <p className="text-sm text-slate-500">Choisissez comment l&apos;événement se répète</p>
+                  </div>
 
                   <div className="relative">
                     <button
                       type="button"
                       onClick={() => setShowRecurrenceDropdown(!showRecurrenceDropdown)}
-                      className="w-full px-4 py-3 bg-white border border-slate-300 rounded-lg text-left flex items-center justify-between hover:border-[#005f82] focus:outline-none focus:ring-2 focus:ring-[#005f82] focus:border-[#005f82] transition-all"
+                      className="w-full px-5 py-4 bg-white border-2 border-slate-200 rounded-xl text-left flex items-center justify-between hover:border-[#005f82] hover:shadow-md focus:outline-none focus:ring-3 focus:ring-[#005f82]/30 focus:border-[#005f82] transition-all duration-200"
                     >
-                      <span className="font-medium text-slate-900">
-                        {recurrenceType === 'none' && 'Une seule fois'}
-                        {recurrenceType === 'daily' && 'Tous les jours'}
-                        {recurrenceType === 'weekly' && `Tous les ${startDate ? getDayName(new Date(startDate)) : getDayName(new Date())} de la semaine`}
-                        {recurrenceType === 'monthly' && `Tous les ${startDate ? getDayName(new Date(startDate)) : getDayName(new Date())} du mois`}
-                        {recurrenceType === 'biweekly' && `Toutes les 2 semaines le ${startDate ? getDayName(new Date(startDate)) : getDayName(new Date())}`}
-                        {recurrenceType === 'triweekly' && `Toutes les 3 semaines le ${startDate ? getDayName(new Date(startDate)) : getDayName(new Date())}`}
-                        {recurrenceType === 'yearly' && `Tous les ans le ${startDate ? formatFullDate(new Date(startDate)) : formatFullDate(new Date())}`}
-                        {recurrenceType === 'custom' && 'Personnalisé'}
-                      </span>
-                      <svg className={`w-5 h-5 text-slate-400 transition-transform ${showRecurrenceDropdown ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-[#005f82] to-[#007ba7] flex items-center justify-center flex-shrink-0">
+                          <span className="text-xl">
+                            {recurrenceType === 'none' && '📅'}
+                            {recurrenceType === 'daily' && '☀️'}
+                            {recurrenceType === 'weekly' && '📆'}
+                            {recurrenceType === 'monthly' && '🗓️'}
+                            {recurrenceType === 'biweekly' && '📊'}
+                            {recurrenceType === 'triweekly' && '📋'}
+                            {recurrenceType === 'yearly' && '🎂'}
+                            {recurrenceType === 'custom' && '⚙️'}
+                          </span>
+                        </div>
+                        <div>
+                          <div className="font-semibold text-slate-900">
+                            {recurrenceType === 'none' && 'Une seule fois'}
+                            {recurrenceType === 'daily' && 'Tous les jours'}
+                            {recurrenceType === 'weekly' && 'Toutes les semaines'}
+                            {recurrenceType === 'monthly' && 'Tous les mois'}
+                            {recurrenceType === 'biweekly' && 'Toutes les 2 semaines'}
+                            {recurrenceType === 'triweekly' && 'Toutes les 3 semaines'}
+                            {recurrenceType === 'yearly' && 'Tous les ans'}
+                            {recurrenceType === 'custom' && 'Personnalisé'}
+                          </div>
+                          <div className="text-sm text-slate-500">
+                            {recurrenceType === 'none' && 'Pas de répétition'}
+                            {recurrenceType === 'daily' && 'Chaque jour'}
+                            {recurrenceType === 'weekly' && `Le ${startDate ? getDayName(new Date(startDate)) : getDayName(new Date())}`}
+                            {recurrenceType === 'monthly' && `Le ${startDate ? getDayName(new Date(startDate)) : getDayName(new Date())} du mois`}
+                            {recurrenceType === 'biweekly' && `Le ${startDate ? getDayName(new Date(startDate)) : getDayName(new Date())}`}
+                            {recurrenceType === 'triweekly' && `Le ${startDate ? getDayName(new Date(startDate)) : getDayName(new Date())}`}
+                            {recurrenceType === 'yearly' && `Le ${startDate ? formatFullDate(new Date(startDate)) : formatFullDate(new Date())}`}
+                            {recurrenceType === 'custom' && 'Configuration avancée'}
+                          </div>
+                        </div>
+                      </div>
+                      <svg className={`w-6 h-6 text-slate-400 transition-transform duration-200 ${showRecurrenceDropdown ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                       </svg>
                     </button>
 
-                    {/* Dropdown menu */}
+                    {/* Dropdown menu moderne */}
                     {showRecurrenceDropdown && (
-                      <div className="absolute z-50 w-full mt-1 bg-white border border-slate-300 rounded-lg shadow-lg max-h-80 overflow-y-auto">
-                        {/* Une seule fois */}
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setRecurrenceType('none');
-                            setShowRecurrenceDropdown(false);
-                          }}
-                          className={`w-full px-4 py-3 text-left hover:bg-slate-50 transition-colors ${
-                            recurrenceType === 'none' ? 'bg-[#005f82]/5 font-medium' : ''
-                          }`}
-                        >
-                          <div className="flex items-center justify-between">
-                            <span className="text-sm text-slate-900">Une seule fois</span>
-                            {recurrenceType === 'none' && (
-                              <svg className="w-4 h-4 text-[#005f82]" fill="currentColor" viewBox="0 0 20 20">
-                                <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                              </svg>
-                            )}
-                          </div>
-                        </button>
+                      <div className="absolute z-50 w-full mt-2 bg-white border-2 border-slate-200 rounded-xl shadow-2xl overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
+                        <div className="max-h-[400px] overflow-y-auto py-2">
+                          {/* Une seule fois */}
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setRecurrenceType('none');
+                              setShowRecurrenceDropdown(false);
+                            }}
+                            className={`w-full px-4 py-3.5 text-left hover:bg-slate-50 transition-all duration-150 group ${
+                              recurrenceType === 'none' ? 'bg-blue-50 border-l-4 border-[#005f82]' : 'border-l-4 border-transparent'
+                            }`}
+                          >
+                            <div className="flex items-center gap-3">
+                              <div className={`w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 transition-all ${
+                                recurrenceType === 'none' ? 'bg-[#005f82] shadow-md' : 'bg-slate-100 group-hover:bg-slate-200'
+                              }`}>
+                                <span className="text-xl">{recurrenceType === 'none' ? '✓' : '📅'}</span>
+                              </div>
+                              <div className="flex-1">
+                                <div className="font-semibold text-slate-900">Une seule fois</div>
+                                <div className="text-xs text-slate-500">Pas de répétition</div>
+                              </div>
+                            </div>
+                          </button>
 
-                        {/* Tous les jours */}
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setRecurrenceType('daily');
-                            setShowRecurrenceDropdown(false);
-                          }}
-                          className={`w-full px-4 py-3 text-left hover:bg-slate-50 transition-colors ${
-                            recurrenceType === 'daily' ? 'bg-[#005f82]/5 font-medium' : ''
-                          }`}
-                        >
-                          <div className="flex items-center justify-between">
-                            <span className="text-sm text-slate-900">Tous les jours</span>
-                            {recurrenceType === 'daily' && (
-                              <svg className="w-4 h-4 text-[#005f82]" fill="currentColor" viewBox="0 0 20 20">
-                                <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                              </svg>
-                            )}
-                          </div>
-                        </button>
+                          {/* Tous les jours */}
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setRecurrenceType('daily');
+                              setShowRecurrenceDropdown(false);
+                            }}
+                            className={`w-full px-4 py-3.5 text-left hover:bg-slate-50 transition-all duration-150 group ${
+                              recurrenceType === 'daily' ? 'bg-blue-50 border-l-4 border-[#005f82]' : 'border-l-4 border-transparent'
+                            }`}
+                          >
+                            <div className="flex items-center gap-3">
+                              <div className={`w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 transition-all ${
+                                recurrenceType === 'daily' ? 'bg-[#005f82] shadow-md' : 'bg-slate-100 group-hover:bg-slate-200'
+                              }`}>
+                                <span className="text-xl">{recurrenceType === 'daily' ? '✓' : '☀️'}</span>
+                              </div>
+                              <div className="flex-1">
+                                <div className="font-semibold text-slate-900">Tous les jours</div>
+                                <div className="text-xs text-slate-500">Répétition quotidienne</div>
+                              </div>
+                            </div>
+                          </button>
 
-                        {/* Toutes les semaines */}
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setRecurrenceType('weekly');
-                            setShowRecurrenceDropdown(false);
-                          }}
-                          className={`w-full px-4 py-3 text-left hover:bg-slate-50 transition-colors ${
-                            recurrenceType === 'weekly' ? 'bg-[#005f82]/5 font-medium' : ''
-                          }`}
-                        >
-                          <div className="flex items-center justify-between">
-                            <span className="text-sm text-slate-900">Tous les {startDate ? getDayName(new Date(startDate)) : getDayName(new Date())} de la semaine</span>
-                            {recurrenceType === 'weekly' && (
-                              <svg className="w-4 h-4 text-[#005f82]" fill="currentColor" viewBox="0 0 20 20">
-                                <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                              </svg>
-                            )}
-                          </div>
-                        </button>
+                          {/* Toutes les semaines */}
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setRecurrenceType('weekly');
+                              setShowRecurrenceDropdown(false);
+                            }}
+                            className={`w-full px-4 py-3.5 text-left hover:bg-slate-50 transition-all duration-150 group ${
+                              recurrenceType === 'weekly' ? 'bg-blue-50 border-l-4 border-[#005f82]' : 'border-l-4 border-transparent'
+                            }`}
+                          >
+                            <div className="flex items-center gap-3">
+                              <div className={`w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 transition-all ${
+                                recurrenceType === 'weekly' ? 'bg-[#005f82] shadow-md' : 'bg-slate-100 group-hover:bg-slate-200'
+                              }`}>
+                                <span className="text-xl">{recurrenceType === 'weekly' ? '✓' : '📆'}</span>
+                              </div>
+                              <div className="flex-1">
+                                <div className="font-semibold text-slate-900">Toutes les semaines</div>
+                                <div className="text-xs text-slate-500">Le {startDate ? getDayName(new Date(startDate)) : getDayName(new Date())}</div>
+                              </div>
+                            </div>
+                          </button>
 
-                        {/* Tous les mois */}
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setRecurrenceType('monthly');
-                            setShowRecurrenceDropdown(false);
-                          }}
-                          className={`w-full px-4 py-3 text-left hover:bg-slate-50 transition-colors ${
-                            recurrenceType === 'monthly' ? 'bg-[#005f82]/5 font-medium' : ''
-                          }`}
-                        >
-                          <div className="flex items-center justify-between">
-                            <span className="text-sm text-slate-900">Tous les {startDate ? getDayName(new Date(startDate)) : getDayName(new Date())} du mois</span>
-                            {recurrenceType === 'monthly' && (
-                              <svg className="w-4 h-4 text-[#005f82]" fill="currentColor" viewBox="0 0 20 20">
-                                <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                              </svg>
-                            )}
-                          </div>
-                        </button>
+                          {/* Tous les mois */}
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setRecurrenceType('monthly');
+                              setShowRecurrenceDropdown(false);
+                            }}
+                            className={`w-full px-4 py-3.5 text-left hover:bg-slate-50 transition-all duration-150 group ${
+                              recurrenceType === 'monthly' ? 'bg-blue-50 border-l-4 border-[#005f82]' : 'border-l-4 border-transparent'
+                            }`}
+                          >
+                            <div className="flex items-center gap-3">
+                              <div className={`w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 transition-all ${
+                                recurrenceType === 'monthly' ? 'bg-[#005f82] shadow-md' : 'bg-slate-100 group-hover:bg-slate-200'
+                              }`}>
+                                <span className="text-xl">{recurrenceType === 'monthly' ? '✓' : '🗓️'}</span>
+                              </div>
+                              <div className="flex-1">
+                                <div className="font-semibold text-slate-900">Tous les mois</div>
+                                <div className="text-xs text-slate-500">Le {startDate ? getDayName(new Date(startDate)) : getDayName(new Date())} du mois</div>
+                              </div>
+                            </div>
+                          </button>
 
-                        {/* Toutes les deux semaines */}
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setRecurrenceType('biweekly');
-                            setShowRecurrenceDropdown(false);
-                          }}
-                          className={`w-full px-4 py-3 text-left hover:bg-slate-50 transition-colors ${
-                            recurrenceType === 'biweekly' ? 'bg-[#005f82]/5 font-medium' : ''
-                          }`}
-                        >
-                          <div className="flex items-center justify-between">
-                            <span className="text-sm text-slate-900">Toutes les 2 semaines le {startDate ? getDayName(new Date(startDate)) : getDayName(new Date())}</span>
-                            {recurrenceType === 'biweekly' && (
-                              <svg className="w-4 h-4 text-[#005f82]" fill="currentColor" viewBox="0 0 20 20">
-                                <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                              </svg>
-                            )}
-                          </div>
-                        </button>
+                          {/* Toutes les deux semaines */}
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setRecurrenceType('biweekly');
+                              setShowRecurrenceDropdown(false);
+                            }}
+                            className={`w-full px-4 py-3.5 text-left hover:bg-slate-50 transition-all duration-150 group ${
+                              recurrenceType === 'biweekly' ? 'bg-blue-50 border-l-4 border-[#005f82]' : 'border-l-4 border-transparent'
+                            }`}
+                          >
+                            <div className="flex items-center gap-3">
+                              <div className={`w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 transition-all ${
+                                recurrenceType === 'biweekly' ? 'bg-[#005f82] shadow-md' : 'bg-slate-100 group-hover:bg-slate-200'
+                              }`}>
+                                <span className="text-xl">{recurrenceType === 'biweekly' ? '✓' : '📊'}</span>
+                              </div>
+                              <div className="flex-1">
+                                <div className="font-semibold text-slate-900">Toutes les 2 semaines</div>
+                                <div className="text-xs text-slate-500">Le {startDate ? getDayName(new Date(startDate)) : getDayName(new Date())}</div>
+                              </div>
+                            </div>
+                          </button>
 
-                        {/* Toutes les trois semaines */}
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setRecurrenceType('triweekly');
-                            setShowRecurrenceDropdown(false);
-                          }}
-                          className={`w-full px-4 py-3 text-left hover:bg-slate-50 transition-colors ${
-                            recurrenceType === 'triweekly' ? 'bg-[#005f82]/5 font-medium' : ''
-                          }`}
-                        >
-                          <div className="flex items-center justify-between">
-                            <span className="text-sm text-slate-900">Toutes les 3 semaines le {startDate ? getDayName(new Date(startDate)) : getDayName(new Date())}</span>
-                            {recurrenceType === 'triweekly' && (
-                              <svg className="w-4 h-4 text-[#005f82]" fill="currentColor" viewBox="0 0 20 20">
-                                <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                              </svg>
-                            )}
-                          </div>
-                        </button>
+                          {/* Toutes les trois semaines */}
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setRecurrenceType('triweekly');
+                              setShowRecurrenceDropdown(false);
+                            }}
+                            className={`w-full px-4 py-3.5 text-left hover:bg-slate-50 transition-all duration-150 group ${
+                              recurrenceType === 'triweekly' ? 'bg-blue-50 border-l-4 border-[#005f82]' : 'border-l-4 border-transparent'
+                            }`}
+                          >
+                            <div className="flex items-center gap-3">
+                              <div className={`w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 transition-all ${
+                                recurrenceType === 'triweekly' ? 'bg-[#005f82] shadow-md' : 'bg-slate-100 group-hover:bg-slate-200'
+                              }`}>
+                                <span className="text-xl">{recurrenceType === 'triweekly' ? '✓' : '📋'}</span>
+                              </div>
+                              <div className="flex-1">
+                                <div className="font-semibold text-slate-900">Toutes les 3 semaines</div>
+                                <div className="text-xs text-slate-500">Le {startDate ? getDayName(new Date(startDate)) : getDayName(new Date())}</div>
+                              </div>
+                            </div>
+                          </button>
 
-                        {/* Tous les ans */}
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setRecurrenceType('yearly');
-                            setShowRecurrenceDropdown(false);
-                          }}
-                          className={`w-full px-4 py-3 text-left hover:bg-slate-50 transition-colors ${
-                            recurrenceType === 'yearly' ? 'bg-[#005f82]/5 font-medium' : ''
-                          }`}
-                        >
-                          <div className="flex items-center justify-between">
-                            <span className="text-sm text-slate-900">Tous les ans le {startDate ? formatFullDate(new Date(startDate)) : formatFullDate(new Date())}</span>
-                            {recurrenceType === 'yearly' && (
-                              <svg className="w-4 h-4 text-[#005f82]" fill="currentColor" viewBox="0 0 20 20">
-                                <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                              </svg>
-                            )}
-                          </div>
-                        </button>
+                          {/* Tous les ans */}
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setRecurrenceType('yearly');
+                              setShowRecurrenceDropdown(false);
+                            }}
+                            className={`w-full px-4 py-3.5 text-left hover:bg-slate-50 transition-all duration-150 group ${
+                              recurrenceType === 'yearly' ? 'bg-blue-50 border-l-4 border-[#005f82]' : 'border-l-4 border-transparent'
+                            }`}
+                          >
+                            <div className="flex items-center gap-3">
+                              <div className={`w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 transition-all ${
+                                recurrenceType === 'yearly' ? 'bg-[#005f82] shadow-md' : 'bg-slate-100 group-hover:bg-slate-200'
+                              }`}>
+                                <span className="text-xl">{recurrenceType === 'yearly' ? '✓' : '🎂'}</span>
+                              </div>
+                              <div className="flex-1">
+                                <div className="font-semibold text-slate-900">Tous les ans</div>
+                                <div className="text-xs text-slate-500">Le {startDate ? formatFullDate(new Date(startDate)) : formatFullDate(new Date())}</div>
+                              </div>
+                            </div>
+                          </button>
 
-                        {/* Personnalisé */}
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setRecurrenceType('custom');
-                            setShowRecurrenceDropdown(false);
-                          }}
-                          className={`w-full px-4 py-3 text-left hover:bg-slate-50 transition-colors ${
-                            recurrenceType === 'custom' ? 'bg-[#005f82]/5 font-medium' : ''
-                          }`}
-                        >
-                          <div className="flex items-center justify-between">
-                            <span className="text-sm text-slate-900">Personnalisé</span>
-                            {recurrenceType === 'custom' && (
-                              <svg className="w-4 h-4 text-[#005f82]" fill="currentColor" viewBox="0 0 20 20">
-                                <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                              </svg>
-                            )}
-                          </div>
-                        </button>
+                          {/* Personnalisé */}
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setRecurrenceType('custom');
+                              setShowRecurrenceDropdown(false);
+                            }}
+                            className={`w-full px-4 py-3.5 text-left hover:bg-slate-50 transition-all duration-150 group ${
+                              recurrenceType === 'custom' ? 'bg-blue-50 border-l-4 border-[#005f82]' : 'border-l-4 border-transparent'
+                            }`}
+                          >
+                            <div className="flex items-center gap-3">
+                              <div className={`w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 transition-all ${
+                                recurrenceType === 'custom' ? 'bg-[#005f82] shadow-md' : 'bg-slate-100 group-hover:bg-slate-200'
+                              }`}>
+                                <span className="text-xl">{recurrenceType === 'custom' ? '✓' : '⚙️'}</span>
+                              </div>
+                              <div className="flex-1">
+                                <div className="font-semibold text-slate-900">Personnalisé</div>
+                                <div className="text-xs text-slate-500">Configuration avancée</div>
+                              </div>
+                            </div>
+                          </button>
+                        </div>
                       </div>
                     )}
                   </div>
 
                   {/* Configuration personnalisée */}
                   {recurrenceType === 'custom' && (
-                    <div className="mt-3 p-4 bg-slate-50 border border-slate-200 rounded-lg">
+                    <div className="p-5 bg-gradient-to-br from-blue-50 to-indigo-50 border-2 border-blue-200 rounded-xl">
+                      <div className="flex items-center gap-2 mb-4">
+                        <svg className="w-5 h-5 text-[#005f82]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" />
+                        </svg>
+                        <span className="font-bold text-slate-800">Configuration personnalisée</span>
+                      </div>
                       <div className="flex items-center gap-3 flex-wrap">
-                        <label className="text-sm font-medium text-slate-700">Répéter tous les</label>
+                        <span className="text-sm font-medium text-slate-700">Répéter tous les</span>
                         <input
                           type="number"
                           min="1"
                           max="99"
                           value={customRecurrenceInterval}
                           onChange={(e) => setCustomRecurrenceInterval(parseInt(e.target.value) || 1)}
-                          className="w-20 px-3 py-2 text-base bg-white border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#005f82] focus:border-[#005f82]"
+                          className="w-20 px-4 py-2.5 text-base font-semibold text-center bg-white border-2 border-blue-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#005f82] focus:border-[#005f82] shadow-sm"
                         />
                         <select
                           value={customRecurrenceUnit}
                           onChange={(e) => setCustomRecurrenceUnit(e.target.value as 'days' | 'weeks' | 'months' | 'years')}
-                          className="px-3 py-2 text-base bg-white border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#005f82] focus:border-[#005f82]"
+                          className="px-4 py-2.5 text-base font-medium bg-white border-2 border-blue-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#005f82] focus:border-[#005f82] shadow-sm"
                         >
                           <option value="days">jour(s)</option>
                           <option value="weeks">semaine(s)</option>
@@ -1473,123 +1532,151 @@ export default function TaskModal({ isOpen, onClose, onSave, onDelete, task, ini
 
                 {/* Section de fin de récurrence */}
                 {recurrenceType !== 'none' && (
-                  <div className="endtype-dropdown-container">
-                    <label className="block text-sm font-semibold text-slate-700 mb-2">
-                      Fin de la répétition
-                    </label>
+                  <div className="endtype-dropdown-container space-y-4">
+                    <div>
+                      <h3 className="text-base font-bold text-slate-800 mb-1">Quand arrêter la répétition</h3>
+                      <p className="text-sm text-slate-500">Définissez la fin de la récurrence</p>
+                    </div>
 
                     <div className="relative">
                       <button
                         type="button"
                         onClick={() => setShowEndTypeDropdown(!showEndTypeDropdown)}
-                        className="w-full px-4 py-3 bg-white border border-slate-300 rounded-lg text-left flex items-center justify-between hover:border-[#005f82] focus:outline-none focus:ring-2 focus:ring-[#005f82] focus:border-[#005f82] transition-all"
+                        className="w-full px-5 py-4 bg-white border-2 border-slate-200 rounded-xl text-left flex items-center justify-between hover:border-[#005f82] hover:shadow-md focus:outline-none focus:ring-3 focus:ring-[#005f82]/30 focus:border-[#005f82] transition-all duration-200"
                       >
-                        <span className="font-medium text-slate-900">
-                          {recurrenceEndType === 'never' && 'Jamais'}
-                          {recurrenceEndType === 'count' && `Après ${recurrenceCount} occurrence(s)`}
-                          {recurrenceEndType === 'until' && recurrenceEndDate ? `Le ${new Date(recurrenceEndDate).toLocaleDateString('fr-FR')}` : 'Choisir une date'}
-                        </span>
-                        <svg className={`w-5 h-5 text-slate-400 transition-transform ${showEndTypeDropdown ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center flex-shrink-0">
+                            <span className="text-xl">
+                              {recurrenceEndType === 'never' && '♾️'}
+                              {recurrenceEndType === 'count' && '🔢'}
+                              {recurrenceEndType === 'until' && '📅'}
+                            </span>
+                          </div>
+                          <div>
+                            <div className="font-semibold text-slate-900">
+                              {recurrenceEndType === 'never' && 'Jamais'}
+                              {recurrenceEndType === 'count' && `Après ${recurrenceCount} fois`}
+                              {recurrenceEndType === 'until' && 'À une date'}
+                            </div>
+                            <div className="text-sm text-slate-500">
+                              {recurrenceEndType === 'never' && 'Continue indéfiniment'}
+                              {recurrenceEndType === 'count' && `${recurrenceCount} occurrence(s)`}
+                              {recurrenceEndType === 'until' && (recurrenceEndDate ? new Date(recurrenceEndDate).toLocaleDateString('fr-FR') : 'Choisir...')}
+                            </div>
+                          </div>
+                        </div>
+                        <svg className={`w-6 h-6 text-slate-400 transition-transform duration-200 ${showEndTypeDropdown ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                         </svg>
                       </button>
 
                       {showEndTypeDropdown && (
-                        <div className="absolute z-50 w-full mt-1 bg-white border border-slate-300 rounded-lg shadow-lg overflow-hidden">
-                          {/* Jamais */}
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setRecurrenceEndType('never');
-                              setShowEndTypeDropdown(false);
-                            }}
-                            className={`w-full px-4 py-3 text-left hover:bg-slate-50 transition-colors ${
-                              recurrenceEndType === 'never' ? 'bg-[#005f82]/5 font-medium' : ''
-                            }`}
-                          >
-                            <div className="flex items-center justify-between">
-                              <span className="text-sm text-slate-900">Jamais</span>
-                              {recurrenceEndType === 'never' && (
-                                <svg className="w-4 h-4 text-[#005f82]" fill="currentColor" viewBox="0 0 20 20">
-                                  <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                                </svg>
-                              )}
-                            </div>
-                          </button>
+                        <div className="absolute z-50 w-full mt-2 bg-white border-2 border-slate-200 rounded-xl shadow-2xl overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
+                          <div className="py-2">
+                            {/* Jamais */}
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setRecurrenceEndType('never');
+                                setShowEndTypeDropdown(false);
+                              }}
+                              className={`w-full px-4 py-3.5 text-left hover:bg-slate-50 transition-all duration-150 group ${
+                                recurrenceEndType === 'never' ? 'bg-purple-50 border-l-4 border-purple-500' : 'border-l-4 border-transparent'
+                              }`}
+                            >
+                              <div className="flex items-center gap-3">
+                                <div className={`w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 transition-all ${
+                                  recurrenceEndType === 'never' ? 'bg-purple-500 shadow-md' : 'bg-slate-100 group-hover:bg-slate-200'
+                                }`}>
+                                  <span className="text-xl">{recurrenceEndType === 'never' ? '✓' : '♾️'}</span>
+                                </div>
+                                <div className="flex-1">
+                                  <div className="font-semibold text-slate-900">Jamais</div>
+                                  <div className="text-xs text-slate-500">Continue indéfiniment (max 365)</div>
+                                </div>
+                              </div>
+                            </button>
 
-                          {/* Après X fois */}
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setRecurrenceEndType('count');
-                              setShowEndTypeDropdown(false);
-                            }}
-                            className={`w-full px-4 py-3 text-left hover:bg-slate-50 transition-colors ${
-                              recurrenceEndType === 'count' ? 'bg-[#005f82]/5 font-medium' : ''
-                            }`}
-                          >
-                            <div className="flex items-center justify-between">
-                              <span className="text-sm text-slate-900">Après un nombre d&apos;occurrences</span>
-                              {recurrenceEndType === 'count' && (
-                                <svg className="w-4 h-4 text-[#005f82]" fill="currentColor" viewBox="0 0 20 20">
-                                  <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                                </svg>
-                              )}
-                            </div>
-                          </button>
+                            {/* Après X fois */}
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setRecurrenceEndType('count');
+                                setShowEndTypeDropdown(false);
+                              }}
+                              className={`w-full px-4 py-3.5 text-left hover:bg-slate-50 transition-all duration-150 group ${
+                                recurrenceEndType === 'count' ? 'bg-purple-50 border-l-4 border-purple-500' : 'border-l-4 border-transparent'
+                              }`}
+                            >
+                              <div className="flex items-center gap-3">
+                                <div className={`w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 transition-all ${
+                                  recurrenceEndType === 'count' ? 'bg-purple-500 shadow-md' : 'bg-slate-100 group-hover:bg-slate-200'
+                                }`}>
+                                  <span className="text-xl">{recurrenceEndType === 'count' ? '✓' : '🔢'}</span>
+                                </div>
+                                <div className="flex-1">
+                                  <div className="font-semibold text-slate-900">Après un nombre de fois</div>
+                                  <div className="text-xs text-slate-500">Définir le nombre d&apos;occurrences</div>
+                                </div>
+                              </div>
+                            </button>
 
-                          {/* À une date */}
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setRecurrenceEndType('until');
-                              setShowEndTypeDropdown(false);
-                            }}
-                            className={`w-full px-4 py-3 text-left hover:bg-slate-50 transition-colors ${
-                              recurrenceEndType === 'until' ? 'bg-[#005f82]/5 font-medium' : ''
-                            }`}
-                          >
-                            <div className="flex items-center justify-between">
-                              <span className="text-sm text-slate-900">À une date précise</span>
-                              {recurrenceEndType === 'until' && (
-                                <svg className="w-4 h-4 text-[#005f82]" fill="currentColor" viewBox="0 0 20 20">
-                                  <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                                </svg>
-                              )}
-                            </div>
-                          </button>
+                            {/* À une date */}
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setRecurrenceEndType('until');
+                                setShowEndTypeDropdown(false);
+                              }}
+                              className={`w-full px-4 py-3.5 text-left hover:bg-slate-50 transition-all duration-150 group ${
+                                recurrenceEndType === 'until' ? 'bg-purple-50 border-l-4 border-purple-500' : 'border-l-4 border-transparent'
+                              }`}
+                            >
+                              <div className="flex items-center gap-3">
+                                <div className={`w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 transition-all ${
+                                  recurrenceEndType === 'until' ? 'bg-purple-500 shadow-md' : 'bg-slate-100 group-hover:bg-slate-200'
+                                }`}>
+                                  <span className="text-xl">{recurrenceEndType === 'until' ? '✓' : '📅'}</span>
+                                </div>
+                                <div className="flex-1">
+                                  <div className="font-semibold text-slate-900">À une date précise</div>
+                                  <div className="text-xs text-slate-500">Choisir une date de fin</div>
+                                </div>
+                              </div>
+                            </button>
+                          </div>
                         </div>
                       )}
                     </div>
 
                     {/* Configuration du nombre d'occurrences */}
                     {recurrenceEndType === 'count' && (
-                      <div className="mt-3 p-4 bg-slate-50 border border-slate-200 rounded-lg">
-                        <div className="flex items-center gap-3">
-                          <label className="text-sm font-medium text-slate-700">Nombre d&apos;occurrences :</label>
+                      <div className="p-5 bg-gradient-to-br from-purple-50 to-pink-50 border-2 border-purple-200 rounded-xl">
+                        <div className="flex items-center gap-3 flex-wrap">
+                          <span className="text-sm font-medium text-slate-700">Répéter</span>
                           <input
                             type="number"
                             min="1"
                             max="999"
                             value={recurrenceCount}
                             onChange={(e) => setRecurrenceCount(parseInt(e.target.value) || 1)}
-                            className="w-24 px-3 py-2 text-base bg-white border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#005f82] focus:border-[#005f82]"
+                            className="w-24 px-4 py-2.5 text-base font-semibold text-center bg-white border-2 border-purple-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500 shadow-sm"
                           />
-                          <span className="text-sm font-medium text-slate-700">fois</span>
+                          <span className="text-sm font-medium text-slate-700">fois au total</span>
                         </div>
                       </div>
                     )}
 
                     {/* Sélection de la date de fin */}
                     {recurrenceEndType === 'until' && (
-                      <div className="mt-3 p-4 bg-slate-50 border border-slate-200 rounded-lg">
-                        <div className="flex items-center gap-3">
-                          <label className="text-sm font-medium text-slate-700">Jusqu&apos;au :</label>
+                      <div className="p-5 bg-gradient-to-br from-green-50 to-emerald-50 border-2 border-green-200 rounded-xl">
+                        <div className="flex items-center gap-3 flex-wrap">
+                          <span className="text-sm font-medium text-slate-700">Arrêter le</span>
                           <input
                             type="date"
                             value={recurrenceEndDate}
                             onChange={(e) => setRecurrenceEndDate(e.target.value)}
-                            className="flex-1 px-3 py-2 text-base bg-white border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#005f82] focus:border-[#005f82]"
+                            className="flex-1 min-w-[200px] px-4 py-2.5 text-base font-medium bg-white border-2 border-green-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 shadow-sm"
                           />
                         </div>
                       </div>
@@ -1599,28 +1686,32 @@ export default function TaskModal({ isOpen, onClose, onSave, onDelete, task, ini
 
                 {/* Résumé de la récurrence */}
                 {recurrenceType !== 'none' && (
-                  <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
-                    <div className="flex items-start gap-3">
-                      <svg className="w-5 h-5 text-blue-600 mt-0.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                      </svg>
-                      <div className="text-sm text-blue-900">
-                        <p className="font-semibold mb-1">Résumé de la récurrence</p>
-                        <p>
-                          {recurrenceType === 'daily' && 'Tous les jours'}
-                          {recurrenceType === 'weekly' && `Tous les ${startDate ? getDayName(new Date(startDate)) : getDayName(new Date())}`}
-                          {recurrenceType === 'monthly' && `Le ${startDate ? getDayName(new Date(startDate)) : getDayName(new Date())} de chaque mois`}
-                          {recurrenceType === 'biweekly' && `Toutes les 2 semaines le ${startDate ? getDayName(new Date(startDate)) : getDayName(new Date())}`}
-                          {recurrenceType === 'triweekly' && `Toutes les 3 semaines le ${startDate ? getDayName(new Date(startDate)) : getDayName(new Date())}`}
-                          {recurrenceType === 'yearly' && `Chaque année le ${startDate ? formatFullDate(new Date(startDate)) : formatFullDate(new Date())}`}
-                          {recurrenceType === 'custom' && `Tous les ${customRecurrenceInterval} ${
-                            customRecurrenceUnit === 'days' ? 'jour(s)' :
-                            customRecurrenceUnit === 'weeks' ? 'semaine(s)' :
-                            customRecurrenceUnit === 'months' ? 'mois' : 'année(s)'
-                          }`}
-                          {recurrenceEndType === 'never' && ', indéfiniment'}
-                          {recurrenceEndType === 'count' && `, ${recurrenceCount} fois`}
-                          {recurrenceEndType === 'until' && recurrenceEndDate && `, jusqu'au ${new Date(recurrenceEndDate).toLocaleDateString('fr-FR')}`}
+                  <div className="p-6 bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 border-2 border-blue-200 rounded-xl shadow-sm">
+                    <div className="flex items-start gap-4">
+                      <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center flex-shrink-0 shadow-lg">
+                        <svg className="w-6 h-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
+                        </svg>
+                      </div>
+                      <div className="flex-1">
+                        <h4 className="font-bold text-slate-800 mb-2">Résumé de votre récurrence</h4>
+                        <p className="text-base text-slate-700 leading-relaxed">
+                          <span className="font-semibold text-[#005f82]">
+                            {recurrenceType === 'daily' && '☀️ Tous les jours'}
+                            {recurrenceType === 'weekly' && `📆 Tous les ${startDate ? getDayName(new Date(startDate)) : getDayName(new Date())}`}
+                            {recurrenceType === 'monthly' && `🗓️ Le ${startDate ? getDayName(new Date(startDate)) : getDayName(new Date())} de chaque mois`}
+                            {recurrenceType === 'biweekly' && `📊 Toutes les 2 semaines le ${startDate ? getDayName(new Date(startDate)) : getDayName(new Date())}`}
+                            {recurrenceType === 'triweekly' && `📋 Toutes les 3 semaines le ${startDate ? getDayName(new Date(startDate)) : getDayName(new Date())}`}
+                            {recurrenceType === 'yearly' && `🎂 Chaque année le ${startDate ? formatFullDate(new Date(startDate)) : formatFullDate(new Date())}`}
+                            {recurrenceType === 'custom' && `⚙️ Tous les ${customRecurrenceInterval} ${
+                              customRecurrenceUnit === 'days' ? 'jour(s)' :
+                              customRecurrenceUnit === 'weeks' ? 'semaine(s)' :
+                              customRecurrenceUnit === 'months' ? 'mois' : 'année(s)'
+                            }`}
+                          </span>
+                          {recurrenceEndType === 'never' && ', ♾️ indéfiniment'}
+                          {recurrenceEndType === 'count' && `, 🔢 ${recurrenceCount} fois au total`}
+                          {recurrenceEndType === 'until' && recurrenceEndDate && `, 📅 jusqu'au ${new Date(recurrenceEndDate).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}`}
                         </p>
                       </div>
                     </div>

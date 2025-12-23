@@ -47,6 +47,7 @@ export interface Task {
     type?: 'agenda_event' | 'rappel_event';
     client_id?: number;
     affair_id?: number;
+    sequence?: number; // ✅ Numéro de séquence pour la récurrence
 }
 
 export interface Client {

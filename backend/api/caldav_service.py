@@ -213,6 +213,7 @@ DTEND:{self._format_ical_date(end_date)}
 SUMMARY:{event_data.get('title', 'Nouvel événement')}
 DESCRIPTION:{event_data.get('description', '')}
 LOCATION:{event_data.get('location', '')}
+SEQUENCE:{event_data.get('sequence', 0)}
 STATUS:CONFIRMED"""
 
             # Ajouter CLIENT et AFFAIR si présents

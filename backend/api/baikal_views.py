@@ -367,12 +367,15 @@ class BaikalEventViewSet(viewsets.ViewSet):
             # Récupérer les données
             title = request.data.get('title')
             description = request.data.get('description', '')
+            location = request.data.get('location', '')
             start_date = request.data.get('start_date')
             end_date = request.data.get('end_date')
             calendar_source_name = request.data.get('calendar_source_name')
             calendar_source_color = request.data.get('calendar_source_color')
             calendar_source_uri = request.data.get('calendar_source_uri'),
             calendar_source_id = request.data.get('calendar_source_id'),
+            client_id = request.data.get('client_id')
+            affair_id = request.data.get('affair_id')
 
             calendar_source_uri = isinstance(calendar_source_uri, tuple) and calendar_source_uri[0] or calendar_source_uri
             calendar_source_id = isinstance(calendar_source_id, tuple) and calendar_source_id[0] or calendar_source_id
@@ -392,6 +395,9 @@ class BaikalEventViewSet(viewsets.ViewSet):
             event_data = {
                 'title': title,
                 'description': description,
+                'client_id': client_id,
+                'affair_id': affair_id,
+                'location': location,
                 'start': start_dt,
                 'end': end_dt,
             }
@@ -418,6 +424,8 @@ class BaikalEventViewSet(viewsets.ViewSet):
                 'start_date': start_date,
                 'end_date': end_date,
                 'location': "",
+                'client_id': client_id,
+                'affair_id': affair_id,
                 'url': url,
                 'lastmodified': int(datetime.now().timestamp()),
                 'calendar_source_name': calendar_source_name,

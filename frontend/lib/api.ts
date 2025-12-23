@@ -188,6 +188,15 @@ export const baikalAPI = {
                 ...(query && { q: query })
             }
         }),
+
+    // Récupérer les informations du client et de l'affaire par leurs IDs
+    getClientAffairInfo: (clientId?: number, affairId?: number) =>
+        api.get('/client-affair-info/', {
+            params: {
+                ...(clientId && { client_id: clientId }),
+                ...(affairId && { affair_id: affairId })
+            }
+        }),
 };
 
 export default api;

@@ -751,11 +751,11 @@ class Affaire(models.Model):
         blank=True
     )
 
-    marge = models.FloatField(
-        db_column="marge",
-        null=True,
-        blank=True
-    )
+    # marge = models.FloatField(
+    #     db_column="marge",
+    #     null=True,
+    #     blank=True
+    # )
 
     tva = models.FloatField(
         db_column="tva",

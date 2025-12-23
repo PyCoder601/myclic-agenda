@@ -4,7 +4,7 @@ Architecture CalDAV pure: Toutes les opérations via le client CalDAV
 """
 import logging
 from rest_framework import viewsets, status
-from rest_framework.decorators import action
+from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from django.conf import settings
@@ -578,100 +578,131 @@ class BaikalEventViewSet(viewsets.ViewSet):
             )
 
 
-class SearchClientsViewSet(viewsets.ViewSet):
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def search_clients(request):
     """
-    ViewSet pour la recherche de clients
+    Recherche de clients (comptes) avec genre=1 (strict)
+    Paramètres:
+    - q: terme de recherche (minimum 3 caractères)
     """
-    permission_classes = [IsAuthenticated]
+    search_query = request.GET.get('q', '').strip()
 
-    def list(self, request):
-        """
-        Recherche de clients (comptes) avec genre=1 (strict)
-        Paramètres:
-        - q: terme de recherche (minimum 3 caractères)
-        """
-        search_query = request.query_params.get('q', '').strip()
+    if len(search_query) < 3:
+        return Response(
+            {'error': 'Veuillez saisir au moins 3 caractères pour effectuer une recherche'},
+            status=status.HTTP_400_BAD_REQUEST
+        )
 
-        if len(search_query) < 3:
-            return Response(
-                {'error': 'Veuillez saisir au moins 3 caractères pour effectuer une recherche'},
-                status=status.HTTP_400_BAD_REQUEST
-            )
+    try:
+        # Rechercher les comptes avec genre=1 et nom correspondant
+        clients = Compte.objects.using('myclic').filter(
+            application_id=request.user.application_id,
+            genre=1,
+            nom__icontains=search_query
+        ).values('id', 'nom', 'email', 'telephone')[:20]  # Limiter à 20 résultats
 
-        try:
-            # Rechercher les comptes avec genre=1 et nom correspondant
-            clients = Compte.objects.using('myclic').filter(
-                application_id=request.user.application_id,
-                genre=1,
-                nom__icontains=search_query
-            ).values('id', 'nom', 'email', 'telephone')[:20]  # Limiter à 20 résultats
+        logger.info(f"Recherche clients pour '{search_query}': {len(clients)} résultats")
 
-            logger.info(f"Recherche clients pour '{search_query}': {len(clients)} résultats")
+        return Response({
+            'clients': list(clients),
+            'count': len(clients)
+        })
 
-            return Response({
-                'clients': list(clients),
-                'count': len(clients)
-            })
-
-        except Exception as e:
-            logger.error(f"Erreur recherche clients: {e}", exc_info=True)
-            return Response(
-                {'error': 'Erreur lors de la recherche de clients'},
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR
-            )
+    except Exception as e:
+        logger.error(f"Erreur recherche clients: {e}", exc_info=True)
+        return Response(
+            {'error': 'Erreur lors de la recherche de clients'},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
 
 
-class SearchAffairsViewSet(viewsets.ViewSet):
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def search_affairs(request):
     """
-    ViewSet pour la recherche d'affaires
+    Recherche d'affaires liées à un client (compte)
+    Paramètres:
+    - client_id: ID du client (requis)
+    - q: terme de recherche optionnel
     """
-    permission_classes = [IsAuthenticated]
+    client_id = request.GET.get('client_id')
+    search_query = request.GET.get('q', '').strip()
 
-    def list(self, request):
-        """
-        Recherche d'affaires liées à un client (compte)
-        Paramètres:
-        - client_id: ID du client (requis)
-        - q: terme de recherche optionnel
-        """
-        client_id = request.query_params.get('client_id')
-        search_query = request.query_params.get('q', '').strip()
+    if not client_id:
+        return Response(
+            {'error': 'L\'ID du client est requis'},
+            status=status.HTTP_400_BAD_REQUEST
+        )
 
-        if not client_id:
-            return Response(
-                {'error': 'L\'ID du client est requis'},
-                status=status.HTTP_400_BAD_REQUEST
-            )
+    try:
+        # Rechercher les affaires liées au client via compte_id
+        affaires = Affaire.objects.using('myclic').filter(
+            compte_id=client_id,
+            application_id=request.user.application_id
+        )
 
-        try:
-            # Rechercher les affaires liées au client via compte_id
-            affaires = Affaire.objects.using('myclic').filter(
-                compte_id=client_id,
-                application_id=request.user.application_id
-            )
+        # Filtrer par terme de recherche si fourni
+        if search_query:
+            affaires = affaires.filter(nom__icontains=search_query)
 
-            # Filtrer par terme de recherche si fourni
-            if search_query:
-                affaires = affaires.filter(nom__icontains=search_query)
+        affaires = affaires.values('id', 'nom', 'descriptif', 'statut')[:20]
 
-            affaires = affaires.values('id', 'nom', 'descriptif', 'statut')[:20]
+        logger.info(f"Recherche affaires pour client {client_id}: {len(affaires)} résultats")
 
-            logger.info(f"Recherche affaires pour client {client_id}: {len(affaires)} résultats")
+        return Response({
+            'affairs': list(affaires),
+            'count': len(affaires)
+        })
 
-            return Response({
-                'affairs': list(affaires),
-                'count': len(affaires)
-            })
-
-        except Exception as e:
-            logger.error(f"Erreur recherche affaires: {e}", exc_info=True)
-            return Response(
-                {'error': 'Erreur lors de la recherche d\'affaires'},
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR
-            )
+    except Exception as e:
+        logger.error(f"Erreur recherche affaires: {e}", exc_info=True)
+        return Response(
+            {'error': 'Erreur lors de la recherche d\'affaires'},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
 
 
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def get_client_affair_info(request):
+    """
+    Récupère les informations du client et de l'affaire par leurs IDs
+    """
+    try:
+        client_id = request.GET.get('client_id')
+        affair_id = request.GET.get('affair_id')
 
+        print(f"client_id: {client_id}, affair_id: {affair_id}")
 
+        result = {}
 
+        # Récupérer le nom du client si l'ID est fourni
+        if client_id:
+            print("is client id", client_id)
+            try:
+                client = Compte.objects.using('myclic').only('id', 'nom', 'email', 'telephone').get(id=client_id)
+                result['client'] = {
+                    'id': client.id,
+                    'nom': client.nom or '',
+                }
+            except Compte.DoesNotExist:
+                result['client'] = None
 
+        # Récupérer le nom de l'affaire si l'ID est fourni
+        if affair_id:
+            print("is Affaired id", affair_id)
+            try:
+                affair = Affaire.objects.using('myclic').only('id', 'nom', 'descriptif').get(id=affair_id)
+                result['affair'] = {
+                    'id': affair.id,
+                    'nom': affair.nom or '',
+                }
+            except Affaire.DoesNotExist:
+                result['affair'] = None
+
+        return Response(result, status=status.HTTP_200_OK)
+
+    except Exception as e:
+        logger.error(f"Erreur récupération info client/affaire: {str(e)}")
+        return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

@@ -65,6 +65,10 @@ export default function TaskModal({ isOpen, onClose, onSave, onDelete, task, ini
   const [selectedAffair, setSelectedAffair] = useState<Affaire | null>(null);
   const [affairSearchLoading, setAffairSearchLoading] = useState(false);
 
+  // États pour le chargement des informations client/affaire d'un événement existant
+  const [clientInfoLoading, setClientInfoLoading] = useState(false);
+  const [affairInfoLoading, setAffairInfoLoading] = useState(false);
+
   // Filtrer les calendriers (non-ressources) selon la recherche
   const filteredCalendars = calendars.filter(cal => {
     const calName = (cal.defined_name || cal.share_href || cal.displayname || '').toLowerCase();
@@ -288,6 +292,54 @@ export default function TaskModal({ isOpen, onClose, onSave, onDelete, task, ini
     const debounceTimer = setTimeout(searchAffairs, 300);
     return () => clearTimeout(debounceTimer);
   }, [selectedClient, affairSearchQuery]);
+
+  // Charger les informations du client et de l'affaire quand un événement est ouvert
+  useEffect(() => {
+    const loadClientAffairInfo = async () => {
+      if (task && isOpen) {
+        // Vérifier si l'événement a des IDs de client ou d'affaire
+        const clientId = task.client_id;
+        const affairId = task.affair_id
+
+
+        console.log(clientId, affairId)
+
+        if (clientId || affairId) {
+          // Activer les indicateurs de chargement
+          if (clientId) setClientInfoLoading(true);
+          if (affairId) setAffairInfoLoading(true);
+
+          try {
+            const response = await baikalAPI.getClientAffairInfo(clientId, affairId);
+
+            if (response.data.client) {
+              setSelectedClient(response.data.client);
+            }
+
+            if (response.data.affair) {
+              setSelectedAffair(response.data.affair);
+            }
+
+            console.log('✅ Infos client/affaire chargées:', response.data);
+          } catch (error) {
+            console.error('❌ Erreur chargement client/affaire:', error);
+          } finally {
+            // Désactiver les indicateurs de chargement
+            setClientInfoLoading(false);
+            setAffairInfoLoading(false);
+          }
+        }
+      } else {
+        // Réinitialiser si pas d'événement
+        setSelectedClient(null);
+        setSelectedAffair(null);
+        setClientInfoLoading(false);
+        setAffairInfoLoading(false);
+      }
+    };
+
+    loadClientAffairInfo();
+  }, [task, isOpen]);
 
   // Synchroniser les dates/heures avec formData
   useEffect(() => {
@@ -848,7 +900,14 @@ export default function TaskModal({ isOpen, onClose, onSave, onDelete, task, ini
                   Client
                 </label>
 
-                {selectedClient ? (
+                {clientInfoLoading ? (
+                  <div className="flex items-center gap-2 px-4 py-3 bg-slate-50 border border-slate-200 rounded-lg">
+                    <div className="flex-1">
+                      <div className="h-4 bg-slate-200 rounded w-2/3 mb-1.5 animate-pulse"></div>
+                      <div className="h-3 bg-slate-200 rounded w-1/2 animate-pulse"></div>
+                    </div>
+                  </div>
+                ) : selectedClient ? (
                   <div className="flex items-center gap-2 px-4 py-3 bg-blue-50 border border-blue-200 rounded-lg">
                     <div className="flex-1">
                       <div className="font-semibold text-slate-900">
@@ -937,9 +996,16 @@ export default function TaskModal({ isOpen, onClose, onSave, onDelete, task, ini
                   Affaire
                 </label>
 
-                {!selectedClient ? (
+                {!selectedClient && !affairInfoLoading ? (
                   <div className="px-4 py-3 bg-slate-50 border border-slate-200 rounded-lg text-sm text-slate-500">
                     Sélectionnez d&apos;abord un client
+                  </div>
+                ) : affairInfoLoading ? (
+                  <div className="flex items-center gap-2 px-4 py-3 bg-slate-50 border border-slate-200 rounded-lg">
+                    <div className="flex-1">
+                      <div className="h-4 bg-slate-200 rounded w-2/3 mb-1.5 animate-pulse"></div>
+                      <div className="h-3 bg-slate-200 rounded w-1/2 animate-pulse"></div>
+                    </div>
                   </div>
                 ) : selectedAffair ? (
                   <div className="flex items-center gap-2 px-4 py-3 bg-green-50 border border-green-200 rounded-lg">

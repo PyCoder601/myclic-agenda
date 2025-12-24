@@ -604,32 +604,32 @@ export default function TaskModal({ isOpen, onClose, onSave, onDelete, task, ini
   };
 
   return (
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-3 sm:p-4 animate-fadeIn">
+    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-2 sm:p-3 animate-fadeIn">
       <div className="bg-white max-w-4xl w-full max-h-[90vh] overflow-hidden shadow-xl border border-slate-200/80 flex flex-col">
         {/* Header compact */}
-        <div className="flex items-center justify-between px-2 py-2 border-b border-slate-200 bg-linear-to-r from-slate-50 to-white shrink-0">
-          <h2 className="text-2xl font-bold text-[#005f82] flex items-center gap-3">
-            <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <div className="flex items-center justify-between px-4 py-2 border-b border-slate-200 bg-linear-to-r from-slate-50 to-white shrink-0">
+          <h2 className="text-xl font-bold text-[#005f82] flex items-center gap-2">
+            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
             </svg>
             {task ? 'Modifier l\'événement' : 'Nouvel événement'}
           </h2>
           <button
             onClick={onClose}
-            className="p-2 hover:bg-slate-100 transition-colors text-slate-500 hover:text-slate-700"
+            className="p-1.5 hover:bg-slate-100 transition-colors text-slate-500 hover:text-slate-700"
             type="button"
           >
-            <X className="w-6 h-6" />
+            <X className="w-5 h-5" />
           </button>
         </div>
 
         {/* Onglets */}
         <div className="border-b border-slate-200 bg-white shrink-0">
-          <div className="flex px-6">
+          <div className="flex px-4">
             <button
               type="button"
               onClick={() => setActiveTab('details')}
-              className={`px-4 py-3 font-semibold text-sm border-b-2 transition-colors ${
+              className={`px-3 py-2 font-semibold text-sm border-b-2 transition-colors ${
                 activeTab === 'details'
                   ? 'border-[#005f82] text-[#005f82]'
                   : 'border-transparent text-slate-500 hover:text-slate-700'
@@ -640,7 +640,7 @@ export default function TaskModal({ isOpen, onClose, onSave, onDelete, task, ini
             <button
               type="button"
               onClick={() => setActiveTab('recurrence')}
-              className={`px-4 py-3 font-semibold text-sm border-b-2 transition-colors ${
+              className={`px-3 py-2 font-semibold text-sm border-b-2 transition-colors ${
                 activeTab === 'recurrence'
                   ? 'border-[#005f82] text-[#005f82]'
                   : 'border-transparent text-slate-500 hover:text-slate-700'
@@ -653,13 +653,13 @@ export default function TaskModal({ isOpen, onClose, onSave, onDelete, task, ini
 
         {/* Formulaire avec scroll */}
         <form onSubmit={handleSubmit} className="overflow-y-auto flex-1">
-          <div className="p-6 space-y-5">
+          <div className="p-4 space-y-3.5">
             {/* Contenu de l'onglet Détails */}
             {activeTab === 'details' && (
               <>
             {/* Titre */}
             <div>
-              <label className="block text-sm font-semibold text-slate-700 mb-2">
+              <label className="block text-sm font-semibold text-slate-700 mb-1.5">
                 Titre <span className="text-red-500">*</span>
               </label>
               <input
@@ -667,26 +667,26 @@ export default function TaskModal({ isOpen, onClose, onSave, onDelete, task, ini
                 required
                 value={formData.title}
                 onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                className="w-full px-4 py-3 text-base bg-white border border-slate-300 focus:outline-none focus:ring-2 focus:ring-[#005f82] focus:border-[#005f82] text-slate-900 transition-all"
+                className="w-full px-3 py-2 text-base bg-white border border-slate-300 focus:outline-none focus:ring-2 focus:ring-[#005f82] focus:border-[#005f82] text-slate-900 transition-all"
                 placeholder="Ex: Réunion d'équipe"
               />
             </div>
 
-            {/* Grille compacte : Lieu + Calendrier */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+            {/* Grille compacte : Lieu */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-3.5">
               <div>
-                <label className="block text-sm font-semibold text-slate-700 mb-2">
+                <label className="block text-sm font-semibold text-slate-700 mb-1.5">
                   Lieu
                 </label>
                 <input
                   type="text"
                   value={formData.location}
                   onChange={(e) => setFormData({ ...formData, location: e.target.value })}
-                  className="w-full px-4 py-3 text-base bg-white border border-slate-300 focus:outline-none focus:ring-2 focus:ring-[#005f82] focus:border-[#005f82] text-slate-900 transition-all"
+                  className="w-full px-3 py-2 text-base bg-white border border-slate-300 focus:outline-none focus:ring-2 focus:ring-[#005f82] focus:border-[#005f82] text-slate-900 transition-all"
                   placeholder="Salle 201"
                 />
                   {application?.entreprise && (
-                      <div className="mt-2 text-right">
+                      <div className="mt-1.5 text-right">
                           <button
                               type="button"
                               onClick={() => setFormData({ ...formData, location: application.adresse || '' })}
@@ -697,28 +697,67 @@ export default function TaskModal({ isOpen, onClose, onSave, onDelete, task, ini
                       </div>
                   )}
               </div>
+            </div>
 
+            {/* Calendrier(s) et Ressource(s) côte à côte */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-3.5">
+              {/* Calendrier(s) */}
               <div className="calendar-dropdown-container">
-                <label className="block text-sm font-semibold text-slate-700 mb-2">
+                <label className="block text-sm font-semibold text-slate-700 mb-1.5">
                   Calendrier(s) <span className="text-red-500">*</span>
                 </label>
 
-                {/* Champ de recherche */}
+                {/* Champ de recherche avec badges intégrés */}
                 <div className="relative">
-                  <input
-                    type="text"
-                    placeholder="Rechercher et sélectionner..."
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    onFocus={() => setShowCalendarDropdown(true)}
-                    className="w-full px-4 py-3 text-base bg-white border border-slate-300 focus:outline-none focus:ring-2 focus:ring-[#005f82] focus:border-[#005f82] text-slate-900 transition-all"
-                  />
+                  <div className="w-full min-h-[38px] px-2 py-1 text-base bg-white border border-slate-300 focus-within:outline-none focus-within:ring-2 focus-within:ring-[#005f82] focus-within:border-[#005f82] text-slate-900 transition-all flex flex-wrap items-center gap-1">
+                    {/* Calendriers sélectionnés (badges intégrés) */}
+                    {formData.calendar_sources && formData.calendar_sources.map(calId => {
+                      const cal = calendars.filter(cal => !cal.description?.toLowerCase().includes("resource")).find(c => String(c.id) === calId);
+                      if (!cal) return null;
+                      const calName = cal.defined_name || cal.share_href || cal.displayname || 'Calendrier';
+
+                      return (
+                        <span
+                          key={calId}
+                          className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-[#005f82]/10 text-[#005f82] text-xs shrink-0"
+                        >
+                          <div
+                            className="w-2 h-2"
+                            style={{ backgroundColor: cal.calendarcolor || '#005f82' }}
+                          />
+                          <span className="font-medium max-w-[100px] truncate">{calName}</span>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const newSources = formData.calendar_sources?.filter(id => id !== calId) || [];
+                              setFormData({
+                                ...formData,
+                                calendar_sources: newSources,
+                                calendar_source: newSources[0] || ''
+                              });
+                            }}
+                            className="hover:bg-[#005f82]/20 p-0.5 transition-colors"
+                          >
+                            <X className="w-2.5 h-2.5" />
+                          </button>
+                        </span>
+                      );
+                    })}
+                    <input
+                      type="text"
+                      placeholder={formData.calendar_sources?.length ? "" : "Rechercher..."}
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      onFocus={() => setShowCalendarDropdown(true)}
+                      className="flex-1 min-w-[80px] outline-none bg-transparent text-sm"
+                    />
+                  </div>
 
                   {/* Dropdown de sélection */}
                   {showCalendarDropdown && (
                     <div className="absolute z-50 w-full mt-1 bg-white border border-slate-300 shadow-lg max-h-60 overflow-y-auto">
                       {filteredCalendars.length === 0 ? (
-                        <div className="p-3 text-sm text-slate-500 text-center">
+                        <div className="p-2 text-sm text-slate-500 text-center">
                           Aucun calendrier trouvé
                         </div>
                       ) : (
@@ -741,7 +780,7 @@ export default function TaskModal({ isOpen, onClose, onSave, onDelete, task, ini
                                   calendar_source: newSources[0] || ''
                                 });
                               }}
-                              className={`w-full px-3 py-2 text-left text-sm flex items-center gap-2 hover:bg-slate-50 transition-colors ${
+                              className={`w-full px-2.5 py-1.5 text-left text-sm flex items-center gap-2 hover:bg-slate-50 transition-colors ${
                                 isSelected ? 'bg-[#005f82]/5' : ''
                               }`}
                             >
@@ -764,25 +803,33 @@ export default function TaskModal({ isOpen, onClose, onSave, onDelete, task, ini
                     </div>
                   )}
                 </div>
+              </div>
 
-                {/* Calendriers sélectionnés (badges) */}
-                {formData.calendar_sources && formData.calendar_sources.length > 0 && (
-                  <div className="mt-2 flex flex-wrap gap-2">
-                    {formData.calendar_sources.map(calId => {
-                      const cal = calendars.filter(cal => !cal.description?.toLowerCase().includes("resource")).find(c => String(c.id) === calId);
+              {/* Ressource(s) */}
+              <div className="resource-dropdown-container">
+                <label className="block text-sm font-semibold text-slate-700 mb-1.5">
+                  Ressource(s)
+                </label>
+
+                {/* Champ de recherche avec badges intégrés */}
+                <div className="relative">
+                  <div className="w-full min-h-[38px] px-2 py-1 text-base bg-white border border-slate-300 focus-within:outline-none focus-within:ring-2 focus-within:ring-[#005f82] focus-within:border-[#005f82] text-slate-900 transition-all flex flex-wrap items-center gap-1">
+                    {/* Ressources sélectionnées (badges intégrés) */}
+                    {formData.calendar_sources && formData.calendar_sources.map(calId => {
+                      const cal = calendars.find(c => String(c.id) === calId && c.description?.toLowerCase().includes("resource"));
                       if (!cal) return null;
-                      const calName = cal.defined_name || cal.share_href || cal.displayname || 'Calendrier';
+                      const calName = cal.displayname || cal.defined_name || cal.share_href || 'Ressource';
 
                       return (
                         <span
                           key={calId}
-                          className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-[#005f82]/10 text-[#005f82] text-sm"
+                          className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-amber-50 text-amber-700 text-xs border border-amber-200 shrink-0"
                         >
                           <div
                             className="w-2 h-2"
-                            style={{ backgroundColor: cal.calendarcolor || '#005f82' }}
+                            style={{ backgroundColor: cal.calendarcolor || '#f59e0b' }}
                           />
-                          <span className="font-medium">{calName}</span>
+                          <span className="font-medium max-w-[100px] truncate">{calName}</span>
                           <button
                             type="button"
                             onClick={() => {
@@ -793,39 +840,28 @@ export default function TaskModal({ isOpen, onClose, onSave, onDelete, task, ini
                                 calendar_source: newSources[0] || ''
                               });
                             }}
-                            className="ml-1 hover:bg-[#005f82]/20 p-0.5 transition-colors"
+                            className="hover:bg-amber-200 p-0.5 transition-colors"
                           >
-                            <X className="w-3 h-3" />
+                            <X className="w-2.5 h-2.5" />
                           </button>
                         </span>
                       );
                     })}
+                    <input
+                      type="text"
+                      placeholder={formData.calendar_sources?.some(id => calendars.find(c => String(c.id) === id && c.description?.toLowerCase().includes("resource"))) ? "" : "Rechercher..."}
+                      value={resourceSearchQuery}
+                      onChange={(e) => setResourceSearchQuery(e.target.value)}
+                      onFocus={() => setShowResourceDropdown(true)}
+                      className="flex-1 min-w-[80px] outline-none bg-transparent text-sm"
+                    />
                   </div>
-                )}
-              </div>
-            </div>
-
-             <div className="resource-dropdown-container">
-                <label className="block text-sm font-semibold text-slate-700 mb-2">
-                  Ressource(s)
-                </label>
-
-                {/* Champ de recherche */}
-                <div className="relative">
-                  <input
-                    type="text"
-                    placeholder="Rechercher des ressources..."
-                    value={resourceSearchQuery}
-                    onChange={(e) => setResourceSearchQuery(e.target.value)}
-                    onFocus={() => setShowResourceDropdown(true)}
-                    className="w-full px-4 py-3 text-base bg-white border border-slate-300 focus:outline-none focus:ring-2 focus:ring-[#005f82] focus:border-[#005f82] text-slate-900 transition-all"
-                  />
 
                   {/* Dropdown de sélection */}
                   {showResourceDropdown && (
                     <div className="absolute z-50 w-full mt-1 bg-white border border-slate-300 shadow-lg max-h-60 overflow-y-auto">
                       {filteredResources.length === 0 ? (
-                        <div className="p-3 text-sm text-slate-500 text-center">
+                        <div className="p-2 text-sm text-slate-500 text-center">
                           Aucune ressource trouvée
                         </div>
                       ) : (
@@ -848,7 +884,7 @@ export default function TaskModal({ isOpen, onClose, onSave, onDelete, task, ini
                                   calendar_source: newSources[0] || ''
                                 });
                               }}
-                              className={`w-full px-3 py-2 text-left text-sm flex items-center gap-2 hover:bg-slate-50 transition-colors ${
+                              className={`w-full px-2.5 py-1.5 text-left text-sm flex items-center gap-2 hover:bg-slate-50 transition-colors ${
                                 isSelected ? 'bg-[#005f82]/5' : ''
                               }`}
                             >
@@ -871,52 +907,15 @@ export default function TaskModal({ isOpen, onClose, onSave, onDelete, task, ini
                     </div>
                   )}
                 </div>
-
-                {/* Ressources sélectionnées (badges) */}
-                {formData.calendar_sources && formData.calendar_sources.length > 0 && (
-                  <div className="mt-2 flex flex-wrap gap-2">
-                    {formData.calendar_sources.map(calId => {
-                      const cal = calendars.find(c => String(c.id) === calId && c.description?.toLowerCase().includes("resource"));
-                      if (!cal) return null;
-                      const calName = cal.displayname || cal.defined_name || cal.share_href || 'Ressource';
-
-                      return (
-                        <span
-                          key={calId}
-                          className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-amber-50 text-amber-700 text-sm border border-amber-200"
-                        >
-                          <div
-                            className="w-2 h-2"
-                            style={{ backgroundColor: cal.calendarcolor || '#f59e0b' }}
-                          />
-                          <span className="font-medium">{calName}</span>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              const newSources = formData.calendar_sources?.filter(id => id !== calId) || [];
-                              setFormData({
-                                ...formData,
-                                calendar_sources: newSources,
-                                calendar_source: newSources[0] || ''
-                              });
-                            }}
-                            className="ml-1 hover:bg-amber-200 p-0.5 transition-colors"
-                          >
-                            <X className="w-3 h-3" />
-                          </button>
-                        </span>
-                      );
-                    })}
-                  </div>
-                )}
               </div>
+            </div>
 
             {/* Dates et heures séparées */}
-            <div className="space-y-5">
+            <div className="space-y-3.5">
               {/* Dates */}
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-3.5">
                 <div>
-                  <label className="block text-sm font-semibold text-slate-700 mb-2">
+                  <label className="block text-sm font-semibold text-slate-700 mb-1.5">
                     Date de début <span className="text-red-500">*</span>
                   </label>
                   <input
@@ -930,12 +929,12 @@ export default function TaskModal({ isOpen, onClose, onSave, onDelete, task, ini
                         setEndDate(e.target.value);
                       }
                     }}
-                    className="w-full px-4 py-3 text-base bg-white border border-slate-300 focus:outline-none focus:ring-2 focus:ring-[#005f82] focus:border-[#005f82] text-slate-900 transition-all"
+                    className="w-full px-3 py-2 text-base bg-white border border-slate-300 focus:outline-none focus:ring-2 focus:ring-[#005f82] focus:border-[#005f82] text-slate-900 transition-all"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-semibold text-slate-700 mb-2">
+                  <label className="block text-sm font-semibold text-slate-700 mb-1.5">
                     Date de fin <span className="text-red-500">*</span>
                   </label>
                   <input
@@ -944,18 +943,18 @@ export default function TaskModal({ isOpen, onClose, onSave, onDelete, task, ini
                     value={endDate}
                     onChange={(e) => setEndDate(e.target.value)}
                     min={startDate}
-                    className="w-full px-4 py-3 text-base bg-white border border-slate-300 focus:outline-none focus:ring-2 focus:ring-[#005f82] focus:border-[#005f82] text-slate-900 transition-all"
+                    className="w-full px-3 py-2 text-base bg-white border border-slate-300 focus:outline-none focus:ring-2 focus:ring-[#005f82] focus:border-[#005f82] text-slate-900 transition-all"
                   />
                 </div>
               </div>
 
               {/* Préréglages horaires */}
               <div>
-                <label className="block text-sm font-semibold text-slate-700 mb-3">
+                <label className="block text-sm font-semibold text-slate-700 mb-2">
                   Plage horaire
                 </label>
-                <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
-                  <label className="flex items-center gap-2 px-3 py-2.5 bg-white border-2 border-slate-300 rounded-lg cursor-pointer hover:border-[#005f82] hover:bg-slate-50 transition-all has-checked:border-[#005f82] has-checked:bg-[#005f82]/5">
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 mb-3">
+                  <label className="flex items-center gap-1.5 px-2.5 py-2 bg-white border-2 border-slate-300 rounded-lg cursor-pointer hover:border-[#005f82] hover:bg-slate-50 transition-all has-checked:border-[#005f82] has-checked:bg-[#005f82]/5">
                     <input
                       type="radio"
                       name="timePreset"
@@ -963,13 +962,13 @@ export default function TaskModal({ isOpen, onClose, onSave, onDelete, task, ini
                       onChange={() => handleTimePreset('morning')}
                       className="text-[#005f82] focus:ring-[#005f82]"
                     />
-                    <span className="text-sm flex-1">
+                    <span className="text-xs flex-1">
                       <span className="font-semibold block">Matinée</span>
-                      <span className="text-slate-500 text-xs">9h - 12h30</span>
+                      <span className="text-slate-500 text-[10px]">9h - 12h30</span>
                     </span>
                   </label>
 
-                  <label className="flex items-center gap-2 px-3 py-2.5 bg-white border-2 border-slate-300 rounded-lg cursor-pointer hover:border-[#005f82] hover:bg-slate-50 transition-all has-checked:border-[#005f82] has-checked:bg-[#005f82]/5">
+                  <label className="flex items-center gap-1.5 px-2.5 py-2 bg-white border-2 border-slate-300 rounded-lg cursor-pointer hover:border-[#005f82] hover:bg-slate-50 transition-all has-checked:border-[#005f82] has-checked:bg-[#005f82]/5">
                     <input
                       type="radio"
                       name="timePreset"
@@ -977,13 +976,13 @@ export default function TaskModal({ isOpen, onClose, onSave, onDelete, task, ini
                       onChange={() => handleTimePreset('afternoon')}
                       className="text-[#005f82] focus:ring-[#005f82]"
                     />
-                    <span className="text-sm flex-1">
+                    <span className="text-xs flex-1">
                       <span className="font-semibold block">Après-midi</span>
-                      <span className="text-slate-500 text-xs">14h - 18h</span>
+                      <span className="text-slate-500 text-[10px]">14h - 18h</span>
                     </span>
                   </label>
 
-                  <label className="flex items-center gap-2 px-3 py-2.5 bg-white border-2 border-slate-300 rounded-lg cursor-pointer hover:border-[#005f82] hover:bg-slate-50 transition-all has-checked:border-[#005f82] has-checked:bg-[#005f82]/5">
+                  <label className="flex items-center gap-1.5 px-2.5 py-2 bg-white border-2 border-slate-300 rounded-lg cursor-pointer hover:border-[#005f82] hover:bg-slate-50 transition-all has-checked:border-[#005f82] has-checked:bg-[#005f82]/5">
                     <input
                       type="radio"
                       name="timePreset"
@@ -991,13 +990,13 @@ export default function TaskModal({ isOpen, onClose, onSave, onDelete, task, ini
                       onChange={() => handleTimePreset('fullday')}
                       className="text-[#005f82] focus:ring-[#005f82]"
                     />
-                    <span className="text-sm flex-1">
+                    <span className="text-xs flex-1">
                       <span className="font-semibold block">Journée</span>
-                      <span className="text-slate-500 text-xs">9h - 17h30</span>
+                      <span className="text-slate-500 text-[10px]">9h - 17h30</span>
                     </span>
                   </label>
 
-                  <label className="flex items-center gap-2 px-3 py-2.5 bg-white border-2 border-slate-300 cursor-pointer hover:border-[#005f82] hover:bg-slate-50 transition-all has-checked:border-[#005f82] has-checked:bg-[#005f82]/5">
+                  <label className="flex items-center gap-1.5 px-2.5 py-2 bg-white border-2 border-slate-300 cursor-pointer hover:border-[#005f82] hover:bg-slate-50 transition-all has-checked:border-[#005f82] has-checked:bg-[#005f82]/5">
                     <input
                       type="radio"
                       name="timePreset"
@@ -1005,17 +1004,17 @@ export default function TaskModal({ isOpen, onClose, onSave, onDelete, task, ini
                       onChange={() => setTimePreset('custom')}
                       className="text-[#005f82] focus:ring-[#005f82]"
                     />
-                    <span className="text-sm flex-1">
+                    <span className="text-xs flex-1">
                       <span className="font-semibold block">Personnalisé</span>
-                      <span className="text-slate-500 text-xs invisible">--</span>
+                      <span className="text-slate-500 text-[10px] invisible">--</span>
                     </span>
                   </label>
                 </div>
 
                 {/* Champs d'heure */}
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-3.5">
                   <div>
-                    <label className="block text-sm font-semibold text-slate-700 mb-2">
+                    <label className="block text-sm font-semibold text-slate-700 mb-1.5">
                       Heure de début <span className="text-red-500">*</span>
                     </label>
                     <input
@@ -1023,12 +1022,12 @@ export default function TaskModal({ isOpen, onClose, onSave, onDelete, task, ini
                       required
                       value={startTime}
                       onChange={(e) => handleTimeChange('start', e.target.value)}
-                      className="w-full px-4 py-3 text-base bg-white border border-slate-300 focus:outline-none focus:ring-2 focus:ring-[#005f82] focus:border-[#005f82] text-slate-900 transition-all"
+                      className="w-full px-3 py-2 text-base bg-white border border-slate-300 focus:outline-none focus:ring-2 focus:ring-[#005f82] focus:border-[#005f82] text-slate-900 transition-all"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-sm font-semibold text-slate-700 mb-2">
+                    <label className="block text-sm font-semibold text-slate-700 mb-1.5">
                       Heure de fin <span className="text-red-500">*</span>
                     </label>
                     <input
@@ -1036,7 +1035,7 @@ export default function TaskModal({ isOpen, onClose, onSave, onDelete, task, ini
                       required
                       value={endTime}
                       onChange={(e) => handleTimeChange('end', e.target.value)}
-                      className="w-full px-4 py-3 text-base bg-white border border-slate-300 focus:outline-none focus:ring-2 focus:ring-[#005f82] focus:border-[#005f82] text-slate-900 transition-all"
+                      className="w-full px-3 py-2 text-base bg-white border border-slate-300 focus:outline-none focus:ring-2 focus:ring-[#005f82] focus:border-[#005f82] text-slate-900 transition-all"
                     />
                   </div>
                 </div>
@@ -1044,28 +1043,28 @@ export default function TaskModal({ isOpen, onClose, onSave, onDelete, task, ini
             </div>
 
             {/* Client et Affaire */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-3.5">
               {/* Recherche Client */}
               <div className="client-dropdown-container">
-                <label className="block text-sm font-semibold text-slate-700 mb-2">
+                <label className="block text-sm font-semibold text-slate-700 mb-1.5">
                   Client
                 </label>
 
                 {clientInfoLoading ? (
-                  <div className="flex items-center gap-2 px-4 py-3 bg-slate-50 border border-slate-200 rounded-lg">
+                  <div className="flex items-center gap-2 px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg">
                     <div className="flex-1">
-                      <div className="h-4 bg-slate-200 rounded w-2/3 mb-1.5 animate-pulse"></div>
+                      <div className="h-4 bg-slate-200 rounded w-2/3 mb-1 animate-pulse"></div>
                       <div className="h-3 bg-slate-200 rounded w-1/2 animate-pulse"></div>
                     </div>
                   </div>
                 ) : selectedClient ? (
-                  <div className="flex items-center gap-2 px-4 py-3 bg-blue-50 border border-blue-200 rounded-lg">
+                  <div className="flex items-center gap-2 px-3 py-2 bg-blue-50 border border-blue-200 rounded-lg">
                     <div className="flex-1">
-                      <div className="font-semibold text-slate-900">
+                      <div className="font-semibold text-slate-900 text-sm">
                         {selectedClient.nom}
                       </div>
                       {(selectedClient.email || selectedClient.telephone) && (
-                        <div className="text-sm text-slate-600">
+                        <div className="text-xs text-slate-600">
                           {selectedClient.email && <span>{selectedClient.email}</span>}
                           {selectedClient.email && selectedClient.telephone && <span> • </span>}
                           {selectedClient.telephone && <span>{selectedClient.telephone}</span>}
@@ -1082,32 +1081,32 @@ export default function TaskModal({ isOpen, onClose, onSave, onDelete, task, ini
                       }}
                       className="p-1 hover:bg-blue-200 rounded-full transition-colors"
                     >
-                      <X className="w-4 h-4 text-blue-700" />
+                      <X className="w-3.5 h-3.5 text-blue-700" />
                     </button>
                   </div>
                 ) : (
                   <div className="relative">
                     <input
                       type="text"
-                      placeholder="Rechercher un client (min. 3 caractères)..."
+                      placeholder="Rechercher un client..."
                       value={clientSearchQuery}
                       onChange={(e) => setClientSearchQuery(e.target.value)}
                       onFocus={() => setShowClientDropdown(true)}
-                      className="w-full px-4 py-3 text-base bg-white border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#005f82] focus:border-[#005f82] text-slate-900 transition-all"
+                      className="w-full px-3 py-2 text-sm bg-white border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#005f82] focus:border-[#005f82] text-slate-900 transition-all"
                     />
 
                     {showClientDropdown && (
                       <div className="absolute z-50 w-full mt-1 bg-white border border-slate-300 rounded-lg shadow-lg max-h-60 overflow-y-auto">
                         {clientSearchLoading ? (
-                          <div className="p-3 text-sm text-slate-500 text-center">
+                          <div className="p-2 text-sm text-slate-500 text-center">
                             Recherche en cours...
                           </div>
                         ) : clientSearchQuery.length < 3 ? (
-                          <div className="p-3 text-sm text-slate-500 text-center">
+                          <div className="p-2 text-sm text-slate-500 text-center">
                             Saisissez au moins 3 caractères
                           </div>
                         ) : clients.length === 0 ? (
-                          <div className="p-3 text-sm text-slate-500 text-center">
+                          <div className="p-2 text-sm text-slate-500 text-center">
                             Aucun client trouvé
                           </div>
                         ) : (
@@ -1120,7 +1119,7 @@ export default function TaskModal({ isOpen, onClose, onSave, onDelete, task, ini
                                 setShowClientDropdown(false);
                                 setClientSearchQuery('');
                               }}
-                              className="w-full px-3 py-2 text-left text-sm hover:bg-slate-50 transition-colors"
+                              className="w-full px-2.5 py-1.5 text-left text-sm hover:bg-slate-50 transition-colors"
                             >
                               <div className="font-medium text-slate-900">
                                 {client.nom}
@@ -1143,27 +1142,27 @@ export default function TaskModal({ isOpen, onClose, onSave, onDelete, task, ini
 
               {/* Recherche Affaire */}
               <div className="affair-dropdown-container">
-                <label className="block text-sm font-semibold text-slate-700 mb-2">
+                <label className="block text-sm font-semibold text-slate-700 mb-1.5">
                   Affaire
                 </label>
 
                 {!selectedClient && !affairInfoLoading ? (
-                  <div className="px-4 py-3 bg-slate-50 border border-slate-200 rounded-lg text-sm text-slate-500">
+                  <div className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs text-slate-500">
                     Sélectionnez d&apos;abord un client
                   </div>
                 ) : affairInfoLoading ? (
-                  <div className="flex items-center gap-2 px-4 py-3 bg-slate-50 border border-slate-200 rounded-lg">
+                  <div className="flex items-center gap-2 px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg">
                     <div className="flex-1">
-                      <div className="h-4 bg-slate-200 rounded w-2/3 mb-1.5 animate-pulse"></div>
+                      <div className="h-4 bg-slate-200 rounded w-2/3 mb-1 animate-pulse"></div>
                       <div className="h-3 bg-slate-200 rounded w-1/2 animate-pulse"></div>
                     </div>
                   </div>
                 ) : selectedAffair ? (
-                  <div className="flex items-center gap-2 px-4 py-3 bg-green-50 border border-green-200 rounded-lg">
+                  <div className="flex items-center gap-2 px-3 py-2 bg-green-50 border border-green-200 rounded-lg">
                     <div className="flex-1">
-                      <div className="font-semibold text-slate-900">{selectedAffair.nom}</div>
+                      <div className="font-semibold text-slate-900 text-sm">{selectedAffair.nom}</div>
                       {selectedAffair.descriptif && (
-                        <div className="text-sm text-slate-600">{selectedAffair.descriptif}</div>
+                        <div className="text-xs text-slate-600">{selectedAffair.descriptif}</div>
                       )}
                     </div>
                     <button
@@ -1174,7 +1173,7 @@ export default function TaskModal({ isOpen, onClose, onSave, onDelete, task, ini
                       }}
                       className="p-1 hover:bg-green-200 rounded-full transition-colors"
                     >
-                      <X className="w-4 h-4 text-green-700" />
+                      <X className="w-3.5 h-3.5 text-green-700" />
                     </button>
                   </div>
                 ) : (
@@ -1185,17 +1184,17 @@ export default function TaskModal({ isOpen, onClose, onSave, onDelete, task, ini
                       value={affairSearchQuery}
                       onChange={(e) => setAffairSearchQuery(e.target.value)}
                       onFocus={() => setShowAffairDropdown(true)}
-                      className="w-full px-4 py-3 text-base bg-white border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#005f82] focus:border-[#005f82] text-slate-900 transition-all"
+                      className="w-full px-3 py-2 text-sm bg-white border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#005f82] focus:border-[#005f82] text-slate-900 transition-all"
                     />
 
                     {showAffairDropdown && (
                       <div className="absolute z-50 w-full mt-1 bg-white border border-slate-300 rounded-lg shadow-lg max-h-60 overflow-y-auto">
                         {affairSearchLoading ? (
-                          <div className="p-3 text-sm text-slate-500 text-center">
+                          <div className="p-2 text-sm text-slate-500 text-center">
                             Recherche en cours...
                           </div>
                         ) : affairs.length === 0 ? (
-                          <div className="p-3 text-sm text-slate-500 text-center">
+                          <div className="p-2 text-sm text-slate-500 text-center">
                             Aucune affaire trouvée
                           </div>
                         ) : (
@@ -1208,7 +1207,7 @@ export default function TaskModal({ isOpen, onClose, onSave, onDelete, task, ini
                                 setShowAffairDropdown(false);
                                 setAffairSearchQuery('');
                               }}
-                              className="w-full px-3 py-2 text-left text-sm hover:bg-slate-50 transition-colors"
+                              className="w-full px-2.5 py-1.5 text-left text-sm hover:bg-slate-50 transition-colors"
                             >
                               <div className="font-medium text-slate-900">{affair.nom}</div>
                               {affair.descriptif && (
@@ -1226,7 +1225,7 @@ export default function TaskModal({ isOpen, onClose, onSave, onDelete, task, ini
 
             {/* Description */}
             <div>
-              <label className="block text-sm font-semibold text-slate-700 mb-1">
+              <label className="block text-sm font-semibold text-slate-700 mb-1.5">
                 Description
               </label>
               <div className="border border-slate-300 focus-within:ring-1 focus-within:ring-[#005f82] focus-within:border-[#005f82] transition-shadow">
@@ -1241,28 +1240,28 @@ export default function TaskModal({ isOpen, onClose, onSave, onDelete, task, ini
 
             {/* Contenu de l'onglet Récurrence */}
             {activeTab === 'recurrence' && (
-              <div className="space-y-8">
+              <div className="space-y-4">
                 {/* Cartes de fréquence - Simple et Moderne */}
                 <div>
-                  <h3 className="text-xl font-bold text-slate-900 mb-6">Fréquence de répétition</h3>
+                  <h3 className="text-lg font-bold text-slate-900 mb-4">Fréquence de répétition</h3>
 
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-2 gap-3">
                     {/* Une seule fois */}
                     <button
                       type="button"
                       onClick={() => setRecurrenceType('none')}
-                      className={`group relative p-6 rounded-2xl border-2 text-left transition-all duration-200 ${
+                      className={`group relative p-4 rounded-xl border-2 text-left transition-all duration-200 ${
                         recurrenceType === 'none'
                           ? 'border-[#005f82] bg-gradient-to-br from-[#005f82]/10 to-[#007ba7]/5 shadow-xl scale-105'
                           : 'border-slate-200 hover:border-[#005f82]/50 hover:shadow-lg hover:scale-102'
                       }`}
                     >
-                      <div className="text-4xl mb-4">📅</div>
-                      <div className="text-lg font-bold text-slate-900 mb-2">Une seule fois</div>
-                      <div className="text-sm text-slate-600">Pas de répétition</div>
+                      <div className="text-3xl mb-2">📅</div>
+                      <div className="text-base font-bold text-slate-900 mb-1">Une seule fois</div>
+                      <div className="text-xs text-slate-600">Pas de répétition</div>
                       {recurrenceType === 'none' && (
-                        <div className="absolute top-3 right-3 w-8 h-8 rounded-full bg-[#005f82] flex items-center justify-center">
-                          <svg className="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 20 20">
+                        <div className="absolute top-2 right-2 w-6 h-6 rounded-full bg-[#005f82] flex items-center justify-center">
+                          <svg className="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20">
                             <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                           </svg>
                         </div>
@@ -1273,18 +1272,18 @@ export default function TaskModal({ isOpen, onClose, onSave, onDelete, task, ini
                     <button
                       type="button"
                       onClick={() => setRecurrenceType('daily')}
-                      className={`group relative p-6 rounded-2xl border-2 text-left transition-all duration-200 ${
+                      className={`group relative p-4 rounded-xl border-2 text-left transition-all duration-200 ${
                         recurrenceType === 'daily'
                           ? 'border-[#005f82] bg-gradient-to-br from-[#005f82]/10 to-[#007ba7]/5 shadow-xl scale-105'
                           : 'border-slate-200 hover:border-[#005f82]/50 hover:shadow-lg hover:scale-102'
                       }`}
                     >
-                      <div className="text-4xl mb-4">☀️</div>
-                      <div className="text-lg font-bold text-slate-900 mb-2">Tous les jours</div>
-                      <div className="text-sm text-slate-600">Répétition quotidienne</div>
+                      <div className="text-3xl mb-2">☀️</div>
+                      <div className="text-base font-bold text-slate-900 mb-1">Tous les jours</div>
+                      <div className="text-xs text-slate-600">Répétition quotidienne</div>
                       {recurrenceType === 'daily' && (
-                        <div className="absolute top-3 right-3 w-8 h-8 rounded-full bg-[#005f82] flex items-center justify-center">
-                          <svg className="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 20 20">
+                        <div className="absolute top-2 right-2 w-6 h-6 rounded-full bg-[#005f82] flex items-center justify-center">
+                          <svg className="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20">
                             <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                           </svg>
                         </div>
@@ -1295,18 +1294,18 @@ export default function TaskModal({ isOpen, onClose, onSave, onDelete, task, ini
                     <button
                       type="button"
                       onClick={() => setRecurrenceType('weekly')}
-                      className={`group relative p-6 rounded-2xl border-2 text-left transition-all duration-200 ${
+                      className={`group relative p-4 rounded-xl border-2 text-left transition-all duration-200 ${
                         recurrenceType === 'weekly'
                           ? 'border-[#005f82] bg-gradient-to-br from-[#005f82]/10 to-[#007ba7]/5 shadow-xl scale-105'
                           : 'border-slate-200 hover:border-[#005f82]/50 hover:shadow-lg hover:scale-102'
                       }`}
                     >
-                      <div className="text-4xl mb-4">📆</div>
-                      <div className="text-lg font-bold text-slate-900 mb-2">Chaque semaine</div>
-                      <div className="text-sm text-slate-600">Le {startDate ? getDayName(new Date(startDate)) : getDayName(new Date())}</div>
+                      <div className="text-3xl mb-2">📆</div>
+                      <div className="text-base font-bold text-slate-900 mb-1">Chaque semaine</div>
+                      <div className="text-xs text-slate-600">Le {startDate ? getDayName(new Date(startDate)) : getDayName(new Date())}</div>
                       {recurrenceType === 'weekly' && (
-                        <div className="absolute top-3 right-3 w-8 h-8 rounded-full bg-[#005f82] flex items-center justify-center">
-                          <svg className="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 20 20">
+                        <div className="absolute top-2 right-2 w-6 h-6 rounded-full bg-[#005f82] flex items-center justify-center">
+                          <svg className="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20">
                             <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                           </svg>
                         </div>
@@ -1317,18 +1316,18 @@ export default function TaskModal({ isOpen, onClose, onSave, onDelete, task, ini
                     <button
                       type="button"
                       onClick={() => setRecurrenceType('monthly')}
-                      className={`group relative p-6 rounded-2xl border-2 text-left transition-all duration-200 ${
+                      className={`group relative p-4 rounded-xl border-2 text-left transition-all duration-200 ${
                         recurrenceType === 'monthly'
                           ? 'border-[#005f82] bg-gradient-to-br from-[#005f82]/10 to-[#007ba7]/5 shadow-xl scale-105'
                           : 'border-slate-200 hover:border-[#005f82]/50 hover:shadow-lg hover:scale-102'
                       }`}
                     >
-                      <div className="text-4xl mb-4">🗓️</div>
-                      <div className="text-lg font-bold text-slate-900 mb-2">Chaque mois</div>
-                      <div className="text-sm text-slate-600">Le {startDate ? getDayName(new Date(startDate)) : getDayName(new Date())}</div>
+                      <div className="text-3xl mb-2">🗓️</div>
+                      <div className="text-base font-bold text-slate-900 mb-1">Chaque mois</div>
+                      <div className="text-xs text-slate-600">Le {startDate ? getDayName(new Date(startDate)) : getDayName(new Date())}</div>
                       {recurrenceType === 'monthly' && (
-                        <div className="absolute top-3 right-3 w-8 h-8 rounded-full bg-[#005f82] flex items-center justify-center">
-                          <svg className="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 20 20">
+                        <div className="absolute top-2 right-2 w-6 h-6 rounded-full bg-[#005f82] flex items-center justify-center">
+                          <svg className="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20">
                             <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                           </svg>
                         </div>
@@ -1339,7 +1338,7 @@ export default function TaskModal({ isOpen, onClose, onSave, onDelete, task, ini
                     <button
                       type="button"
                       onClick={() => setRecurrenceType('biweekly')}
-                      className={`group relative p-6 rounded-2xl border-2 text-left transition-all duration-200 ${
+                      className={`group relative p-4 rounded-xl border-2 text-left transition-all duration-200 ${
                         recurrenceType === 'biweekly'
                           ? 'border-[#005f82] bg-gradient-to-br from-[#005f82]/10 to-[#007ba7]/5 shadow-xl scale-105'
                           : 'border-slate-200 hover:border-[#005f82]/50 hover:shadow-lg hover:scale-102'
@@ -1349,8 +1348,8 @@ export default function TaskModal({ isOpen, onClose, onSave, onDelete, task, ini
                       <div className="text-lg font-bold text-slate-900 mb-2">Toutes les 2 semaines</div>
                       <div className="text-sm text-slate-600">Le {startDate ? getDayName(new Date(startDate)) : getDayName(new Date())}</div>
                       {recurrenceType === 'biweekly' && (
-                        <div className="absolute top-3 right-3 w-8 h-8 rounded-full bg-[#005f82] flex items-center justify-center">
-                          <svg className="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 20 20">
+                        <div className="absolute top-2 right-2 w-6 h-6 rounded-full bg-[#005f82] flex items-center justify-center">
+                          <svg className="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20">
                             <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                           </svg>
                         </div>
@@ -1361,18 +1360,18 @@ export default function TaskModal({ isOpen, onClose, onSave, onDelete, task, ini
                     <button
                       type="button"
                       onClick={() => setRecurrenceType('triweekly')}
-                      className={`group relative p-6 rounded-2xl border-2 text-left transition-all duration-200 ${
+                      className={`group relative p-4 rounded-xl border-2 text-left transition-all duration-200 ${
                         recurrenceType === 'triweekly'
                           ? 'border-[#005f82] bg-gradient-to-br from-[#005f82]/10 to-[#007ba7]/5 shadow-xl scale-105'
                           : 'border-slate-200 hover:border-[#005f82]/50 hover:shadow-lg hover:scale-102'
                       }`}
                     >
-                      <div className="text-4xl mb-4">📋</div>
-                      <div className="text-lg font-bold text-slate-900 mb-2">Toutes les 3 semaines</div>
-                      <div className="text-sm text-slate-600">Le {startDate ? getDayName(new Date(startDate)) : getDayName(new Date())}</div>
+                      <div className="text-3xl mb-2">📋</div>
+                      <div className="text-base font-bold text-slate-900 mb-1">Toutes les 3 semaines</div>
+                      <div className="text-xs text-slate-600">Le {startDate ? getDayName(new Date(startDate)) : getDayName(new Date())}</div>
                       {recurrenceType === 'triweekly' && (
-                        <div className="absolute top-3 right-3 w-8 h-8 rounded-full bg-[#005f82] flex items-center justify-center">
-                          <svg className="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 20 20">
+                        <div className="absolute top-2 right-2 w-6 h-6 rounded-full bg-[#005f82] flex items-center justify-center">
+                          <svg className="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20">
                             <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                           </svg>
                         </div>
@@ -1383,18 +1382,18 @@ export default function TaskModal({ isOpen, onClose, onSave, onDelete, task, ini
                     <button
                       type="button"
                       onClick={() => setRecurrenceType('yearly')}
-                      className={`group relative p-6 rounded-2xl border-2 text-left transition-all duration-200 ${
+                      className={`group relative p-4 rounded-xl border-2 text-left transition-all duration-200 ${
                         recurrenceType === 'yearly'
                           ? 'border-[#005f82] bg-gradient-to-br from-[#005f82]/10 to-[#007ba7]/5 shadow-xl scale-105'
                           : 'border-slate-200 hover:border-[#005f82]/50 hover:shadow-lg hover:scale-102'
                       }`}
                     >
-                      <div className="text-4xl mb-4">🎂</div>
-                      <div className="text-lg font-bold text-slate-900 mb-2">Chaque année</div>
-                      <div className="text-sm text-slate-600">Le {startDate ? formatFullDate(new Date(startDate)) : formatFullDate(new Date())}</div>
+                      <div className="text-3xl mb-2">🎂</div>
+                      <div className="text-base font-bold text-slate-900 mb-1">Chaque année</div>
+                      <div className="text-xs text-slate-600">Le {startDate ? formatFullDate(new Date(startDate)) : formatFullDate(new Date())}</div>
                       {recurrenceType === 'yearly' && (
-                        <div className="absolute top-3 right-3 w-8 h-8 rounded-full bg-[#005f82] flex items-center justify-center">
-                          <svg className="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 20 20">
+                        <div className="absolute top-2 right-2 w-6 h-6 rounded-full bg-[#005f82] flex items-center justify-center">
+                          <svg className="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20">
                             <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                           </svg>
                         </div>
@@ -1405,18 +1404,18 @@ export default function TaskModal({ isOpen, onClose, onSave, onDelete, task, ini
                     <button
                       type="button"
                       onClick={() => setRecurrenceType('custom')}
-                      className={`group relative p-6 rounded-2xl border-2 text-left transition-all duration-200 ${
+                      className={`group relative p-4 rounded-xl border-2 text-left transition-all duration-200 ${
                         recurrenceType === 'custom'
                           ? 'border-[#005f82] bg-gradient-to-br from-[#005f82]/10 to-[#007ba7]/5 shadow-xl scale-105'
                           : 'border-slate-200 hover:border-[#005f82]/50 hover:shadow-lg hover:scale-102'
                       }`}
                     >
-                      <div className="text-4xl mb-4">⚙️</div>
-                      <div className="text-lg font-bold text-slate-900 mb-2">Personnalisé</div>
-                      <div className="text-sm text-slate-600">Configuration avancée</div>
+                      <div className="text-3xl mb-2">⚙️</div>
+                      <div className="text-base font-bold text-slate-900 mb-1">Personnalisé</div>
+                      <div className="text-xs text-slate-600">Configuration avancée</div>
                       {recurrenceType === 'custom' && (
-                        <div className="absolute top-3 right-3 w-8 h-8 rounded-full bg-[#005f82] flex items-center justify-center">
-                          <svg className="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 20 20">
+                        <div className="absolute top-2 right-2 w-6 h-6 rounded-full bg-[#005f82] flex items-center justify-center">
+                          <svg className="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20">
                             <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                           </svg>
                         </div>
@@ -1426,21 +1425,21 @@ export default function TaskModal({ isOpen, onClose, onSave, onDelete, task, ini
 
                   {/* Config personnalisée */}
                   {recurrenceType === 'custom' && (
-                    <div className="mt-6 p-6 bg-gradient-to-br from-blue-50 to-indigo-50 border-2 border-blue-200 rounded-2xl">
-                      <div className="flex items-center gap-4 flex-wrap">
-                        <span className="text-base font-semibold text-slate-700">Répéter tous les</span>
+                    <div className="mt-4 p-4 bg-gradient-to-br from-blue-50 to-indigo-50 border-2 border-blue-200 rounded-xl">
+                      <div className="flex items-center gap-3 flex-wrap">
+                        <span className="text-sm font-semibold text-slate-700">Répéter tous les</span>
                         <input
                           type="number"
                           min="1"
                           max="99"
                           value={customRecurrenceInterval}
                           onChange={(e) => setCustomRecurrenceInterval(parseInt(e.target.value) || 1)}
-                          className="w-24 px-4 py-3 text-xl font-bold text-center bg-white border-2 border-blue-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#005f82] focus:border-[#005f82] shadow-sm"
+                          className="w-20 px-3 py-2 text-lg font-bold text-center bg-white border-2 border-blue-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#005f82] focus:border-[#005f82] shadow-sm"
                         />
                         <select
                           value={customRecurrenceUnit}
                           onChange={(e) => setCustomRecurrenceUnit(e.target.value as 'days' | 'weeks' | 'months' | 'years')}
-                          className="px-5 py-3 text-base font-semibold bg-white border-2 border-blue-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#005f82] focus:border-[#005f82] shadow-sm"
+                          className="px-4 py-2 text-sm font-semibold bg-white border-2 border-blue-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#005f82] focus:border-[#005f82] shadow-sm"
                         >
                           <option value="days">jour(s)</option>
                           <option value="weeks">semaine(s)</option>
@@ -1455,28 +1454,28 @@ export default function TaskModal({ isOpen, onClose, onSave, onDelete, task, ini
                 {/* Cartes de fin de récurrence */}
                 {recurrenceType !== 'none' && (
                   <div>
-                    <h3 className="text-xl font-bold text-slate-900 mb-6">Quand arrêter</h3>
+                    <h3 className="text-lg font-bold text-slate-900 mb-4">Quand arrêter</h3>
 
-                    <div className="space-y-4">
+                    <div className="space-y-3">
                       {/* Jamais */}
                       <button
                         type="button"
                         onClick={() => setRecurrenceEndType('never')}
-                        className={`group relative w-full p-6 rounded-2xl border-2 text-left transition-all duration-200 ${
+                        className={`group relative w-full p-4 rounded-xl border-2 text-left transition-all duration-200 ${
                           recurrenceEndType === 'never'
                             ? 'border-purple-500 bg-gradient-to-br from-purple-50 to-pink-50 shadow-xl scale-102'
                             : 'border-slate-200 hover:border-purple-300 hover:shadow-lg'
                         }`}
                       >
-                        <div className="flex items-center gap-5">
-                          <div className="text-4xl">♾️</div>
+                        <div className="flex items-center gap-3">
+                          <div className="text-3xl">♾️</div>
                           <div className="flex-1">
-                            <div className="text-lg font-bold text-slate-900 mb-1">Jamais</div>
-                            <div className="text-sm text-slate-600">Continue indéfiniment (max 365)</div>
+                            <div className="text-base font-bold text-slate-900 mb-0.5">Jamais</div>
+                            <div className="text-xs text-slate-600">Continue indéfiniment (max 365)</div>
                           </div>
                           {recurrenceEndType === 'never' && (
-                            <div className="w-8 h-8 rounded-full bg-purple-500 flex items-center justify-center">
-                              <svg className="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 20 20">
+                            <div className="w-6 h-6 rounded-full bg-purple-500 flex items-center justify-center">
+                              <svg className="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20">
                                 <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                               </svg>
                             </div>
@@ -1488,21 +1487,21 @@ export default function TaskModal({ isOpen, onClose, onSave, onDelete, task, ini
                       <button
                         type="button"
                         onClick={() => setRecurrenceEndType('count')}
-                        className={`group relative w-full p-6 rounded-2xl border-2 text-left transition-all duration-200 ${
+                        className={`group relative w-full p-4 rounded-xl border-2 text-left transition-all duration-200 ${
                           recurrenceEndType === 'count'
                             ? 'border-purple-500 bg-gradient-to-br from-purple-50 to-pink-50 shadow-xl scale-102'
                             : 'border-slate-200 hover:border-purple-300 hover:shadow-lg'
                         }`}
                       >
-                        <div className="flex items-center gap-5">
-                          <div className="text-4xl">🔢</div>
+                        <div className="flex items-center gap-3">
+                          <div className="text-3xl">🔢</div>
                           <div className="flex-1">
-                            <div className="text-lg font-bold text-slate-900 mb-1">Après un nombre de fois</div>
-                            <div className="text-sm text-slate-600">Définir le nombre d&apos;occurrences</div>
+                            <div className="text-base font-bold text-slate-900 mb-0.5">Après un nombre de fois</div>
+                            <div className="text-xs text-slate-600">Définir le nombre d&apos;occurrences</div>
                           </div>
                           {recurrenceEndType === 'count' && (
-                            <div className="w-8 h-8 rounded-full bg-purple-500 flex items-center justify-center">
-                              <svg className="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 20 20">
+                            <div className="w-6 h-6 rounded-full bg-purple-500 flex items-center justify-center">
+                              <svg className="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20">
                                 <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                               </svg>
                             </div>
@@ -1514,21 +1513,21 @@ export default function TaskModal({ isOpen, onClose, onSave, onDelete, task, ini
                       <button
                         type="button"
                         onClick={() => setRecurrenceEndType('until')}
-                        className={`group relative w-full p-6 rounded-2xl border-2 text-left transition-all duration-200 ${
+                        className={`group relative w-full p-4 rounded-xl border-2 text-left transition-all duration-200 ${
                           recurrenceEndType === 'until'
                             ? 'border-purple-500 bg-gradient-to-br from-purple-50 to-pink-50 shadow-xl scale-102'
                             : 'border-slate-200 hover:border-purple-300 hover:shadow-lg'
                         }`}
                       >
-                        <div className="flex items-center gap-5">
-                          <div className="text-4xl">📅</div>
+                        <div className="flex items-center gap-3">
+                          <div className="text-3xl">📅</div>
                           <div className="flex-1">
-                            <div className="text-lg font-bold text-slate-900 mb-1">À une date précise</div>
-                            <div className="text-sm text-slate-600">Choisir une date de fin</div>
+                            <div className="text-base font-bold text-slate-900 mb-0.5">À une date précise</div>
+                            <div className="text-xs text-slate-600">Choisir une date de fin</div>
                           </div>
                           {recurrenceEndType === 'until' && (
-                            <div className="w-8 h-8 rounded-full bg-purple-500 flex items-center justify-center">
-                              <svg className="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 20 20">
+                            <div className="w-6 h-6 rounded-full bg-purple-500 flex items-center justify-center">
+                              <svg className="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20">
                                 <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                               </svg>
                             </div>
@@ -1539,32 +1538,32 @@ export default function TaskModal({ isOpen, onClose, onSave, onDelete, task, ini
 
                     {/* Configuration count */}
                     {recurrenceEndType === 'count' && (
-                      <div className="mt-6 p-6 bg-gradient-to-br from-purple-50 to-pink-50 border-2 border-purple-200 rounded-2xl">
-                        <div className="flex items-center gap-4 flex-wrap">
-                          <span className="text-base font-semibold text-slate-700">Répéter</span>
+                      <div className="mt-4 p-4 bg-gradient-to-br from-purple-50 to-pink-50 border-2 border-purple-200 rounded-xl">
+                        <div className="flex items-center gap-3 flex-wrap">
+                          <span className="text-sm font-semibold text-slate-700">Répéter</span>
                           <input
                             type="number"
                             min="1"
                             max="999"
                             value={recurrenceCount}
                             onChange={(e) => setRecurrenceCount(parseInt(e.target.value) || 1)}
-                            className="w-28 px-4 py-3 text-xl font-bold text-center bg-white border-2 border-purple-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500 shadow-sm"
+                            className="w-24 px-3 py-2 text-lg font-bold text-center bg-white border-2 border-purple-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500 shadow-sm"
                           />
-                          <span className="text-base font-semibold text-slate-700">fois au total</span>
+                          <span className="text-sm font-semibold text-slate-700">fois au total</span>
                         </div>
                       </div>
                     )}
 
                     {/* Configuration until */}
                     {recurrenceEndType === 'until' && (
-                      <div className="mt-6 p-6 bg-gradient-to-br from-green-50 to-emerald-50 border-2 border-green-200 rounded-2xl">
-                        <div className="flex items-center gap-4 flex-wrap">
-                          <span className="text-base font-semibold text-slate-700">Arrêter le</span>
+                      <div className="mt-4 p-4 bg-gradient-to-br from-green-50 to-emerald-50 border-2 border-green-200 rounded-xl">
+                        <div className="flex items-center gap-3 flex-wrap">
+                          <span className="text-sm font-semibold text-slate-700">Arrêter le</span>
                           <input
                             type="date"
                             value={recurrenceEndDate}
                             onChange={(e) => setRecurrenceEndDate(e.target.value)}
-                            className="flex-1 min-w-[220px] px-5 py-3 text-base font-semibold bg-white border-2 border-green-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 shadow-sm"
+                            className="flex-1 min-w-[200px] px-4 py-2 text-sm font-semibold bg-white border-2 border-green-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 shadow-sm"
                           />
                         </div>
                       </div>
@@ -1574,16 +1573,16 @@ export default function TaskModal({ isOpen, onClose, onSave, onDelete, task, ini
 
                 {/* Résumé */}
                 {recurrenceType !== 'none' && (
-                  <div className="p-7 bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 border-2 border-blue-200 rounded-2xl shadow-md">
-                    <div className="flex items-start gap-5">
-                      <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center shrink-0 shadow-lg">
-                        <svg className="w-7 h-7 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <div className="p-4 bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 border-2 border-blue-200 rounded-xl shadow-md">
+                    <div className="flex items-start gap-3">
+                      <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center shrink-0 shadow-lg">
+                        <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                         </svg>
                       </div>
                       <div className="flex-1">
-                        <h4 className="text-lg font-bold text-slate-900 mb-3">Résumé</h4>
-                        <p className="text-base text-slate-700 leading-relaxed">
+                        <h4 className="text-base font-bold text-slate-900 mb-2">Résumé</h4>
+                        <p className="text-sm text-slate-700 leading-relaxed">
                           <span className="font-semibold text-[#005f82]">
                             {recurrenceType === 'daily' && '☀️ Tous les jours'}
                             {recurrenceType === 'weekly' && `📆 Tous les ${startDate ? getDayName(new Date(startDate)) : getDayName(new Date())}`}
@@ -1610,10 +1609,10 @@ export default function TaskModal({ isOpen, onClose, onSave, onDelete, task, ini
           </div>
 
           {/* Footer avec boutons */}
-          <div className="border-t border-slate-200 bg-slate-50 px-6 py-4 flex gap-3 shrink-0">
+          <div className="border-t border-slate-200 bg-slate-50 px-4 py-3 flex gap-2 shrink-0">
             <button
               type="submit"
-              className="flex-1 bg-[#005f82] hover:bg-[#004a65] text-white font-semibold py-3 px-6 text-base transition-colors focus:outline-none focus:ring-2 focus:ring-[#005f82] focus:ring-offset-2 shadow-sm"
+              className="flex-1 bg-[#005f82] hover:bg-[#004a65] text-white font-semibold py-2 px-5 text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-[#005f82] focus:ring-offset-2 shadow-sm"
             >
               {task ? 'Mettre à jour' : 'Créer l\'événement'}
             </button>
@@ -1621,7 +1620,7 @@ export default function TaskModal({ isOpen, onClose, onSave, onDelete, task, ini
               <button
                 type="button"
                 onClick={handleDelete}
-                className="bg-red-600 hover:bg-red-700 text-white font-semibold py-3 px-6 text-base transition-colors focus:outline-none focus:ring-2 focus:ring-red-600 focus:ring-offset-2 shadow-sm"
+                className="bg-red-600 hover:bg-red-700 text-white font-semibold py-2 px-5 text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-red-600 focus:ring-offset-2 shadow-sm"
               >
                 Supprimer
               </button>
@@ -1629,7 +1628,7 @@ export default function TaskModal({ isOpen, onClose, onSave, onDelete, task, ini
             <button
               type="button"
               onClick={onClose}
-              className="bg-white hover:bg-slate-100 text-slate-700 font-semibold py-3 px-6 text-base border border-slate-300 transition-colors focus:outline-none focus:ring-2 focus:ring-slate-400 focus:ring-offset-2"
+              className="bg-white hover:bg-slate-100 text-slate-700 font-semibold py-2 px-5 text-sm border border-slate-300 transition-colors focus:outline-none focus:ring-2 focus:ring-slate-400 focus:ring-offset-2"
             >
               Annuler
             </button>

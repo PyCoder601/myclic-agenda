@@ -528,7 +528,7 @@ export default function TaskModal({ isOpen, onClose, onSave, onDelete, task, ini
 
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-2 sm:p-3 animate-fadeIn">
-      <div className="bg-white max-w-4xl w-full max-h-[90vh] overflow-hidden shadow-xl border border-slate-200/80 flex flex-col">
+      <div className="bg-white max-w-4xl w-full max-h-[90vh] overflow-hidden shadow-xl border border-slate-200/80 flex flex-col rounded-xl">
         {/* Header compact */}
         <div className="flex items-center justify-between px-4 py-2 border-b border-slate-200 bg-linear-to-r from-slate-50 to-white shrink-0">
           <h2 className="text-xl font-bold text-[#005f82] flex items-center gap-2">
@@ -590,7 +590,7 @@ export default function TaskModal({ isOpen, onClose, onSave, onDelete, task, ini
                   required
                   value={formData.title}
                   onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                  className="w-full px-3 py-2 text-base bg-white border border-slate-300 focus:outline-none focus:ring-2 focus:ring-[#005f82] focus:border-[#005f82] text-slate-900 transition-all"
+                  className="w-full px-3 py-2 text-base bg-white border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#005f82] focus:border-[#005f82] text-slate-900 transition-all hover:border-slate-400"
                   placeholder="Ex: Réunion d'équipe"
                 />
               </div>
@@ -603,7 +603,7 @@ export default function TaskModal({ isOpen, onClose, onSave, onDelete, task, ini
                   type="text"
                   value={formData.location}
                   onChange={(e) => setFormData({ ...formData, location: e.target.value })}
-                  className="w-full px-3 py-2 text-base bg-white border border-slate-300 focus:outline-none focus:ring-2 focus:ring-[#005f82] focus:border-[#005f82] text-slate-900 transition-all"
+                  className="w-full px-3 py-2 text-base bg-white border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#005f82] focus:border-[#005f82] text-slate-900 transition-all hover:border-slate-400"
                   placeholder="Indiquez un lieu ou une adresse"
                 />
                   {application?.entreprise && (
@@ -630,7 +630,7 @@ export default function TaskModal({ isOpen, onClose, onSave, onDelete, task, ini
 
                 {/* Champ de recherche avec badges intégrés */}
                 <div className="relative">
-                  <div className="w-full min-h-[38px] px-2 py-1 text-base bg-white border border-slate-300 focus-within:outline-none focus-within:ring-2 focus-within:ring-[#005f82] focus-within:border-[#005f82] text-slate-900 transition-all flex flex-wrap items-center gap-1">
+                  <div className="w-full min-h-[38px] px-2 py-1 text-base bg-white border border-slate-300 rounded-lg focus-within:outline-none focus-within:ring-2 focus-within:ring-[#005f82] focus-within:border-[#005f82] text-slate-900 transition-all hover:border-slate-400 flex flex-wrap items-center gap-1">
                     {/* Calendriers sélectionnés (badges intégrés) */}
                     {formData.calendar_sources && formData.calendar_sources.map(calId => {
                       const cal = calendars.filter(cal => !cal.description?.toLowerCase().includes("resource")).find(c => String(c.id) === calId);
@@ -640,10 +640,10 @@ export default function TaskModal({ isOpen, onClose, onSave, onDelete, task, ini
                       return (
                         <span
                           key={calId}
-                          className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-[#005f82]/10 text-[#005f82] text-xs shrink-0"
+                          className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-[#005f82]/10 text-[#005f82] text-xs shrink-0 rounded-md"
                         >
                           <div
-                            className="w-2 h-2"
+                            className="w-2 h-2 rounded-full"
                             style={{ backgroundColor: cal.calendarcolor || '#005f82' }}
                           />
                           <span className="font-medium max-w-[100px] truncate">{calName}</span>
@@ -657,7 +657,7 @@ export default function TaskModal({ isOpen, onClose, onSave, onDelete, task, ini
                                 calendar_source: newSources[0] || ''
                               });
                             }}
-                            className="hover:bg-[#005f82]/20 p-0.5 transition-colors"
+                            className="hover:bg-[#005f82]/20 p-0.5 rounded transition-colors"
                           >
                             <X className="w-2.5 h-2.5" />
                           </button>
@@ -676,7 +676,7 @@ export default function TaskModal({ isOpen, onClose, onSave, onDelete, task, ini
 
                   {/* Dropdown de sélection */}
                   {showCalendarDropdown && (
-                    <div className="absolute z-50 w-full mt-1 bg-white border border-slate-300 shadow-lg max-h-60 overflow-y-auto">
+                    <div className="absolute z-50 w-full mt-1 bg-white border border-slate-300 rounded-lg shadow-lg max-h-60 overflow-y-auto">
                       {filteredCalendars.length === 0 ? (
                         <div className="p-2 text-sm text-slate-500 text-center">
                           Aucun calendrier trouvé
@@ -734,7 +734,7 @@ export default function TaskModal({ isOpen, onClose, onSave, onDelete, task, ini
 
                 {/* Champ de recherche avec badges intégrés */}
                 <div className="relative">
-                  <div className="w-full min-h-[38px] px-2 py-1 text-base bg-white border border-slate-300 focus-within:outline-none focus-within:ring-2 focus-within:ring-[#005f82] focus-within:border-[#005f82] text-slate-900 transition-all flex flex-wrap items-center gap-1">
+                  <div className="w-full min-h-[38px] px-2 py-1 text-base bg-white border border-slate-300 rounded-lg focus-within:outline-none focus-within:ring-2 focus-within:ring-[#005f82] focus-within:border-[#005f82] text-slate-900 transition-all hover:border-slate-400 flex flex-wrap items-center gap-1">
                     {/* Ressources sélectionnées (badges intégrés) */}
                     {formData.calendar_sources && formData.calendar_sources.map(calId => {
                       const cal = calendars.find(c => String(c.id) === calId && c.description?.toLowerCase().includes("resource"));
@@ -744,10 +744,10 @@ export default function TaskModal({ isOpen, onClose, onSave, onDelete, task, ini
                       return (
                         <span
                           key={calId}
-                          className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-amber-50 text-amber-700 text-xs border border-amber-200 shrink-0"
+                          className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-amber-50 text-amber-700 text-xs border border-amber-200 shrink-0 rounded-md"
                         >
                           <div
-                            className="w-2 h-2"
+                            className="w-2 h-2 rounded-full"
                             style={{ backgroundColor: cal.calendarcolor || '#f59e0b' }}
                           />
                           <span className="font-medium max-w-[100px] truncate">{calName}</span>
@@ -761,7 +761,7 @@ export default function TaskModal({ isOpen, onClose, onSave, onDelete, task, ini
                                 calendar_source: newSources[0] || ''
                               });
                             }}
-                            className="hover:bg-amber-200 p-0.5 transition-colors"
+                            className="hover:bg-amber-200 p-0.5 rounded transition-colors"
                           >
                             <X className="w-2.5 h-2.5" />
                           </button>
@@ -780,7 +780,7 @@ export default function TaskModal({ isOpen, onClose, onSave, onDelete, task, ini
 
                   {/* Dropdown de sélection */}
                   {showResourceDropdown && (
-                    <div className="absolute z-50 w-full mt-1 bg-white border border-slate-300 shadow-lg max-h-60 overflow-y-auto">
+                    <div className="absolute z-50 w-full mt-1 bg-white border border-slate-300 rounded-lg shadow-lg max-h-60 overflow-y-auto">
                       {filteredResources.length === 0 ? (
                         <div className="p-2 text-sm text-slate-500 text-center">
                           Aucune ressource trouvée
@@ -831,77 +831,6 @@ export default function TaskModal({ isOpen, onClose, onSave, onDelete, task, ini
               </div>
             </div>
 
-            {/* Préréglages horaires rapides */}
-            <div>
-              <label className="block text-sm font-semibold text-slate-700 mb-2">
-                Préréglages horaires
-              </label>
-              <div className="grid grid-cols-3 gap-2">
-                <button
-                  type="button"
-                  onClick={() => {
-                    const startDate = formData.start_date ? new Date(formData.start_date) : new Date();
-                    startDate.setHours(9, 0, 0, 0);
-                    const endDate = new Date(startDate);
-                    endDate.setHours(12, 30, 0, 0);
-                    setFormData({
-                      ...formData,
-                      start_date: formatDateTimeLocal(startDate),
-                      end_date: formatDateTimeLocal(endDate)
-                    });
-                  }}
-                  className="flex items-center justify-center gap-1.5 px-2.5 py-2 bg-white border-2 border-slate-300 rounded-lg hover:border-[#005f82] hover:bg-slate-50 transition-all"
-                >
-                  <span className="text-xs">
-                    <span className="font-semibold block">Matinée</span>
-                    <span className="text-slate-500 text-[10px]">9h - 12h30</span>
-                  </span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => {
-                    const startDate = formData.start_date ? new Date(formData.start_date) : new Date();
-                    startDate.setHours(14, 0, 0, 0);
-                    const endDate = new Date(startDate);
-                    endDate.setHours(18, 0, 0, 0);
-                    setFormData({
-                      ...formData,
-                      start_date: formatDateTimeLocal(startDate),
-                      end_date: formatDateTimeLocal(endDate)
-                    });
-                  }}
-                  className="flex items-center justify-center gap-1.5 px-2.5 py-2 bg-white border-2 border-slate-300 rounded-lg hover:border-[#005f82] hover:bg-slate-50 transition-all"
-                >
-                  <span className="text-xs">
-                    <span className="font-semibold block">Après-midi</span>
-                    <span className="text-slate-500 text-[10px]">14h - 18h</span>
-                  </span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => {
-                    const startDate = formData.start_date ? new Date(formData.start_date) : new Date();
-                    startDate.setHours(9, 0, 0, 0);
-                    const endDate = new Date(startDate);
-                    endDate.setHours(17, 30, 0, 0);
-                    setFormData({
-                      ...formData,
-                      start_date: formatDateTimeLocal(startDate),
-                      end_date: formatDateTimeLocal(endDate)
-                    });
-                  }}
-                  className="flex items-center justify-center gap-1.5 px-2.5 py-2 bg-white border-2 border-slate-300 rounded-lg hover:border-[#005f82] hover:bg-slate-50 transition-all"
-                >
-                  <span className="text-xs">
-                    <span className="font-semibold block">Journée</span>
-                    <span className="text-slate-500 text-[10px]">9h - 17h30</span>
-                  </span>
-                </button>
-              </div>
-            </div>
-
             {/* Dates et heures combinées */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-3.5">
               <div>
@@ -925,7 +854,7 @@ export default function TaskModal({ isOpen, onClose, onSave, onDelete, task, ini
                       });
                     }
                   }}
-                  className="w-full px-3 py-2 text-sm bg-white border border-slate-300 focus:outline-none focus:ring-2 focus:ring-[#005f82] focus:border-[#005f82] text-slate-900 transition-all"
+                  className="w-full px-3 py-2 text-sm bg-white border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#005f82] focus:border-[#005f82] text-slate-900 transition-all hover:border-slate-400"
                 />
               </div>
 
@@ -939,8 +868,73 @@ export default function TaskModal({ isOpen, onClose, onSave, onDelete, task, ini
                   value={formData.end_date}
                   onChange={(e) => setFormData({ ...formData, end_date: e.target.value })}
                   min={formData.start_date}
-                  className="w-full px-3 py-2 text-sm bg-white border border-slate-300 focus:outline-none focus:ring-2 focus:ring-[#005f82] focus:border-[#005f82] text-slate-900 transition-all"
+                  className="w-full px-3 py-2 text-sm bg-white border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#005f82] focus:border-[#005f82] text-slate-900 transition-all hover:border-slate-400"
                 />
+              </div>
+            </div>
+
+            {/* Préréglages horaires rapides - plus compacts */}
+            <div>
+              <label className="block text-xs font-medium text-slate-600 mb-1.5">
+                Préréglages rapides
+              </label>
+              <div className="grid grid-cols-3 gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => {
+                    const startDate = formData.start_date ? new Date(formData.start_date) : new Date();
+                    startDate.setHours(9, 0, 0, 0);
+                    const endDate = new Date(startDate);
+                    endDate.setHours(12, 30, 0, 0);
+                    setFormData({
+                      ...formData,
+                      start_date: formatDateTimeLocal(startDate),
+                      end_date: formatDateTimeLocal(endDate)
+                    });
+                  }}
+                  className="flex flex-col items-center justify-center px-2 py-1.5 bg-white border border-slate-300 rounded-md hover:border-[#005f82] hover:bg-[#005f82]/5 hover:shadow-sm transition-all active:scale-95"
+                >
+                  <span className="text-[10px] font-semibold text-slate-700">Matinée</span>
+                  <span className="text-[9px] text-slate-500">9h - 12h30</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    const startDate = formData.start_date ? new Date(formData.start_date) : new Date();
+                    startDate.setHours(14, 0, 0, 0);
+                    const endDate = new Date(startDate);
+                    endDate.setHours(18, 0, 0, 0);
+                    setFormData({
+                      ...formData,
+                      start_date: formatDateTimeLocal(startDate),
+                      end_date: formatDateTimeLocal(endDate)
+                    });
+                  }}
+                  className="flex flex-col items-center justify-center px-2 py-1.5 bg-white border border-slate-300 rounded-md hover:border-[#005f82] hover:bg-[#005f82]/5 hover:shadow-sm transition-all active:scale-95"
+                >
+                  <span className="text-[10px] font-semibold text-slate-700">Après-midi</span>
+                  <span className="text-[9px] text-slate-500">14h - 18h</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    const startDate = formData.start_date ? new Date(formData.start_date) : new Date();
+                    startDate.setHours(9, 0, 0, 0);
+                    const endDate = new Date(startDate);
+                    endDate.setHours(17, 30, 0, 0);
+                    setFormData({
+                      ...formData,
+                      start_date: formatDateTimeLocal(startDate),
+                      end_date: formatDateTimeLocal(endDate)
+                    });
+                  }}
+                  className="flex flex-col items-center justify-center px-2 py-1.5 bg-white border border-slate-300 rounded-md hover:border-[#005f82] hover:bg-[#005f82]/5 hover:shadow-sm transition-all active:scale-95"
+                >
+                  <span className="text-[10px] font-semibold text-slate-700">Journée</span>
+                  <span className="text-[9px] text-slate-500">9h - 17h30</span>
+                </button>
               </div>
             </div>
 
@@ -960,18 +954,11 @@ export default function TaskModal({ isOpen, onClose, onSave, onDelete, task, ini
                     </div>
                   </div>
                 ) : selectedClient ? (
-                  <div className="flex items-center gap-2 px-3 py-2 bg-blue-50 border border-blue-200 rounded-lg">
+                  <div className="flex items-center gap-2 px-3 py-2 bg-blue-50 border border-blue-200 rounded-lg hover:bg-blue-100 transition-colors cursor-pointer">
                     <div className="flex-1">
                       <div className="font-semibold text-slate-900 text-sm">
                         {selectedClient.nom}
                       </div>
-                      {(selectedClient.email || selectedClient.telephone) && (
-                        <div className="text-xs text-slate-600">
-                          {selectedClient.email && <span>{selectedClient.email}</span>}
-                          {selectedClient.email && selectedClient.telephone && <span> • </span>}
-                          {selectedClient.telephone && <span>{selectedClient.telephone}</span>}
-                        </div>
-                      )}
                     </div>
                     <button
                       type="button"
@@ -981,7 +968,7 @@ export default function TaskModal({ isOpen, onClose, onSave, onDelete, task, ini
                         setClientSearchQuery('');
                         setAffairs([]);
                       }}
-                      className="p-1 hover:bg-blue-200 rounded-full transition-colors"
+                      className="p-1 hover:bg-blue-200 rounded-full transition-colors active:scale-90"
                     >
                       <X className="w-3.5 h-3.5 text-blue-700" />
                     </button>
@@ -994,7 +981,7 @@ export default function TaskModal({ isOpen, onClose, onSave, onDelete, task, ini
                       value={clientSearchQuery}
                       onChange={(e) => setClientSearchQuery(e.target.value)}
                       onFocus={() => setShowClientDropdown(true)}
-                      className="w-full px-3 py-2 text-sm bg-white border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#005f82] focus:border-[#005f82] text-slate-900 transition-all"
+                      className="w-full px-3 py-2 text-sm bg-white border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#005f82] focus:border-[#005f82] text-slate-900 transition-all hover:border-slate-400"
                     />
 
                     {showClientDropdown && (
@@ -1021,7 +1008,7 @@ export default function TaskModal({ isOpen, onClose, onSave, onDelete, task, ini
                                 setShowClientDropdown(false);
                                 setClientSearchQuery('');
                               }}
-                              className="w-full px-2.5 py-1.5 text-left text-sm hover:bg-slate-50 transition-colors"
+                              className="w-full px-2.5 py-1.5 text-left text-sm hover:bg-slate-50 active:bg-slate-100 transition-colors first:rounded-t-lg last:rounded-b-lg"
                             >
                               <div className="font-medium text-slate-900">
                                 {client.nom}
@@ -1060,7 +1047,7 @@ export default function TaskModal({ isOpen, onClose, onSave, onDelete, task, ini
                     </div>
                   </div>
                 ) : selectedAffair ? (
-                  <div className="flex items-center gap-2 px-3 py-2 bg-green-50 border border-green-200 rounded-lg">
+                  <div className="flex items-center gap-2 px-3 py-2 bg-green-50 border border-green-200 rounded-lg hover:bg-green-100 transition-colors cursor-pointer">
                     <div className="flex-1">
                       <div className="font-semibold text-slate-900 text-sm">{selectedAffair.nom}</div>
                       {selectedAffair.descriptif && (
@@ -1073,7 +1060,7 @@ export default function TaskModal({ isOpen, onClose, onSave, onDelete, task, ini
                         setSelectedAffair(null);
                         setAffairSearchQuery('');
                       }}
-                      className="p-1 hover:bg-green-200 rounded-full transition-colors"
+                      className="p-1 hover:bg-green-200 rounded-full transition-colors active:scale-90"
                     >
                       <X className="w-3.5 h-3.5 text-green-700" />
                     </button>
@@ -1086,7 +1073,7 @@ export default function TaskModal({ isOpen, onClose, onSave, onDelete, task, ini
                       value={affairSearchQuery}
                       onChange={(e) => setAffairSearchQuery(e.target.value)}
                       onFocus={() => setShowAffairDropdown(true)}
-                      className="w-full px-3 py-2 text-sm bg-white border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#005f82] focus:border-[#005f82] text-slate-900 transition-all"
+                      className="w-full px-3 py-2 text-sm bg-white border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#005f82] focus:border-[#005f82] text-slate-900 transition-all hover:border-slate-400"
                     />
 
                     {showAffairDropdown && (
@@ -1109,7 +1096,7 @@ export default function TaskModal({ isOpen, onClose, onSave, onDelete, task, ini
                                 setShowAffairDropdown(false);
                                 setAffairSearchQuery('');
                               }}
-                              className="w-full px-2.5 py-1.5 text-left text-sm hover:bg-slate-50 transition-colors"
+                              className="w-full px-2.5 py-1.5 text-left text-sm hover:bg-slate-50 active:bg-slate-100 transition-colors first:rounded-t-lg last:rounded-b-lg"
                             >
                               <div className="font-medium text-slate-900">{affair.nom}</div>
                               {affair.descriptif && (
@@ -1540,3 +1527,4 @@ export default function TaskModal({ isOpen, onClose, onSave, onDelete, task, ini
     </div>
   );
 }
+

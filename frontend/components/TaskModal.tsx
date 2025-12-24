@@ -55,15 +55,6 @@ export default function TaskModal({ isOpen, onClose, onSave, onDelete, task, ini
   const [resourceSearchQuery, setResourceSearchQuery] = useState('');
   const [showResourceDropdown, setShowResourceDropdown] = useState(false);
 
-  // États pour les dates et heures séparées
-  const [startDate, setStartDate] = useState('');
-  const [startTime, setStartTime] = useState('');
-  const [endDate, setEndDate] = useState('');
-  const [endTime, setEndTime] = useState('');
-
-  // État pour le préréglage horaire sélectionné
-  const [timePreset, setTimePreset] = useState<'morning' | 'afternoon' | 'fullday' | 'custom'>('custom');
-
   // État pour les onglets
   const [activeTab, setActiveTab] = useState<'details' | 'recurrence'>('details');
 
@@ -110,14 +101,6 @@ export default function TaskModal({ isOpen, onClose, onSave, onDelete, task, ini
   console.log('📅 Calendriers disponibles:', filteredCalendars.length);
   console.log('🔧 Ressources disponibles:', filteredResources.length);
 
-
-
-  // Helper pour extraire date et heure d'un datetime-local string
-  const extractDateAndTime = (dateTimeString: string) => {
-    const [date, time] = dateTimeString.split('T');
-    return { date: date || '', time: time || '09:00' };
-  };
-
   // Calculer les valeurs initiales du formulaire
   const getInitialFormData = () => {
     if (task) {
@@ -138,25 +121,12 @@ export default function TaskModal({ isOpen, onClose, onSave, onDelete, task, ini
         }
       }
 
-      // Extraire dates et heures séparées
-      const startDateTime = task.start_date.slice(0, 16);
-      const endDateTime = task.end_date.slice(0, 16);
-      const { date: sDate, time: sTime } = extractDateAndTime(startDateTime);
-      const { date: eDate, time: eTime } = extractDateAndTime(endDateTime);
-
-      // Initialiser les états de date/heure
-      setStartDate(sDate);
-      setStartTime(sTime);
-      setEndDate(eDate);
-      setEndTime(eTime);
-      setTimePreset('custom');
-
       return {
         title: task.title,
         description: task.description || '',
         location: task.location || '',
-        start_date: startDateTime,
-        end_date: endDateTime,
+        start_date: task.start_date.slice(0, 16),
+        end_date: task.end_date.slice(0, 16),
         calendar_source: calendarSourceId,
         calendar_sources: [calendarSourceId],
       };
@@ -180,16 +150,6 @@ export default function TaskModal({ isOpen, onClose, onSave, onDelete, task, ini
 
     const startDateTimeLocal = formatDateTimeLocal(start);
     const endDateTimeLocal = formatDateTimeLocal(end);
-
-    const { date: sDate, time: sTime } = extractDateAndTime(startDateTimeLocal);
-    const { date: eDate, time: eTime } = extractDateAndTime(endDateTimeLocal);
-
-    // Initialiser les états de date/heure
-    setStartDate(sDate);
-    setStartTime(sTime);
-    setEndDate(eDate);
-    setEndTime(eTime);
-    setTimePreset('custom');
 
     // ✅ Utiliser le premier calendrier disponible comme défaut
     const defaultCalendarSource = calendars.length > 0
@@ -381,43 +341,6 @@ export default function TaskModal({ isOpen, onClose, onSave, onDelete, task, ini
 
     loadClientAffairInfo();
   }, [task, isOpen]);
-
-  // Synchroniser les dates/heures avec formData
-  useEffect(() => {
-    if (startDate && startTime && endDate && endTime) {
-      setFormData(prev => ({
-        ...prev,
-        start_date: `${startDate}T${startTime}`,
-        end_date: `${endDate}T${endTime}`,
-      }));
-    }
-  }, [startDate, startTime, endDate, endTime]);
-
-  // Gérer les préréglages horaires
-  const handleTimePreset = (preset: 'morning' | 'afternoon' | 'fullday') => {
-    setTimePreset(preset);
-
-    if (preset === 'morning') {
-      setStartTime('09:00');
-      setEndTime('12:30');
-    } else if (preset === 'afternoon') {
-      setStartTime('14:00');
-      setEndTime('18:00');
-    } else if (preset === 'fullday') {
-      setStartTime('09:00');
-      setEndTime('17:30');
-    }
-  };
-
-  // Gérer les changements manuels d'heure
-  const handleTimeChange = (field: 'start' | 'end', value: string) => {
-    if (field === 'start') {
-      setStartTime(value);
-    } else {
-      setEndTime(value);
-    }
-    setTimePreset('custom'); // Passer en mode personnalisé si l'utilisateur modifie
-  };
 
   if (!isOpen) return null;
 
@@ -612,7 +535,7 @@ export default function TaskModal({ isOpen, onClose, onSave, onDelete, task, ini
             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
             </svg>
-            {task ? 'Modifier l\'événement' : 'Nouvel événement'}
+            {task && 'Nouvel événement'}
           </h2>
           <button
             onClick={onClose}
@@ -657,23 +580,22 @@ export default function TaskModal({ isOpen, onClose, onSave, onDelete, task, ini
             {/* Contenu de l'onglet Détails */}
             {activeTab === 'details' && (
               <>
-            {/* Titre */}
-            <div>
-              <label className="block text-sm font-semibold text-slate-700 mb-1.5">
-                Titre <span className="text-red-500">*</span>
-              </label>
-              <input
-                type="text"
-                required
-                value={formData.title}
-                onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                className="w-full px-3 py-2 text-base bg-white border border-slate-300 focus:outline-none focus:ring-2 focus:ring-[#005f82] focus:border-[#005f82] text-slate-900 transition-all"
-                placeholder="Ex: Réunion d'équipe"
-              />
-            </div>
-
-            {/* Grille compacte : Lieu */}
+            {/* Titre et Lieu côte à côte */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-3.5">
+              <div>
+                <label className="block text-sm font-semibold text-slate-700 mb-1.5">
+                  Titre <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={formData.title}
+                  onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                  className="w-full px-3 py-2 text-base bg-white border border-slate-300 focus:outline-none focus:ring-2 focus:ring-[#005f82] focus:border-[#005f82] text-slate-900 transition-all"
+                  placeholder="Ex: Réunion d'équipe"
+                />
+              </div>
+
               <div>
                 <label className="block text-sm font-semibold text-slate-700 mb-1.5">
                   Lieu
@@ -683,7 +605,7 @@ export default function TaskModal({ isOpen, onClose, onSave, onDelete, task, ini
                   value={formData.location}
                   onChange={(e) => setFormData({ ...formData, location: e.target.value })}
                   className="w-full px-3 py-2 text-base bg-white border border-slate-300 focus:outline-none focus:ring-2 focus:ring-[#005f82] focus:border-[#005f82] text-slate-900 transition-all"
-                  placeholder="Salle 201"
+                  placeholder="Indiquez un lieu ou une adresse"
                 />
                   {application?.entreprise && (
                       <div className="mt-1.5 text-right">
@@ -910,135 +832,116 @@ export default function TaskModal({ isOpen, onClose, onSave, onDelete, task, ini
               </div>
             </div>
 
-            {/* Dates et heures séparées */}
-            <div className="space-y-3.5">
-              {/* Dates */}
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-3.5">
-                <div>
-                  <label className="block text-sm font-semibold text-slate-700 mb-1.5">
-                    Date de début <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="date"
-                    required
-                    value={startDate}
-                    onChange={(e) => {
-                      setStartDate(e.target.value);
-                      // Si la date de fin est vide ou antérieure, la synchroniser
-                      if (!endDate || e.target.value > endDate) {
-                        setEndDate(e.target.value);
-                      }
-                    }}
-                    className="w-full px-3 py-2 text-base bg-white border border-slate-300 focus:outline-none focus:ring-2 focus:ring-[#005f82] focus:border-[#005f82] text-slate-900 transition-all"
-                  />
-                </div>
+            {/* Préréglages horaires rapides */}
+            <div>
+              <label className="block text-sm font-semibold text-slate-700 mb-2">
+                Préréglages horaires
+              </label>
+              <div className="grid grid-cols-3 gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    const startDate = formData.start_date ? new Date(formData.start_date) : new Date();
+                    startDate.setHours(9, 0, 0, 0);
+                    const endDate = new Date(startDate);
+                    endDate.setHours(12, 30, 0, 0);
+                    setFormData({
+                      ...formData,
+                      start_date: formatDateTimeLocal(startDate),
+                      end_date: formatDateTimeLocal(endDate)
+                    });
+                  }}
+                  className="flex items-center justify-center gap-1.5 px-2.5 py-2 bg-white border-2 border-slate-300 rounded-lg hover:border-[#005f82] hover:bg-slate-50 transition-all"
+                >
+                  <span className="text-xs">
+                    <span className="font-semibold block">Matinée</span>
+                    <span className="text-slate-500 text-[10px]">9h - 12h30</span>
+                  </span>
+                </button>
 
-                <div>
-                  <label className="block text-sm font-semibold text-slate-700 mb-1.5">
-                    Date de fin <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="date"
-                    required
-                    value={endDate}
-                    onChange={(e) => setEndDate(e.target.value)}
-                    min={startDate}
-                    className="w-full px-3 py-2 text-base bg-white border border-slate-300 focus:outline-none focus:ring-2 focus:ring-[#005f82] focus:border-[#005f82] text-slate-900 transition-all"
-                  />
-                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const startDate = formData.start_date ? new Date(formData.start_date) : new Date();
+                    startDate.setHours(14, 0, 0, 0);
+                    const endDate = new Date(startDate);
+                    endDate.setHours(18, 0, 0, 0);
+                    setFormData({
+                      ...formData,
+                      start_date: formatDateTimeLocal(startDate),
+                      end_date: formatDateTimeLocal(endDate)
+                    });
+                  }}
+                  className="flex items-center justify-center gap-1.5 px-2.5 py-2 bg-white border-2 border-slate-300 rounded-lg hover:border-[#005f82] hover:bg-slate-50 transition-all"
+                >
+                  <span className="text-xs">
+                    <span className="font-semibold block">Après-midi</span>
+                    <span className="text-slate-500 text-[10px]">14h - 18h</span>
+                  </span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    const startDate = formData.start_date ? new Date(formData.start_date) : new Date();
+                    startDate.setHours(9, 0, 0, 0);
+                    const endDate = new Date(startDate);
+                    endDate.setHours(17, 30, 0, 0);
+                    setFormData({
+                      ...formData,
+                      start_date: formatDateTimeLocal(startDate),
+                      end_date: formatDateTimeLocal(endDate)
+                    });
+                  }}
+                  className="flex items-center justify-center gap-1.5 px-2.5 py-2 bg-white border-2 border-slate-300 rounded-lg hover:border-[#005f82] hover:bg-slate-50 transition-all"
+                >
+                  <span className="text-xs">
+                    <span className="font-semibold block">Journée</span>
+                    <span className="text-slate-500 text-[10px]">9h - 17h30</span>
+                  </span>
+                </button>
+              </div>
+            </div>
+
+            {/* Dates et heures combinées */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-3.5">
+              <div>
+                <label className="block text-sm font-semibold text-slate-700 mb-1.5">
+                  Date et heure de début <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="datetime-local"
+                  required
+                  value={formData.start_date}
+                  onChange={(e) => {
+                    setFormData({ ...formData, start_date: e.target.value });
+                    // Si la date de fin est vide ou antérieure, la synchroniser avec +1h
+                    if (!formData.end_date || e.target.value >= formData.end_date) {
+                      const endDateTime = new Date(e.target.value);
+                      endDateTime.setHours(endDateTime.getHours() + 1);
+                      setFormData({
+                        ...formData,
+                        start_date: e.target.value,
+                        end_date: formatDateTimeLocal(endDateTime)
+                      });
+                    }
+                  }}
+                  className="w-full px-3 py-2 text-sm bg-white border border-slate-300 focus:outline-none focus:ring-2 focus:ring-[#005f82] focus:border-[#005f82] text-slate-900 transition-all"
+                />
               </div>
 
-              {/* Préréglages horaires */}
               <div>
-                <label className="block text-sm font-semibold text-slate-700 mb-2">
-                  Plage horaire
+                <label className="block text-sm font-semibold text-slate-700 mb-1.5">
+                  Date et heure de fin <span className="text-red-500">*</span>
                 </label>
-                <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 mb-3">
-                  <label className="flex items-center gap-1.5 px-2.5 py-2 bg-white border-2 border-slate-300 rounded-lg cursor-pointer hover:border-[#005f82] hover:bg-slate-50 transition-all has-checked:border-[#005f82] has-checked:bg-[#005f82]/5">
-                    <input
-                      type="radio"
-                      name="timePreset"
-                      checked={timePreset === 'morning'}
-                      onChange={() => handleTimePreset('morning')}
-                      className="text-[#005f82] focus:ring-[#005f82]"
-                    />
-                    <span className="text-xs flex-1">
-                      <span className="font-semibold block">Matinée</span>
-                      <span className="text-slate-500 text-[10px]">9h - 12h30</span>
-                    </span>
-                  </label>
-
-                  <label className="flex items-center gap-1.5 px-2.5 py-2 bg-white border-2 border-slate-300 rounded-lg cursor-pointer hover:border-[#005f82] hover:bg-slate-50 transition-all has-checked:border-[#005f82] has-checked:bg-[#005f82]/5">
-                    <input
-                      type="radio"
-                      name="timePreset"
-                      checked={timePreset === 'afternoon'}
-                      onChange={() => handleTimePreset('afternoon')}
-                      className="text-[#005f82] focus:ring-[#005f82]"
-                    />
-                    <span className="text-xs flex-1">
-                      <span className="font-semibold block">Après-midi</span>
-                      <span className="text-slate-500 text-[10px]">14h - 18h</span>
-                    </span>
-                  </label>
-
-                  <label className="flex items-center gap-1.5 px-2.5 py-2 bg-white border-2 border-slate-300 rounded-lg cursor-pointer hover:border-[#005f82] hover:bg-slate-50 transition-all has-checked:border-[#005f82] has-checked:bg-[#005f82]/5">
-                    <input
-                      type="radio"
-                      name="timePreset"
-                      checked={timePreset === 'fullday'}
-                      onChange={() => handleTimePreset('fullday')}
-                      className="text-[#005f82] focus:ring-[#005f82]"
-                    />
-                    <span className="text-xs flex-1">
-                      <span className="font-semibold block">Journée</span>
-                      <span className="text-slate-500 text-[10px]">9h - 17h30</span>
-                    </span>
-                  </label>
-
-                  <label className="flex items-center gap-1.5 px-2.5 py-2 bg-white border-2 border-slate-300 cursor-pointer hover:border-[#005f82] hover:bg-slate-50 transition-all has-checked:border-[#005f82] has-checked:bg-[#005f82]/5">
-                    <input
-                      type="radio"
-                      name="timePreset"
-                      checked={timePreset === 'custom'}
-                      onChange={() => setTimePreset('custom')}
-                      className="text-[#005f82] focus:ring-[#005f82]"
-                    />
-                    <span className="text-xs flex-1">
-                      <span className="font-semibold block">Personnalisé</span>
-                      <span className="text-slate-500 text-[10px] invisible">--</span>
-                    </span>
-                  </label>
-                </div>
-
-                {/* Champs d'heure */}
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-3.5">
-                  <div>
-                    <label className="block text-sm font-semibold text-slate-700 mb-1.5">
-                      Heure de début <span className="text-red-500">*</span>
-                    </label>
-                    <input
-                      type="time"
-                      required
-                      value={startTime}
-                      onChange={(e) => handleTimeChange('start', e.target.value)}
-                      className="w-full px-3 py-2 text-base bg-white border border-slate-300 focus:outline-none focus:ring-2 focus:ring-[#005f82] focus:border-[#005f82] text-slate-900 transition-all"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-semibold text-slate-700 mb-1.5">
-                      Heure de fin <span className="text-red-500">*</span>
-                    </label>
-                    <input
-                      type="time"
-                      required
-                      value={endTime}
-                      onChange={(e) => handleTimeChange('end', e.target.value)}
-                      className="w-full px-3 py-2 text-base bg-white border border-slate-300 focus:outline-none focus:ring-2 focus:ring-[#005f82] focus:border-[#005f82] text-slate-900 transition-all"
-                    />
-                  </div>
-                </div>
+                <input
+                  type="datetime-local"
+                  required
+                  value={formData.end_date}
+                  onChange={(e) => setFormData({ ...formData, end_date: e.target.value })}
+                  min={formData.start_date}
+                  className="w-full px-3 py-2 text-sm bg-white border border-slate-300 focus:outline-none focus:ring-2 focus:ring-[#005f82] focus:border-[#005f82] text-slate-900 transition-all"
+                />
               </div>
             </div>
 
@@ -1302,7 +1205,7 @@ export default function TaskModal({ isOpen, onClose, onSave, onDelete, task, ini
                     >
                       <div className="text-3xl mb-2">📆</div>
                       <div className="text-base font-bold text-slate-900 mb-1">Chaque semaine</div>
-                      <div className="text-xs text-slate-600">Le {startDate ? getDayName(new Date(startDate)) : getDayName(new Date())}</div>
+                      <div className="text-xs text-slate-600">Le {formData.start_date ? getDayName(new Date(formData.start_date)) : getDayName(new Date())}</div>
                       {recurrenceType === 'weekly' && (
                         <div className="absolute top-2 right-2 w-6 h-6 rounded-full bg-[#005f82] flex items-center justify-center">
                           <svg className="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20">
@@ -1324,7 +1227,7 @@ export default function TaskModal({ isOpen, onClose, onSave, onDelete, task, ini
                     >
                       <div className="text-3xl mb-2">🗓️</div>
                       <div className="text-base font-bold text-slate-900 mb-1">Chaque mois</div>
-                      <div className="text-xs text-slate-600">Le {startDate ? getDayName(new Date(startDate)) : getDayName(new Date())}</div>
+                      <div className="text-xs text-slate-600">Le {formData.start_date ? getDayName(new Date(formData.start_date)) : getDayName(new Date())}</div>
                       {recurrenceType === 'monthly' && (
                         <div className="absolute top-2 right-2 w-6 h-6 rounded-full bg-[#005f82] flex items-center justify-center">
                           <svg className="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20">
@@ -1346,7 +1249,7 @@ export default function TaskModal({ isOpen, onClose, onSave, onDelete, task, ini
                     >
                       <div className="text-4xl mb-4">📊</div>
                       <div className="text-lg font-bold text-slate-900 mb-2">Toutes les 2 semaines</div>
-                      <div className="text-sm text-slate-600">Le {startDate ? getDayName(new Date(startDate)) : getDayName(new Date())}</div>
+                      <div className="text-sm text-slate-600">Le {formData.start_date ? getDayName(new Date(formData.start_date)) : getDayName(new Date())}</div>
                       {recurrenceType === 'biweekly' && (
                         <div className="absolute top-2 right-2 w-6 h-6 rounded-full bg-[#005f82] flex items-center justify-center">
                           <svg className="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20">
@@ -1368,7 +1271,7 @@ export default function TaskModal({ isOpen, onClose, onSave, onDelete, task, ini
                     >
                       <div className="text-3xl mb-2">📋</div>
                       <div className="text-base font-bold text-slate-900 mb-1">Toutes les 3 semaines</div>
-                      <div className="text-xs text-slate-600">Le {startDate ? getDayName(new Date(startDate)) : getDayName(new Date())}</div>
+                      <div className="text-xs text-slate-600">Le {formData.start_date ? getDayName(new Date(formData.start_date)) : getDayName(new Date())}</div>
                       {recurrenceType === 'triweekly' && (
                         <div className="absolute top-2 right-2 w-6 h-6 rounded-full bg-[#005f82] flex items-center justify-center">
                           <svg className="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20">
@@ -1390,7 +1293,7 @@ export default function TaskModal({ isOpen, onClose, onSave, onDelete, task, ini
                     >
                       <div className="text-3xl mb-2">🎂</div>
                       <div className="text-base font-bold text-slate-900 mb-1">Chaque année</div>
-                      <div className="text-xs text-slate-600">Le {startDate ? formatFullDate(new Date(startDate)) : formatFullDate(new Date())}</div>
+                      <div className="text-xs text-slate-600">Le {formData.start_date ? formatFullDate(new Date(formData.start_date)) : formatFullDate(new Date())}</div>
                       {recurrenceType === 'yearly' && (
                         <div className="absolute top-2 right-2 w-6 h-6 rounded-full bg-[#005f82] flex items-center justify-center">
                           <svg className="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20">
@@ -1585,11 +1488,11 @@ export default function TaskModal({ isOpen, onClose, onSave, onDelete, task, ini
                         <p className="text-sm text-slate-700 leading-relaxed">
                           <span className="font-semibold text-[#005f82]">
                             {recurrenceType === 'daily' && '☀️ Tous les jours'}
-                            {recurrenceType === 'weekly' && `📆 Tous les ${startDate ? getDayName(new Date(startDate)) : getDayName(new Date())}`}
-                            {recurrenceType === 'monthly' && `🗓️ Le ${startDate ? getDayName(new Date(startDate)) : getDayName(new Date())} de chaque mois`}
-                            {recurrenceType === 'biweekly' && `📊 Toutes les 2 semaines le ${startDate ? getDayName(new Date(startDate)) : getDayName(new Date())}`}
-                            {recurrenceType === 'triweekly' && `📋 Toutes les 3 semaines le ${startDate ? getDayName(new Date(startDate)) : getDayName(new Date())}`}
-                            {recurrenceType === 'yearly' && `🎂 Chaque année le ${startDate ? formatFullDate(new Date(startDate)) : formatFullDate(new Date())}`}
+                            {recurrenceType === 'weekly' && `📆 Tous les ${formData.start_date ? getDayName(new Date(formData.start_date)) : getDayName(new Date())}`}
+                            {recurrenceType === 'monthly' && `🗓️ Le ${formData.start_date ? getDayName(new Date(formData.start_date)) : getDayName(new Date())} de chaque mois`}
+                            {recurrenceType === 'biweekly' && `📊 Toutes les 2 semaines le ${formData.start_date ? getDayName(new Date(formData.start_date)) : getDayName(new Date())}`}
+                            {recurrenceType === 'triweekly' && `📋 Toutes les 3 semaines le ${formData.start_date ? getDayName(new Date(formData.start_date)) : getDayName(new Date())}`}
+                            {recurrenceType === 'yearly' && `🎂 Chaque année le ${formData.start_date ? formatFullDate(new Date(formData.start_date)) : formatFullDate(new Date())}`}
                             {recurrenceType === 'custom' && `⚙️ Tous les ${customRecurrenceInterval} ${
                               customRecurrenceUnit === 'days' ? 'jour(s)' :
                               customRecurrenceUnit === 'weeks' ? 'semaine(s)' :

@@ -162,6 +162,15 @@ body {
   }
 }
 
+@keyframes gradient {
+  0%, 100% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+}
+
 .animate-slideIn {
   animation: slideIn 0.3s ease-out;
 }
@@ -194,6 +203,11 @@ body {
 
 .animate-bounce-slow {
   animation: bounce 2s infinite;
+}
+
+.animate-gradient {
+  background-size: 200% 200%;
+  animation: gradient 3s ease infinite;
 }
 
 /* Skeleton loading */
@@ -260,6 +274,146 @@ html {
 ::-moz-selection {
   background-color: #005f82;
   color: white;
+}
+
+/* Effet de brillance sur les boutons */
+@keyframes shine {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+.button-shine {
+  position: relative;
+  overflow: hidden;
+}
+
+.button-shine::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.3),
+    transparent
+  );
+  transition: transform 0.6s;
+}
+
+.button-shine:hover::after {
+  transform: translateX(200%);
+}
+
+/* Effet de particules pour les badges */
+@keyframes float {
+  0%, 100% {
+    transform: translateY(0px) scale(1);
+  }
+  50% {
+    transform: translateY(-5px) scale(1.05);
+  }
+}
+
+.badge-float {
+  animation: float 2s ease-in-out infinite;
+}
+
+/* Effet de vague pour les cartes */
+@keyframes ripple {
+  0% {
+    transform: scale(0);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(4);
+    opacity: 0;
+  }
+}
+
+/* Effet de glow */
+@keyframes glow {
+  0%, 100% {
+    box-shadow: 0 0 5px rgba(0, 95, 130, 0.5), 0 0 10px rgba(0, 95, 130, 0.3);
+  }
+  50% {
+    box-shadow: 0 0 10px rgba(0, 95, 130, 0.8), 0 0 20px rgba(0, 95, 130, 0.5), 0 0 30px rgba(0, 95, 130, 0.3);
+  }
+}
+
+.glow-effect {
+  animation: glow 2s ease-in-out infinite;
+}
+
+/* Transitions fluides pour tous les éléments interactifs */
+button, a, input, select, textarea {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Effet de zoom subtle sur les cartes */
+.card-zoom {
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.card-zoom:hover {
+  transform: scale(1.02);
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+}
+
+/* Effet de bordure animée */
+@keyframes border-dance {
+  0%, 100% {
+    border-color: rgba(0, 95, 130, 0.3);
+  }
+  50% {
+    border-color: rgba(0, 123, 168, 0.8);
+  }
+}
+
+.border-animate {
+  animation: border-dance 3s ease-in-out infinite;
+}
+
+/* Amélioration du scrollbar pour les dropdowns */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 6px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: rgba(241, 245, 249, 0.5);
+  border-radius: 10px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: linear-gradient(to bottom, #005f82, #007ba8);
+  border-radius: 10px;
+  transition: background 0.3s;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(to bottom, #007ba8, #009ed4);
+}
+
+/* Effet de pulsation douce pour les notifications */
+@keyframes pulse-soft {
+  0%, 100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.05);
+    opacity: 0.9;
+  }
+}
+
+.pulse-notification {
+  animation: pulse-soft 2s ease-in-out infinite;
 }
 
 /* Prose styles for Tiptap editor content */

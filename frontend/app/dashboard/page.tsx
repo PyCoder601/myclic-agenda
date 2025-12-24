@@ -505,46 +505,57 @@ export default function DashboardPage() {
 
 
   return (
-    <div className="min-h-screen bg-linear-to-br from-slate-50 via-blue-50 to-indigo-50">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/50 to-indigo-50/30">
       {/* Header */}
-      <header className="bg-white/90 backdrop-blur-xl border-b border-slate-200/50 shadow-sm sticky top-0 z-50 transition-all duration-300">
-        <div className="max-w-[1920px] mx-auto px-3 sm:px-6 py-1.5">
-          <div className="flex items-center justify-between gap-2 sm:gap-4">
+      <header className="bg-white/95 backdrop-blur-xl border-b border-slate-200/60 shadow-md sticky top-0 z-50 transition-all duration-300">
+        <div className="max-w-[1920px] mx-auto px-4 sm:px-6 py-2">
+          <div className="flex items-center justify-between gap-3 sm:gap-6">
             {/* Logo et Titre */}
-            <div className="flex items-center gap-2 group">
-              <div className="bg-linear-to-br from-[#005f82] to-[#007ba8] p-1.5 rounded-lg shadow-lg transform transition-all duration-300 group-hover:scale-110 group-hover:rotate-3">
-                <CalendarIcon className="w-4 h-4 text-white" />
+            <div className="flex items-center gap-3 group cursor-pointer">
+              <div className="relative">
+                <div className="absolute inset-0 bg-gradient-to-br from-[#005f82] to-[#007ba8] rounded-xl blur-md opacity-50 group-hover:opacity-75 transition-opacity duration-300"></div>
+                <div className="relative bg-gradient-to-br from-[#005f82] to-[#007ba8] p-2 rounded-xl shadow-lg transform transition-all duration-300 group-hover:scale-110 group-hover:rotate-6">
+                  <CalendarIcon className="w-5 h-5 text-white" />
+                </div>
               </div>
               <div className="hidden sm:block">
-                <h1 className="text-base font-bold bg-linear-to-r from-[#005f82] to-[#007ba8] bg-clip-text text-transparent">
+                <h1 className="text-lg font-extrabold bg-gradient-to-r from-[#005f82] via-[#007ba8] to-[#005f82] bg-clip-text text-transparent animate-gradient">
                   Mon Agenda
                 </h1>
+                <p className="text-[10px] text-slate-500 font-medium -mt-1">Organisez votre temps</p>
               </div>
             </div>
 
             {/* View Mode Switches - Dans le header avec liste calendriers intégrée */}
-            <div className="flex items-center gap-2 flex-1 justify-center">
+            <div className="flex items-center gap-3 flex-1 justify-center">
               {/* Main View Mode Selector (Personal / Group) avec dropdown intégré */}
               <div className="relative calendar-dropdown-container">
-                <div className="flex gap-1 bg-white/80 backdrop-blur-sm p-1 rounded-lg shadow-sm border border-slate-200">
+                <div className="flex gap-1.5 bg-linear-to-r from-white/90 to-white/80 backdrop-blur-sm p-1.5 rounded-xl shadow-md border border-slate-200/80 hover:border-[#005f82]/30 transition-all duration-300">
                   <button
                     onClick={() => {
                       setMainViewMode('personal');
                       setIsCalendarDropdownOpen(!isCalendarDropdownOpen);
                     }}
-                    className={`relative px-2 sm:px-3 py-1 sm:py-1.5 rounded-md font-semibold transition-all duration-300 text-xs sm:text-sm overflow-hidden ${
+                    className={`relative px-3 sm:px-4 py-2 rounded-lg font-bold transition-all duration-300 text-xs sm:text-sm overflow-hidden group ${
                       mainViewMode === 'personal'
-                        ? 'text-white shadow-lg'
-                        : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+                        ? 'text-white shadow-xl scale-105'
+                        : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50/80'
                     }`}
                   >
                     {mainViewMode === 'personal' && (
-                      <span className="absolute inset-0 bg-linear-to-r from-[#005f82] to-[#007ba8] animate-slideInFromLeft"></span>
+                      <>
+                        <span className="absolute inset-0 bg-gradient-to-r from-[#005f82] to-[#007ba8]"></span>
+                        <span className="absolute inset-0 bg-gradient-to-r from-[#007ba8] to-[#005f82] opacity-0 group-hover:opacity-100 transition-opacity duration-300"></span>
+                      </>
                     )}
-                    <span className="relative z-10 flex items-center gap-1">
-                      Mes agendas
-                      <span className="text-[10px] bg-white/20 px-1 py-0.5 rounded-full">
-                        {calendarsToUse.filter(c => c.display).length}
+                    <span className="relative z-10 flex items-center gap-2">
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                      </svg>
+                      <span className="hidden sm:inline">Mes agendas</span>
+                      <span className="sm:hidden">Mes</span>
+                      <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${mainViewMode === 'personal' ? 'bg-white/30' : 'bg-[#005f82]/10 text-[#005f82]'}`}>
+                        {calendarsToUse.filter(c => c.display && c.share_displayname === "" && !c.description?.toLowerCase().includes("resource")).length}
                       </span>
                     </span>
                   </button>
@@ -553,19 +564,26 @@ export default function DashboardPage() {
                       setMainViewMode('group');
                       setIsCalendarDropdownOpen(!isCalendarDropdownOpen);
                     }}
-                    className={`relative px-2 sm:px-3 py-1 sm:py-1.5 rounded-md font-semibold transition-all duration-300 text-xs sm:text-sm overflow-hidden ${
+                    className={`relative px-3 sm:px-4 py-2 rounded-lg font-bold transition-all duration-300 text-xs sm:text-sm overflow-hidden group ${
                       mainViewMode === 'group'
-                        ? 'text-white shadow-lg'
-                        : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+                        ? 'text-white shadow-xl scale-105'
+                        : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50/80'
                     }`}
                   >
                     {mainViewMode === 'group' && (
-                      <span className="absolute inset-0 bg-linear-to-r from-[#005f82] to-[#007ba8] animate-slideInFromLeft"></span>
+                      <>
+                        <span className="absolute inset-0 bg-linear-to-r from-[#005f82] to-[#007ba8]"></span>
+                        <span className="absolute inset-0 bg-linear-to-r from-[#007ba8] to-[#005f82] opacity-0 group-hover:opacity-100 transition-opacity duration-300"></span>
+                      </>
                     )}
-                    <span className="relative z-10 flex items-center gap-1">
-                      Agenda de groupe
-                      <span className="text-[10px] bg-white/20 px-1 py-0.5 rounded-full">
-                        {calendarsToUse.filter(c => c.display && !c.description?.toLowerCase().includes("resource")).length}
+                    <span className="relative z-10 flex items-center gap-2">
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                      </svg>
+                      <span className="hidden sm:inline">Agenda de groupe</span>
+                      <span className="sm:hidden">Grp</span>
+                      <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${mainViewMode === 'group' ? 'bg-white/30' : 'bg-[#005f82]/10 text-[#005f82]'}`}>
+                        {calendarsToUse.filter(c => c.display).length}
                       </span>
                     </span>
                   </button>
@@ -573,32 +591,35 @@ export default function DashboardPage() {
 
                 {/* Dropdown Menu - Collé au bouton */}
                 {isCalendarDropdownOpen && calendarsToUse.length > 0 && (
-                  <div className="absolute top-full left-0 mt-0 w-72 bg-white rounded-b-xl shadow-2xl border border-slate-200 border-t-0 z-50 max-h-96 overflow-y-auto animate-slideInDown">
-                    <div className="p-3">
+                  <div className="absolute top-full left-0 mt-0 w-80 bg-linear-to-br from-white via-white to-slate-50/50 rounded-b-2xl shadow-2xl border-2 border-slate-200/80 border-t-0 z-50 max-h-96 overflow-y-auto animate-slideInDown backdrop-blur-sm">
+                    <div className="p-4">
                       {/* Mes calendriers */}
                       {mainViewMode === 'personal' && (
-                        <div className="mb-3">
-                          <div className="text-xs font-semibold text-[#005f82] mb-2 uppercase tracking-wider">
+                        <div className="mb-4">
+                          <div className="flex items-center gap-2 text-xs font-bold text-[#005f82] mb-3 uppercase tracking-wider">
+                            <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                              <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 3c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm0 14.2c-2.5 0-4.71-1.28-6-3.22.03-1.99 4-3.08 6-3.08 1.99 0 5.97 1.09 6 3.08-1.29 1.94-3.5 3.22-6 3.22z"/>
+                            </svg>
                             Mes calendriers
                           </div>
-                          <div className="space-y-1">
+                          <div className="space-y-1.5">
                             {ownCalendars.map((calendar) => (
                               <button
                                 key={calendar.id}
                                 onClick={() => dispatch(toggleCalendarEnabled(calendar.id))}
-                                className="group w-full flex items-center gap-2 p-2 hover:bg-linear-to-r hover:from-blue-50 hover:to-indigo-50 rounded-lg transition-all duration-200"
+                                className="group w-full flex items-center gap-3 p-3 hover:bg-linear-to-r hover:from-blue-50/80 hover:to-indigo-50/80 rounded-xl transition-all duration-200 hover:shadow-md hover:scale-[1.02] border border-transparent hover:border-blue-200/50"
                               >
                                 <input
                                   type="checkbox"
                                   checked={calendar.display}
                                   readOnly
-                                  className="h-4 w-4 text-[#005f82] focus:ring-[#005f82] border-gray-300 rounded pointer-events-none"
+                                  className="h-4 w-4 text-[#005f82] focus:ring-[#005f82] border-gray-300 rounded pointer-events-none transition-transform duration-200 group-hover:scale-110"
                                 />
                                 <div
-                                  className="w-3 h-3 rounded-full shrink-0 shadow-md ring-1 ring-white"
+                                  className="w-4 h-4 rounded-full shrink-0 shadow-lg ring-2 ring-white group-hover:ring-[#005f82]/20 transition-all duration-200 group-hover:scale-110"
                                   style={{ backgroundColor: calendar.calendarcolor }}
                                 />
-                                <span className={`text-xs font-medium truncate ${calendar.display ? 'text-slate-800' : 'text-slate-400'}`}>
+                                <span className={`text-sm font-semibold truncate transition-colors duration-200 ${calendar.display ? 'text-slate-800 group-hover:text-[#005f82]' : 'text-slate-400 group-hover:text-slate-600'}`}>
                                   {calendar.defined_name || calendar.share_href || calendar.displayname}
                                 </span>
                               </button>
@@ -609,28 +630,31 @@ export default function DashboardPage() {
 
                       {/* Calendriers partagés avec moi */}
                       {mainViewMode === 'personal' && sharedUserCalendars.length > 0 && (
-                        <div className="mb-3 border-t border-slate-200 pt-3">
-                          <div className="text-xs font-semibold text-blue-600 mb-2 uppercase tracking-wider">
+                        <div className="mb-4 border-t-2 border-slate-200/60 pt-4">
+                          <div className="flex items-center gap-2 text-xs font-bold text-blue-600 mb-3 uppercase tracking-wider">
+                            <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                              <path d="M18 16.08c-.76 0-1.44.3-1.96.77L8.91 12.7c.05-.23.09-.46.09-.7s-.04-.47-.09-.7l7.05-4.11c.54.5 1.25.81 2.04.81 1.66 0 3-1.34 3-3s-1.34-3-3-3-3 1.34-3 3c0 .24.04.47.09.7L8.04 9.81C7.5 9.31 6.79 9 6 9c-1.66 0-3 1.34-3 3s1.34 3 3 3c.79 0 1.5-.31 2.04-.81l7.12 4.16c-.05.21-.08.43-.08.65 0 1.61 1.31 2.92 2.92 2.92 1.61 0 2.92-1.31 2.92-2.92s-1.31-2.92-2.92-2.92z"/>
+                            </svg>
                             Partagés avec moi
                           </div>
-                          <div className="space-y-1">
+                          <div className="space-y-1.5">
                             {sharedUserCalendars.map((calendar) => (
                               <button
                                 key={calendar.id}
                                 onClick={() => dispatch(toggleCalendarEnabled(calendar.id))}
-                                className="group w-full flex items-center gap-2 p-2 hover:bg-linear-to-r hover:from-blue-50 hover:to-indigo-50 rounded-lg transition-all duration-200"
+                                className="group w-full flex items-center gap-3 p-3 hover:bg-gradient-to-r hover:from-blue-50/80 hover:to-indigo-50/80 rounded-xl transition-all duration-200 hover:shadow-md hover:scale-[1.02] border border-transparent hover:border-blue-200/50"
                               >
                                 <input
                                   type="checkbox"
                                   checked={calendar.display}
                                   readOnly
-                                  className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded pointer-events-none"
+                                  className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded pointer-events-none transition-transform duration-200 group-hover:scale-110"
                                 />
                                 <div
-                                  className="w-3 h-3 rounded-full shrink-0 shadow-md ring-1 ring-white"
+                                  className="w-4 h-4 rounded-full shrink-0 shadow-lg ring-2 ring-white group-hover:ring-blue-400/30 transition-all duration-200 group-hover:scale-110"
                                   style={{ backgroundColor: calendar.calendarcolor }}
                                 />
-                                <span className={`text-xs font-medium truncate ${calendar.display ? 'text-slate-800' : 'text-slate-400'}`}>
+                                <span className={`text-sm font-semibold truncate transition-colors duration-200 ${calendar.display ? 'text-slate-800 group-hover:text-blue-600' : 'text-slate-400 group-hover:text-slate-600'}`}>
                                   {calendar.defined_name || calendar.share_href || calendar.displayname}
                                 </span>
                               </button>
@@ -641,28 +665,31 @@ export default function DashboardPage() {
 
                       {/* Ressources partagées */}
                       {mainViewMode === 'personal' && sharedResourceCalendars.length > 0 && (
-                        <div className="border-t border-slate-200 pt-3">
-                          <div className="text-xs font-semibold text-purple-600 mb-2 uppercase tracking-wider">
+                        <div className="border-t-2 border-slate-200/60 pt-4">
+                          <div className="flex items-center gap-2 text-xs font-bold text-purple-600 mb-3 uppercase tracking-wider">
+                            <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                              <path d="M20 6h-4V4c0-1.11-.89-2-2-2h-4c-1.11 0-2 .89-2 2v2H4c-1.11 0-1.99.89-1.99 2L2 19c0 1.11.89 2 2 2h16c1.11 0 2-.89 2-2V8c0-1.11-.89-2-2-2zm-6 0h-4V4h4v2z"/>
+                            </svg>
                             Ressources
                           </div>
-                          <div className="space-y-1">
+                          <div className="space-y-1.5">
                             {sharedResourceCalendars.map((calendar) => (
                               <button
                                 key={calendar.id}
                                 onClick={() => dispatch(toggleCalendarEnabled(calendar.id))}
-                                className="group w-full flex items-center gap-2 p-2 hover:bg-linear-to-r hover:from-purple-50 hover:to-pink-50 rounded-lg transition-all duration-200"
+                                className="group w-full flex items-center gap-3 p-3 hover:bg-gradient-to-r hover:from-purple-50/80 hover:to-pink-50/80 rounded-xl transition-all duration-200 hover:shadow-md hover:scale-[1.02] border border-transparent hover:border-purple-200/50"
                               >
                                 <input
                                   type="checkbox"
                                   checked={calendar.display}
                                   readOnly
-                                  className="h-4 w-4 text-purple-600 focus:ring-purple-500 border-gray-300 rounded pointer-events-none"
+                                  className="h-4 w-4 text-purple-600 focus:ring-purple-500 border-gray-300 rounded pointer-events-none transition-transform duration-200 group-hover:scale-110"
                                 />
                                 <div
-                                  className="w-3 h-3 rounded-full shrink-0 shadow-md ring-1 ring-white"
+                                  className="w-4 h-4 rounded-full shrink-0 shadow-lg ring-2 ring-white group-hover:ring-purple-400/30 transition-all duration-200 group-hover:scale-110"
                                   style={{ backgroundColor: calendar.calendarcolor }}
                                 />
-                                <span className={`text-xs font-medium truncate ${calendar.display ? 'text-slate-800' : 'text-slate-400'}`}>
+                                <span className={`text-sm font-semibold truncate transition-colors duration-200 ${calendar.display ? 'text-slate-800 group-hover:text-purple-600' : 'text-slate-400 group-hover:text-slate-600'}`}>
                                   {calendar.displayname}
                                 </span>
                               </button>
@@ -674,27 +701,30 @@ export default function DashboardPage() {
                       {/* Tous les calendriers en mode groupe */}
                       {mainViewMode === 'group' && (
                         <div>
-                          <div className="text-xs font-semibold text-[#005f82] mb-2 uppercase tracking-wider">
+                          <div className="flex items-center gap-2 text-xs font-bold text-[#005f82] mb-3 uppercase tracking-wider">
+                            <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                              <path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/>
+                            </svg>
                             Tous les calendriers
                           </div>
-                          <div className="space-y-1">
+                          <div className="space-y-1.5">
                             {calendarsToUse.filter(cal => !cal.description?.toLowerCase().includes("resource")).map((calendar) => (
                               <button
                                 key={calendar.id}
                                 onClick={() => dispatch(toggleCalendarEnabled(calendar.id))}
-                                className="group w-full flex items-center gap-2 p-2 hover:bg-linear-to-r hover:from-blue-50 hover:to-indigo-50 rounded-lg transition-all duration-200"
+                                className="group w-full flex items-center gap-3 p-3 hover:bg-gradient-to-r hover:from-blue-50/80 hover:to-indigo-50/80 rounded-xl transition-all duration-200 hover:shadow-md hover:scale-[1.02] border border-transparent hover:border-blue-200/50"
                               >
                                 <input
                                   type="checkbox"
                                   checked={calendar.display}
                                   readOnly
-                                  className="h-4 w-4 text-[#005f82] focus:ring-[#005f82] border-gray-300 rounded pointer-events-none"
+                                  className="h-4 w-4 text-[#005f82] focus:ring-[#005f82] border-gray-300 rounded pointer-events-none transition-transform duration-200 group-hover:scale-110"
                                 />
                                 <div
-                                  className="w-3 h-3 rounded-full shrink-0 shadow-md ring-1 ring-white"
+                                  className="w-4 h-4 rounded-full shrink-0 shadow-lg ring-2 ring-white group-hover:ring-[#005f82]/20 transition-all duration-200 group-hover:scale-110"
                                   style={{ backgroundColor: calendar.calendarcolor }}
                                 />
-                                <span className={`text-xs font-medium truncate ${calendar.display ? 'text-slate-800' : 'text-slate-400'}`}>
+                                <span className={`text-sm font-semibold truncate transition-colors duration-200 ${calendar.display ? 'text-slate-800 group-hover:text-[#005f82]' : 'text-slate-400 group-hover:text-slate-600'}`}>
                                   {calendar.defined_name || calendar.share_href || calendar.displayname}
                                 </span>
                               </button>
@@ -708,69 +738,93 @@ export default function DashboardPage() {
               </div>
 
               {/* Spacer entre les deux groupes de switches */}
-              <div className="hidden sm:block w-px h-8 bg-slate-300/50"></div>
+              <div className="hidden sm:block w-px h-10 bg-gradient-to-b from-transparent via-slate-300 to-transparent"></div>
 
               {/* Sub View Mode Selector (Day / Week / Month) */}
-              <div className="hidden sm:flex gap-1 bg-white/80 backdrop-blur-sm p-1 rounded-lg shadow-sm border border-slate-200">
+              <div className="hidden sm:flex gap-1.5 bg-gradient-to-r from-white/90 to-white/80 backdrop-blur-sm p-1.5 rounded-xl shadow-md border border-slate-200/80 hover:border-[#005f82]/30 transition-all duration-300">
                 <button
                   onClick={() => mainViewMode === 'personal' ? setViewMode('day') : setGroupViewMode('day')}
-                  className={`relative px-2 sm:px-3 py-1 sm:py-1.5 rounded-md font-semibold transition-all duration-300 text-xs sm:text-sm overflow-hidden ${
+                  className={`relative px-4 py-2 rounded-lg font-bold transition-all duration-300 text-xs sm:text-sm overflow-hidden group ${
                     (mainViewMode === 'personal' ? viewMode : groupViewMode) === 'day'
-                      ? 'text-white shadow-lg'
-                      : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+                      ? 'text-white shadow-xl scale-105'
+                      : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50/80'
                   }`}
                 >
                   {(mainViewMode === 'personal' ? viewMode : groupViewMode) === 'day' && (
-                    <span className="absolute inset-0 bg-linear-to-r from-[#005f82] to-[#007ba8] animate-slideInFromLeft"></span>
+                    <>
+                      <span className="absolute inset-0 bg-gradient-to-r from-[#005f82] to-[#007ba8]"></span>
+                      <span className="absolute inset-0 bg-gradient-to-r from-[#007ba8] to-[#005f82] opacity-0 group-hover:opacity-100 transition-opacity duration-300"></span>
+                    </>
                   )}
-                  <span className="relative z-10">Jour</span>
+                  <span className="relative z-10 flex items-center gap-1.5">
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                    </svg>
+                    Jour
+                  </span>
                 </button>
                 <button
                   onClick={() => mainViewMode === 'personal' ? setViewMode('week') : setGroupViewMode('week')}
-                  className={`relative px-2 sm:px-3 py-1 sm:py-1.5 rounded-md font-semibold transition-all duration-300 text-xs sm:text-sm overflow-hidden ${
+                  className={`relative px-4 py-2 rounded-lg font-bold transition-all duration-300 text-xs sm:text-sm overflow-hidden group ${
                     (mainViewMode === 'personal' ? viewMode : groupViewMode) === 'week'
-                      ? 'text-white shadow-lg'
-                      : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+                      ? 'text-white shadow-xl scale-105'
+                      : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50/80'
                   }`}
                 >
                   {(mainViewMode === 'personal' ? viewMode : groupViewMode) === 'week' && (
-                    <span className="absolute inset-0 bg-gradient-to-r from-[#005f82] to-[#007ba8] animate-slideInFromLeft"></span>
+                    <>
+                      <span className="absolute inset-0 bg-gradient-to-r from-[#005f82] to-[#007ba8]"></span>
+                      <span className="absolute inset-0 bg-gradient-to-r from-[#007ba8] to-[#005f82] opacity-0 group-hover:opacity-100 transition-opacity duration-300"></span>
+                    </>
                   )}
-                  <span className="relative z-10">Semaine</span>
+                  <span className="relative z-10 flex items-center gap-1.5">
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                    </svg>
+                    Semaine
+                  </span>
                 </button>
                 <button
                   onClick={() => mainViewMode === 'personal' ? setViewMode('month') : setGroupViewMode('month')}
-                  className={`relative px-2 sm:px-3 py-1 sm:py-1.5 rounded-md font-semibold transition-all duration-300 text-xs sm:text-sm overflow-hidden ${
+                  className={`relative px-4 py-2 rounded-lg font-bold transition-all duration-300 text-xs sm:text-sm overflow-hidden group ${
                     (mainViewMode === 'personal' ? viewMode : groupViewMode) === 'month'
-                      ? 'text-white shadow-lg'
-                      : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+                      ? 'text-white shadow-xl scale-105'
+                      : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50/80'
                   }`}
                 >
                   {(mainViewMode === 'personal' ? viewMode : groupViewMode) === 'month' && (
-                    <span className="absolute inset-0 bg-gradient-to-r from-[#005f82] to-[#007ba8] animate-slideInFromLeft"></span>
+                    <>
+                      <span className="absolute inset-0 bg-gradient-to-r from-[#005f82] to-[#007ba8]"></span>
+                      <span className="absolute inset-0 bg-gradient-to-r from-[#007ba8] to-[#005f82] opacity-0 group-hover:opacity-100 transition-opacity duration-300"></span>
+                    </>
                   )}
-                  <span className="relative z-10">Mois</span>
+                  <span className="relative z-10 flex items-center gap-1.5">
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M4 5a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM14 5a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1h-4a1 1 0 01-1-1V5zM4 15a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1H5a1 1 0 01-1-1v-4zM14 15a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1h-4a1 1 0 01-1-1v-4z" />
+                    </svg>
+                    Mois
+                  </span>
                 </button>
               </div>
             </div>
 
             {/* Actions */}
-            <div className="flex items-center gap-1 sm:gap-2">
-              <div className="flex items-center gap-1.5 bg-white px-2 py-1.5 rounded-lg shadow-sm border border-slate-200 transition-all duration-300">
-                <svg className="w-3.5 h-3.5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+            <div className="flex items-center gap-2 sm:gap-3">
+              <div className="flex items-center gap-2 bg-gradient-to-r from-white to-purple-50/30 px-3 py-2 rounded-xl shadow-md border border-slate-200/80 hover:border-purple-300/50 transition-all duration-300 hover:shadow-lg">
+                <svg className="w-4 h-4 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
                 </svg>
-                <span className="hidden sm:inline text-xs font-medium text-slate-700">Rappels</span>
+                <span className="hidden sm:inline text-xs font-bold text-slate-700">Rappels</span>
                 <button
                   onClick={() => setShowRappels(!showRappels)}
-                  className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors duration-300 focus:outline-none ${
-                    showRappels ? 'bg-linear-to-r from-purple-500 to-purple-600' : 'bg-slate-300'
+                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-purple-400 focus:ring-offset-2 ${
+                    showRappels ? 'bg-gradient-to-r from-purple-500 to-purple-600 shadow-md' : 'bg-slate-300'
                   }`}
                   title={showRappels ? 'Masquer les rappels' : 'Afficher les rappels'}
                 >
                   <span
-                    className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white shadow-lg transition-transform duration-300 ${
-                      showRappels ? 'translate-x-5' : 'translate-x-1'
+                    className={`inline-block h-4 w-4 transform rounded-full bg-white shadow-lg transition-transform duration-300 ${
+                      showRappels ? 'translate-x-6' : 'translate-x-1'
                     }`}
                   />
                 </button>
@@ -782,66 +836,67 @@ export default function DashboardPage() {
                   setModalInitialHour(undefined);
                   setIsModalOpen(true);
                 }}
-                className="group flex items-center gap-1 bg-linear-to-r from-[#005f82] to-[#007ba8] hover:from-[#007ba8] hover:to-[#005f82] text-white px-2 sm:px-3 py-1.5 rounded-lg transition-all duration-300 font-medium text-xs shadow-lg hover:shadow-xl transform hover:scale-105 active:scale-95"
+                className="group relative flex items-center gap-2 overflow-hidden bg-gradient-to-r from-[#005f82] to-[#007ba8] text-white px-4 sm:px-5 py-2.5 rounded-xl transition-all duration-300 font-bold text-xs sm:text-sm shadow-xl hover:shadow-2xl transform hover:scale-105 active:scale-95 border border-[#004d6b]"
               >
-                <Plus className="w-3.5 h-3.5 transition-transform duration-300 group-hover:rotate-90" />
-                <span className="hidden sm:inline">Nouveau</span>
+                <span className="absolute inset-0 bg-gradient-to-r from-[#007ba8] to-[#005f82] opacity-0 group-hover:opacity-100 transition-opacity duration-300"></span>
+                <Plus className="relative z-10 w-4 h-4 transition-transform duration-300 group-hover:rotate-90" />
+                <span className="relative z-10 hidden sm:inline">Nouveau</span>
               </button>
               <button
                 onClick={handleLogout}
-                className="group flex items-center bg-white hover:bg-red-50 text-slate-700 hover:text-red-600 p-1.5 rounded-lg transition-all duration-300 border border-slate-200 hover:border-red-300"
+                className="group flex items-center justify-center bg-white hover:bg-red-50 text-slate-700 hover:text-red-600 p-2.5 rounded-xl transition-all duration-300 border-2 border-slate-200 hover:border-red-300 shadow-md hover:shadow-lg transform hover:scale-105"
                 title="Déconnexion"
               >
-                <LogOut className="w-3.5 h-3.5 transition-transform duration-300 group-hover:translate-x-1" />
+                <LogOut className="w-4 h-4 transition-transform duration-300 group-hover:translate-x-1 group-hover:scale-110" />
               </button>
             </div>
           </div>
         </div>
       </header>
 
-      <div className="max-w-[1920px] mx-auto px-3 sm:px-6 py-1">
-        <div className="flex gap-2 h-[calc(100vh-60px)]">
+      <div className="max-w-[1920px] mx-auto px-4 sm:px-6 py-3">
+        <div className="flex gap-4 h-[calc(100vh-88px)]">
           {/* Main Calendar */}
           <div className="flex-1 flex flex-col min-w-0">
             {/* Mobile View Mode Selector (Day/Week/Month) - Visible seulement sur mobile */}
-            <div className="sm:hidden mb-1 flex justify-center">
-              <div className="flex gap-1 bg-white/80 backdrop-blur-sm p-1 rounded-lg shadow-sm border border-slate-200">
+            <div className="sm:hidden mb-3 flex justify-center">
+              <div className="flex gap-1.5 bg-gradient-to-r from-white/90 to-white/80 backdrop-blur-sm p-1.5 rounded-xl shadow-md border border-slate-200/80">
                 <button
                   onClick={() => mainViewMode === 'personal' ? setViewMode('day') : setGroupViewMode('day')}
-                  className={`relative px-3 py-1.5 rounded-md font-semibold transition-all duration-300 text-xs overflow-hidden ${
+                  className={`relative px-4 py-2 rounded-lg font-bold transition-all duration-300 text-xs overflow-hidden ${
                     (mainViewMode === 'personal' ? viewMode : groupViewMode) === 'day'
                       ? 'text-white shadow-lg'
                       : 'text-slate-600'
                   }`}
                 >
                   {(mainViewMode === 'personal' ? viewMode : groupViewMode) === 'day' && (
-                    <span className="absolute inset-0 bg-linear-to-r from-[#005f82] to-[#007ba8]"></span>
+                    <span className="absolute inset-0 bg-gradient-to-r from-[#005f82] to-[#007ba8]"></span>
                   )}
                   <span className="relative z-10">Jour</span>
                 </button>
                 <button
                   onClick={() => mainViewMode === 'personal' ? setViewMode('week') : setGroupViewMode('week')}
-                  className={`relative px-3 py-1.5 rounded-md font-semibold transition-all duration-300 text-xs overflow-hidden ${
+                  className={`relative px-4 py-2 rounded-lg font-bold transition-all duration-300 text-xs overflow-hidden ${
                     (mainViewMode === 'personal' ? viewMode : groupViewMode) === 'week'
                       ? 'text-white shadow-lg'
                       : 'text-slate-600'
                   }`}
                 >
                   {(mainViewMode === 'personal' ? viewMode : groupViewMode) === 'week' && (
-                    <span className="absolute inset-0 bg-linear-to-r from-[#005f82] to-[#007ba8]"></span>
+                    <span className="absolute inset-0 bg-gradient-to-r from-[#005f82] to-[#007ba8]"></span>
                   )}
                   <span className="relative z-10">Semaine</span>
                 </button>
                 <button
                   onClick={() => mainViewMode === 'personal' ? setViewMode('month') : setGroupViewMode('month')}
-                  className={`relative px-3 py-1.5 rounded-md font-semibold transition-all duration-300 text-xs overflow-hidden ${
+                  className={`relative px-4 py-2 rounded-lg font-bold transition-all duration-300 text-xs overflow-hidden ${
                     (mainViewMode === 'personal' ? viewMode : groupViewMode) === 'month'
                       ? 'text-white shadow-lg'
                       : 'text-slate-600'
                   }`}
                 >
                   {(mainViewMode === 'personal' ? viewMode : groupViewMode) === 'month' && (
-                    <span className="absolute inset-0 bg-linear-to-r from-[#005f82] to-[#007ba8]"></span>
+                    <span className="absolute inset-0 bg-gradient-to-r from-[#005f82] to-[#007ba8]"></span>
                   )}
                   <span className="relative z-10">Mois</span>
                 </button>
@@ -849,7 +904,7 @@ export default function DashboardPage() {
             </div>
 
             {/* Calendar */}
-            <div className="flex-1 min-h-0 relative">
+            <div className="flex-1 min-h-0 relative bg-white/60 backdrop-blur-sm rounded-2xl shadow-xl border border-slate-200/50 overflow-hidden p-2">
 
               <Calendar
                 tasks={filteredTasks}

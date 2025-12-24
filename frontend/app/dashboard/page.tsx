@@ -530,7 +530,7 @@ export default function DashboardPage() {
             <div className="flex items-center gap-3 flex-1 justify-center">
               {/* Main View Mode Selector (Personal / Group) avec dropdown intégré */}
               <div className="relative calendar-dropdown-container">
-                <div className="flex gap-1.5 bg-linear-to-r from-white/90 to-white/80 backdrop-blur-sm p-1.5 rounded-xl shadow-md border border-slate-200/80 hover:border-[#005f82]/30 transition-all duration-300">
+                <div className="flex gap-1.5 bg-gradient-to-r from-white/90 to-white/80 backdrop-blur-sm p-1.5 rounded-xl shadow-md border border-slate-200/80 hover:border-[#005f82]/30 transition-all duration-300">
                   <button
                     onClick={() => {
                       setMainViewMode('personal');
@@ -555,7 +555,7 @@ export default function DashboardPage() {
                       <span className="hidden sm:inline">Mes agendas</span>
                       <span className="sm:hidden">Mes</span>
                       <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${mainViewMode === 'personal' ? 'bg-white/30' : 'bg-[#005f82]/10 text-[#005f82]'}`}>
-                        {calendarsToUse.filter(c => c.display && c.share_displayname === "" && !c.description?.toLowerCase().includes("resource")).length}
+                        {calendarsToUse.filter(c => c.display).length}
                       </span>
                     </span>
                   </button>
@@ -583,7 +583,7 @@ export default function DashboardPage() {
                       <span className="hidden sm:inline">Agenda de groupe</span>
                       <span className="sm:hidden">Grp</span>
                       <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${mainViewMode === 'group' ? 'bg-white/30' : 'bg-[#005f82]/10 text-[#005f82]'}`}>
-                        {calendarsToUse.filter(c => c.display).length}
+                        {calendarsToUse.filter(c => c.display && !c.description?.toLowerCase().includes("resource")).length}
                       </span>
                     </span>
                   </button>

@@ -531,12 +531,11 @@ export default function TaskModal({ isOpen, onClose, onSave, onDelete, task, ini
       <div className="bg-white max-w-4xl w-full max-h-[90vh] overflow-hidden shadow-xl border border-slate-200/80 flex flex-col">
         {/* Header compact */}
         <div className="flex items-center justify-between px-4 py-2 border-b border-slate-200 bg-linear-to-r from-slate-50 to-white shrink-0">
-          {/*<h2 className="text-xl font-bold text-[#005f82] flex items-center gap-2">*/}
-          {/*  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">*/}
-          {/*    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />*/}
-          {/*  </svg>*/}
-          {/*  {task && 'Nouvel événement'}*/}
-          {/*</h2>*/}
+          <h2 className="text-xl font-bold text-[#005f82] flex items-center gap-2">
+            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+            </svg>
+          </h2>
           <button
             onClick={onClose}
             className="p-1.5 hover:bg-slate-100 transition-colors text-slate-500 hover:text-slate-700"
@@ -775,7 +774,7 @@ export default function TaskModal({ isOpen, onClose, onSave, onDelete, task, ini
                       value={resourceSearchQuery}
                       onChange={(e) => setResourceSearchQuery(e.target.value)}
                       onFocus={() => setShowResourceDropdown(true)}
-                      className="flex-1 min-w-[80px] outline-none bg-transparent text-sm"
+                      className="flex-1 min-w-20 outline-none bg-transparent text-sm"
                     />
                   </div>
 

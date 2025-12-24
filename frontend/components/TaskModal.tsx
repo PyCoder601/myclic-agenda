@@ -530,28 +530,28 @@ export default function TaskModal({ isOpen, onClose, onSave, onDelete, task, ini
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-2 sm:p-3 animate-fadeIn">
       <div className="bg-white max-w-4xl w-full max-h-[90vh] overflow-hidden shadow-xl border border-slate-200/80 flex flex-col rounded-xl">
         {/* Header compact */}
-        <div className="flex items-center justify-between px-4 py-2 border-b border-slate-200 bg-linear-to-r from-slate-50 to-white shrink-0">
-          <h2 className="text-xl font-bold text-[#005f82] flex items-center gap-2">
-            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <div className="flex items-center justify-between px-5 py-2.5 border-b border-slate-200 bg-linear-to-r from-slate-50 to-white shrink-0">
+          <h2 className="text-2xl font-bold text-[#005f82] flex items-center gap-2.5">
+            <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
             </svg>
           </h2>
           <button
             onClick={onClose}
-            className="p-1.5 hover:bg-slate-100 transition-colors text-slate-500 hover:text-slate-700"
+            className="p-2 hover:bg-slate-100 transition-colors text-slate-500 hover:text-slate-700"
             type="button"
           >
-            <X className="w-5 h-5" />
+            <X className="w-6 h-6" />
           </button>
         </div>
 
         {/* Onglets */}
         <div className="border-b border-slate-200 bg-white shrink-0">
-          <div className="flex px-4">
+          <div className="flex px-5">
             <button
               type="button"
               onClick={() => setActiveTab('details')}
-              className={`px-3 py-2 font-semibold text-sm border-b-2 transition-colors ${
+              className={`px-4 py-2.5 font-semibold text-base border-b-2 transition-colors ${
                 activeTab === 'details'
                   ? 'border-[#005f82] text-[#005f82]'
                   : 'border-transparent text-slate-500 hover:text-slate-700'
@@ -562,7 +562,7 @@ export default function TaskModal({ isOpen, onClose, onSave, onDelete, task, ini
             <button
               type="button"
               onClick={() => setActiveTab('recurrence')}
-              className={`px-3 py-2 font-semibold text-sm border-b-2 transition-colors ${
+              className={`px-4 py-2.5 font-semibold text-base border-b-2 transition-colors ${
                 activeTab === 'recurrence'
                   ? 'border-[#005f82] text-[#005f82]'
                   : 'border-transparent text-slate-500 hover:text-slate-700'
@@ -575,14 +575,14 @@ export default function TaskModal({ isOpen, onClose, onSave, onDelete, task, ini
 
         {/* Formulaire avec scroll */}
         <form onSubmit={handleSubmit} className="overflow-y-auto flex-1">
-          <div className="p-4 space-y-3.5">
+          <div className="p-5 space-y-4">
             {/* Contenu de l'onglet Détails */}
             {activeTab === 'details' && (
               <>
             {/* Titre et Lieu côte à côte */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-3.5">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-semibold text-slate-700 mb-1.5">
+                <label className="block text-base font-semibold text-slate-700 mb-2">
                   Titre <span className="text-red-500">*</span>
                 </label>
                 <input
@@ -590,28 +590,28 @@ export default function TaskModal({ isOpen, onClose, onSave, onDelete, task, ini
                   required
                   value={formData.title}
                   onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                  className="w-full px-3 py-2 text-base bg-white border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#005f82] focus:border-[#005f82] text-slate-900 transition-all hover:border-slate-400"
+                  className="w-full px-4 py-2.5 text-lg bg-white border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#005f82] focus:border-[#005f82] text-slate-900 transition-all hover:border-slate-400"
                   placeholder="Ex: Réunion d'équipe"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-semibold text-slate-700 mb-1.5">
+                <label className="block text-base font-semibold text-slate-700 mb-2">
                   Lieu
                 </label>
                 <input
                   type="text"
                   value={formData.location}
                   onChange={(e) => setFormData({ ...formData, location: e.target.value })}
-                  className="w-full px-3 py-2 text-base bg-white border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#005f82] focus:border-[#005f82] text-slate-900 transition-all hover:border-slate-400"
+                  className="w-full px-4 py-2.5 text-lg bg-white border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#005f82] focus:border-[#005f82] text-slate-900 transition-all hover:border-slate-400"
                   placeholder="Indiquez un lieu ou une adresse"
                 />
                   {application?.entreprise && (
-                      <div className="mt-1.5 text-right">
+                      <div className="mt-2 text-right">
                           <button
                               type="button"
                               onClick={() => setFormData({ ...formData, location: application.adresse || '' })}
-                              className="text-xs font-medium text-slate-500 hover:text-[#005f82] transition-colors"
+                              className="text-sm font-medium text-slate-500 hover:text-[#005f82] transition-colors"
                           >
                               <span className="font-semibold">Chez {application.entreprise}</span>
                           </button>
@@ -621,16 +621,16 @@ export default function TaskModal({ isOpen, onClose, onSave, onDelete, task, ini
             </div>
 
             {/* Calendrier(s) et Ressource(s) côte à côte */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-3.5">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
               {/* Calendrier(s) */}
               <div className="calendar-dropdown-container">
-                <label className="block text-sm font-semibold text-slate-700 mb-1.5">
+                <label className="block text-base font-semibold text-slate-700 mb-2">
                   Calendrier(s) <span className="text-red-500">*</span>
                 </label>
 
                 {/* Champ de recherche avec badges intégrés */}
                 <div className="relative">
-                  <div className="w-full min-h-[38px] px-2 py-1 text-base bg-white border border-slate-300 rounded-lg focus-within:outline-none focus-within:ring-2 focus-within:ring-[#005f82] focus-within:border-[#005f82] text-slate-900 transition-all hover:border-slate-400 flex flex-wrap items-center gap-1">
+                  <div className="w-full min-h-[42px] px-2.5 py-1.5 text-base bg-white border border-slate-300 rounded-lg focus-within:outline-none focus-within:ring-2 focus-within:ring-[#005f82] focus-within:border-[#005f82] text-slate-900 transition-all hover:border-slate-400 flex flex-wrap items-center gap-1.5">
                     {/* Calendriers sélectionnés (badges intégrés) */}
                     {formData.calendar_sources && formData.calendar_sources.map(calId => {
                       const cal = calendars.filter(cal => !cal.description?.toLowerCase().includes("resource")).find(c => String(c.id) === calId);
@@ -640,13 +640,13 @@ export default function TaskModal({ isOpen, onClose, onSave, onDelete, task, ini
                       return (
                         <span
                           key={calId}
-                          className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-[#005f82]/10 text-[#005f82] text-xs shrink-0 rounded-md"
+                          className="inline-flex items-center gap-1.5 px-2 py-1 bg-[#005f82]/10 text-[#005f82] text-sm shrink-0 rounded-md"
                         >
                           <div
-                            className="w-2 h-2 rounded-full"
+                            className="w-2.5 h-2.5 rounded-full"
                             style={{ backgroundColor: cal.calendarcolor || '#005f82' }}
                           />
-                          <span className="font-medium max-w-[100px] truncate">{calName}</span>
+                          <span className="font-medium max-w-[110px] truncate">{calName}</span>
                           <button
                             type="button"
                             onClick={() => {
@@ -657,9 +657,9 @@ export default function TaskModal({ isOpen, onClose, onSave, onDelete, task, ini
                                 calendar_source: newSources[0] || ''
                               });
                             }}
-                            className="hover:bg-[#005f82]/20 p-0.5 rounded transition-colors"
+                            className="hover:bg-[#005f82]/20 p-1 rounded transition-colors"
                           >
-                            <X className="w-2.5 h-2.5" />
+                            <X className="w-3 h-3" />
                           </button>
                         </span>
                       );
@@ -670,7 +670,7 @@ export default function TaskModal({ isOpen, onClose, onSave, onDelete, task, ini
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
                       onFocus={() => setShowCalendarDropdown(true)}
-                      className="flex-1 min-w-20 outline-none bg-transparent text-sm"
+                      className="flex-1 min-w-24 outline-none bg-transparent text-base"
                     />
                   </div>
 
@@ -678,7 +678,7 @@ export default function TaskModal({ isOpen, onClose, onSave, onDelete, task, ini
                   {showCalendarDropdown && (
                     <div className="absolute z-50 w-full mt-1 bg-white border border-slate-300 rounded-lg shadow-lg max-h-60 overflow-y-auto">
                       {filteredCalendars.length === 0 ? (
-                        <div className="p-2 text-sm text-slate-500 text-center">
+                        <div className="p-2.5 text-base text-slate-500 text-center">
                           Aucun calendrier trouvé
                         </div>
                       ) : (
@@ -701,19 +701,19 @@ export default function TaskModal({ isOpen, onClose, onSave, onDelete, task, ini
                                   calendar_source: newSources[0] || ''
                                 });
                               }}
-                              className={`w-full px-2.5 py-1.5 text-left text-sm flex items-center gap-2 hover:bg-slate-50 transition-colors ${
+                              className={`w-full px-3 py-2 text-left text-base flex items-center gap-2.5 hover:bg-slate-50 active:bg-slate-100 transition-colors first:rounded-t-lg last:rounded-b-lg ${
                                 isSelected ? 'bg-[#005f82]/5' : ''
                               }`}
                             >
                               <div
-                                className="w-3 h-3 shrink-0"
+                                className="w-3.5 h-3.5 shrink-0"
                                 style={{ backgroundColor: cal.calendarcolor || '#005f82' }}
                               />
                               <span className={`flex-1 ${isSelected ? 'font-medium text-[#005f82]' : 'text-slate-700'}`}>
                                 {calName}
                               </span>
                               {isSelected && (
-                                <svg className="w-4 h-4 text-[#005f82]" fill="currentColor" viewBox="0 0 20 20">
+                                <svg className="w-5 h-5 text-[#005f82]" fill="currentColor" viewBox="0 0 20 20">
                                   <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                                 </svg>
                               )}
@@ -728,13 +728,13 @@ export default function TaskModal({ isOpen, onClose, onSave, onDelete, task, ini
 
               {/* Ressource(s) */}
               <div className="resource-dropdown-container">
-                <label className="block text-sm font-semibold text-slate-700 mb-1.5">
+                <label className="block text-base font-semibold text-slate-700 mb-2">
                   Ressource(s)
                 </label>
 
                 {/* Champ de recherche avec badges intégrés */}
                 <div className="relative">
-                  <div className="w-full min-h-[38px] px-2 py-1 text-base bg-white border border-slate-300 rounded-lg focus-within:outline-none focus-within:ring-2 focus-within:ring-[#005f82] focus-within:border-[#005f82] text-slate-900 transition-all hover:border-slate-400 flex flex-wrap items-center gap-1">
+                  <div className="w-full min-h-[42px] px-2.5 py-1.5 text-base bg-white border border-slate-300 rounded-lg focus-within:outline-none focus-within:ring-2 focus-within:ring-[#005f82] focus-within:border-[#005f82] text-slate-900 transition-all hover:border-slate-400 flex flex-wrap items-center gap-1.5">
                     {/* Ressources sélectionnées (badges intégrés) */}
                     {formData.calendar_sources && formData.calendar_sources.map(calId => {
                       const cal = calendars.find(c => String(c.id) === calId && c.description?.toLowerCase().includes("resource"));
@@ -744,13 +744,13 @@ export default function TaskModal({ isOpen, onClose, onSave, onDelete, task, ini
                       return (
                         <span
                           key={calId}
-                          className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-amber-50 text-amber-700 text-xs border border-amber-200 shrink-0 rounded-md"
+                          className="inline-flex items-center gap-1.5 px-2 py-1 bg-amber-50 text-amber-700 text-sm border border-amber-200 shrink-0 rounded-md"
                         >
                           <div
-                            className="w-2 h-2 rounded-full"
+                            className="w-2.5 h-2.5 rounded-full"
                             style={{ backgroundColor: cal.calendarcolor || '#f59e0b' }}
                           />
-                          <span className="font-medium max-w-[100px] truncate">{calName}</span>
+                          <span className="font-medium max-w-[110px] truncate">{calName}</span>
                           <button
                             type="button"
                             onClick={() => {
@@ -761,9 +761,9 @@ export default function TaskModal({ isOpen, onClose, onSave, onDelete, task, ini
                                 calendar_source: newSources[0] || ''
                               });
                             }}
-                            className="hover:bg-amber-200 p-0.5 rounded transition-colors"
+                            className="hover:bg-amber-200 p-1 rounded transition-colors"
                           >
-                            <X className="w-2.5 h-2.5" />
+                            <X className="w-3 h-3" />
                           </button>
                         </span>
                       );
@@ -774,7 +774,7 @@ export default function TaskModal({ isOpen, onClose, onSave, onDelete, task, ini
                       value={resourceSearchQuery}
                       onChange={(e) => setResourceSearchQuery(e.target.value)}
                       onFocus={() => setShowResourceDropdown(true)}
-                      className="flex-1 min-w-20 outline-none bg-transparent text-sm"
+                      className="flex-1 min-w-24 outline-none bg-transparent text-base"
                     />
                   </div>
 
@@ -782,7 +782,7 @@ export default function TaskModal({ isOpen, onClose, onSave, onDelete, task, ini
                   {showResourceDropdown && (
                     <div className="absolute z-50 w-full mt-1 bg-white border border-slate-300 rounded-lg shadow-lg max-h-60 overflow-y-auto">
                       {filteredResources.length === 0 ? (
-                        <div className="p-2 text-sm text-slate-500 text-center">
+                        <div className="p-2.5 text-base text-slate-500 text-center">
                           Aucune ressource trouvée
                         </div>
                       ) : (
@@ -805,19 +805,19 @@ export default function TaskModal({ isOpen, onClose, onSave, onDelete, task, ini
                                   calendar_source: newSources[0] || ''
                                 });
                               }}
-                              className={`w-full px-2.5 py-1.5 text-left text-sm flex items-center gap-2 hover:bg-slate-50 transition-colors ${
+                              className={`w-full px-3 py-2 text-left text-base flex items-center gap-2.5 hover:bg-slate-50 active:bg-slate-100 transition-colors first:rounded-t-lg last:rounded-b-lg ${
                                 isSelected ? 'bg-[#005f82]/5' : ''
                               }`}
                             >
                               <div
-                                className="w-3 h-3 shrink-0"
+                                className="w-3.5 h-3.5 shrink-0"
                                 style={{ backgroundColor: cal.calendarcolor || '#005f82' }}
                               />
                               <span className={`flex-1 ${isSelected ? 'font-medium text-[#005f82]' : 'text-slate-700'}`}>
                                 {calName}
                               </span>
                               {isSelected && (
-                                <svg className="w-4 h-4 text-[#005f82]" fill="currentColor" viewBox="0 0 20 20">
+                                <svg className="w-5 h-5 text-[#005f82]" fill="currentColor" viewBox="0 0 20 20">
                                   <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                                 </svg>
                               )}
@@ -832,9 +832,9 @@ export default function TaskModal({ isOpen, onClose, onSave, onDelete, task, ini
             </div>
 
             {/* Dates et heures combinées */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-3.5">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-semibold text-slate-700 mb-1.5">
+                <label className="block text-base font-semibold text-slate-700 mb-2">
                   Date et heure de début <span className="text-red-500">*</span>
                 </label>
                 <input
@@ -854,12 +854,12 @@ export default function TaskModal({ isOpen, onClose, onSave, onDelete, task, ini
                       });
                     }
                   }}
-                  className="w-full px-3 py-2 text-sm bg-white border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#005f82] focus:border-[#005f82] text-slate-900 transition-all hover:border-slate-400"
+                  className="w-full px-4 py-2.5 text-base bg-white border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#005f82] focus:border-[#005f82] text-slate-900 transition-all hover:border-slate-400"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-semibold text-slate-700 mb-1.5">
+                <label className="block text-base font-semibold text-slate-700 mb-2">
                   Date et heure de fin <span className="text-red-500">*</span>
                 </label>
                 <input
@@ -868,17 +868,17 @@ export default function TaskModal({ isOpen, onClose, onSave, onDelete, task, ini
                   value={formData.end_date}
                   onChange={(e) => setFormData({ ...formData, end_date: e.target.value })}
                   min={formData.start_date}
-                  className="w-full px-3 py-2 text-sm bg-white border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#005f82] focus:border-[#005f82] text-slate-900 transition-all hover:border-slate-400"
+                  className="w-full px-4 py-2.5 text-base bg-white border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#005f82] focus:border-[#005f82] text-slate-900 transition-all hover:border-slate-400"
                 />
               </div>
             </div>
 
             {/* Préréglages horaires rapides - plus compacts */}
             <div>
-              <label className="block text-xs font-medium text-slate-600 mb-1.5">
+              <label className="block text-sm font-medium text-slate-600 mb-2">
                 Préréglages rapides
               </label>
-              <div className="grid grid-cols-3 gap-1.5">
+              <div className="grid grid-cols-3 gap-2">
                 <button
                   type="button"
                   onClick={() => {
@@ -892,10 +892,10 @@ export default function TaskModal({ isOpen, onClose, onSave, onDelete, task, ini
                       end_date: formatDateTimeLocal(endDate)
                     });
                   }}
-                  className="flex flex-col items-center justify-center px-2 py-1.5 bg-white border border-slate-300 rounded-md hover:border-[#005f82] hover:bg-[#005f82]/5 hover:shadow-sm transition-all active:scale-95"
+                  className="flex flex-col items-center justify-center px-2.5 py-2 bg-white border border-slate-300 rounded-md hover:border-[#005f82] hover:bg-[#005f82]/5 hover:shadow-sm transition-all active:scale-95"
                 >
-                  <span className="text-[10px] font-semibold text-slate-700">Matinée</span>
-                  <span className="text-[9px] text-slate-500">9h - 12h30</span>
+                  <span className="text-xs font-semibold text-slate-700">Matinée</span>
+                  <span className="text-[10px] text-slate-500">9h - 12h30</span>
                 </button>
 
                 <button
@@ -911,10 +911,10 @@ export default function TaskModal({ isOpen, onClose, onSave, onDelete, task, ini
                       end_date: formatDateTimeLocal(endDate)
                     });
                   }}
-                  className="flex flex-col items-center justify-center px-2 py-1.5 bg-white border border-slate-300 rounded-md hover:border-[#005f82] hover:bg-[#005f82]/5 hover:shadow-sm transition-all active:scale-95"
+                  className="flex flex-col items-center justify-center px-2.5 py-2 bg-white border border-slate-300 rounded-md hover:border-[#005f82] hover:bg-[#005f82]/5 hover:shadow-sm transition-all active:scale-95"
                 >
-                  <span className="text-[10px] font-semibold text-slate-700">Après-midi</span>
-                  <span className="text-[9px] text-slate-500">14h - 18h</span>
+                  <span className="text-xs font-semibold text-slate-700">Après-midi</span>
+                  <span className="text-[10px] text-slate-500">14h - 18h</span>
                 </button>
 
                 <button
@@ -930,10 +930,10 @@ export default function TaskModal({ isOpen, onClose, onSave, onDelete, task, ini
                       end_date: formatDateTimeLocal(endDate)
                     });
                   }}
-                  className="flex flex-col items-center justify-center px-2 py-1.5 bg-white border border-slate-300 rounded-md hover:border-[#005f82] hover:bg-[#005f82]/5 hover:shadow-sm transition-all active:scale-95"
+                  className="flex flex-col items-center justify-center px-2.5 py-2 bg-white border border-slate-300 rounded-md hover:border-[#005f82] hover:bg-[#005f82]/5 hover:shadow-sm transition-all active:scale-95"
                 >
-                  <span className="text-[10px] font-semibold text-slate-700">Journée</span>
-                  <span className="text-[9px] text-slate-500">9h - 17h30</span>
+                  <span className="text-xs font-semibold text-slate-700">Journée</span>
+                  <span className="text-[10px] text-slate-500">9h - 17h30</span>
                 </button>
               </div>
             </div>

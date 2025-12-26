@@ -834,8 +834,8 @@ export default function DashboardPage() {
         </div>
       </header>
 
-      <div className="max-w-[1920px] mx-auto px-1 sm:px-2 py-1">
-        <div className="flex gap-2 h-[calc(100vh-58px)]">
+      <div className="max-w-[1920px] mx-auto px-1 sm:px-2 py-1 pb-4">
+        <div className="flex gap-2">
           {/* Main Calendar */}
           <div className="flex-1 flex flex-col min-w-0">
             {/* Mobile View Mode Selector (Day/Week/Month) - Visible seulement sur mobile */}
@@ -884,7 +884,7 @@ export default function DashboardPage() {
             </div>
 
             {/* Calendar */}
-            <div className="flex-1 min-h-0 relative bg-white/60 backdrop-blur-sm rounded-2xl shadow-xl border border-slate-200/50 overflow-hidden p-2">
+            <div className="flex-1 relative bg-white/60 backdrop-blur-sm rounded-2xl shadow-xl border border-slate-200/50 p-2">
 
               <Calendar
                 tasks={filteredTasks}

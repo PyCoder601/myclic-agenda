@@ -599,14 +599,16 @@ export default function Calendar({
   useEffect(() => {
     if (
       (viewMode === "day" || viewMode === "week") &&
-      currentHourRef.current &&
-      dayViewRef.current
+      currentHourRef.current
     ) {
       setTimeout(() => {
-        if (currentHourRef.current && dayViewRef.current) {
-          const containerHeight = dayViewRef.current.clientHeight;
-          const hourPosition = currentHourRef.current.offsetTop;
-          dayViewRef.current.scrollTop = hourPosition - containerHeight / 3;
+        if (currentHourRef.current) {
+          // Utiliser scrollIntoView pour scroller la page vers l'heure actuelle
+          currentHourRef.current.scrollIntoView({
+            behavior: 'smooth',
+            block: 'center',
+            inline: 'nearest'
+          });
         }
       }, 100);
     }
@@ -831,7 +833,7 @@ export default function Calendar({
     return (
       <div
         ref={dayViewRef}
-        className="flex-1 overflow-y-scroll bg-linear-to-br from-slate-50/30 to-blue-50/20"
+        className="flex-1 bg-linear-to-br from-slate-50/30 to-blue-50/20"
       >
         <div className="min-h-full flex relative">
           {/* Colonne des heures - version compacte */}
@@ -943,7 +945,7 @@ export default function Calendar({
     const today = new Date();
 
     return (
-      <div ref={dayViewRef} className="flex-1 overflow-auto bg-white">
+      <div ref={dayViewRef} className="flex-1 bg-white">
         {/* En-tête avec les jours de la semaine - version compacte */}
         <div className="flex border-b border-slate-300 sticky top-0 z-20 bg-gradient-to-r from-slate-50 to-blue-50">
           <div className="w-14 shrink-0 border-r border-slate-300"></div>
@@ -1091,7 +1093,7 @@ export default function Calendar({
 
   const renderMonthView = () => {
     return (
-      <div className="flex-1 flex flex-col bg-white overflow-auto">
+      <div className="flex-1 flex flex-col bg-white">
         {/* En-tête des jours de la semaine - responsive */}
         <div className="grid grid-cols-7 border-b border-slate-200 bg-gradient-to-r from-slate-50 to-blue-50 sticky top-0 z-10">
           {weekDayLabels.map((day, index) => (
@@ -1191,7 +1193,7 @@ export default function Calendar({
   const renderGroupView = () => {
 
     return (
-      <div className="flex-1 overflow-auto bg-white">
+      <div className="flex-1 bg-white">
         <div className="flex border-b border-slate-200 sticky top-0 z-10 bg-linear-to-r from-slate-50 to-blue-50">
           <div className="w-48 shrink-0 border-r border-slate-200 py-1 px-2 text-left font-semibold text-slate-700 text-xs">
             Collaborateur / Calendrier
@@ -1296,7 +1298,7 @@ export default function Calendar({
   return (
     <>
       <DndContext onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
-        <div className="flex flex-col h-full bg-white rounded-lg sm:rounded-2xl overflow-hidden shadow-xl border border-slate-200/50 animate-fadeIn">
+        <div className="flex flex-col bg-white rounded-lg sm:rounded-2xl shadow-xl border border-slate-200/50 animate-fadeIn">
           {/* Calendar Header - Version compacte */}
           <div className="flex items-center justify-between p-1.5 sm:p-2.5 border-b border-slate-200/50 bg-gradient-to-r from-white via-blue-50/40 to-white backdrop-blur-sm">
             <div className="flex items-center gap-1 sm:gap-2 flex-1 justify-center">

@@ -505,56 +505,49 @@ export default function DashboardPage() {
 
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/50 to-indigo-50/30">
-      {/* Header */}
-      <header className="bg-white/95 backdrop-blur-xl border-b border-slate-200/60 shadow-md sticky top-0 z-50 transition-all duration-300">
-        <div className="max-w-[1920px] mx-auto px-4 sm:px-6 py-2">
-          <div className="flex items-center justify-between gap-3 sm:gap-6">
+    <div className="min-h-screen bg-linear-to-br from-slate-50 via-blue-50/50 to-indigo-50/30">
+      {/* Header - Version compacte optimisée */}
+      <header className="bg-white/95 backdrop-blur-xl border-b border-slate-200/60 shadow-sm sticky top-0 z-50">
+        <div className="max-w-[1920px] mx-auto px-2.5 py-1.5">
+          <div className="flex items-center justify-between gap-1.5 sm:gap-2.5">
             {/* Logo et Titre */}
-            <div className="flex items-center gap-3 group cursor-pointer">
+            <div className="flex items-center gap-2 group cursor-pointer">
               <div className="relative">
-                <div className="absolute inset-0 bg-gradient-to-br from-[#005f82] to-[#007ba8] rounded-xl blur-md opacity-50 group-hover:opacity-75 transition-opacity duration-300"></div>
-                <div className="relative bg-gradient-to-br from-[#005f82] to-[#007ba8] p-2 rounded-xl shadow-lg transform transition-all duration-300 group-hover:scale-110 group-hover:rotate-6">
-                  <CalendarIcon className="w-5 h-5 text-white" />
+                <div className="relative bg-gradient-to-br from-[#005f82] to-[#007ba8] p-1.5 rounded-md shadow-sm">
+                  <CalendarIcon className="w-3.5 h-3.5 text-white" />
                 </div>
               </div>
               <div className="hidden sm:block">
-                <h1 className="text-lg font-extrabold bg-gradient-to-r from-[#005f82] via-[#007ba8] to-[#005f82] bg-clip-text text-transparent animate-gradient">
-                  Mon Agenda
-                </h1>
-                <p className="text-[10px] text-slate-500 font-medium -mt-1">Organisez votre temps</p>
+                <p className="text-xs text-slate-600 font-medium">Bonjour {user?.prenom || 'Utilisateur'}</p>
               </div>
             </div>
 
             {/* View Mode Switches - Dans le header avec liste calendriers intégrée */}
-            <div className="flex items-center gap-3 flex-1 justify-center">
+            <div className="flex items-center gap-1.5 flex-1 justify-center">
               {/* Main View Mode Selector (Personal / Group) avec dropdown intégré */}
               <div className="relative calendar-dropdown-container">
-                <div className="flex gap-1.5 bg-gradient-to-r from-white/90 to-white/80 backdrop-blur-sm p-1.5 rounded-xl shadow-md border border-slate-200/80 hover:border-[#005f82]/30 transition-all duration-300">
+                <div className="flex gap-1 bg-gradient-to-r from-white/90 to-white/80 backdrop-blur-sm p-1 rounded-lg shadow-sm border border-slate-200/80">
                   <button
                     onClick={() => {
                       setMainViewMode('personal');
                       setIsCalendarDropdownOpen(!isCalendarDropdownOpen);
                     }}
-                    className={`relative px-3 sm:px-4 py-2 rounded-lg font-bold transition-all duration-300 text-xs sm:text-sm overflow-hidden group ${
+                    className={`relative px-2 sm:px-2.5 py-1.5 rounded-md font-semibold transition-all duration-200 text-xs overflow-hidden ${
                       mainViewMode === 'personal'
-                        ? 'text-white shadow-xl scale-105'
+                        ? 'text-white shadow-sm scale-[1.02]'
                         : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50/80'
                     }`}
                   >
                     {mainViewMode === 'personal' && (
-                      <>
-                        <span className="absolute inset-0 bg-gradient-to-r from-[#005f82] to-[#007ba8]"></span>
-                        <span className="absolute inset-0 bg-gradient-to-r from-[#007ba8] to-[#005f82] opacity-0 group-hover:opacity-100 transition-opacity duration-300"></span>
-                      </>
+                      <span className="absolute inset-0 bg-gradient-to-r from-[#005f82] to-[#007ba8]"></span>
                     )}
-                    <span className="relative z-10 flex items-center gap-2">
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <span className="relative z-10 flex items-center gap-1.5">
+                      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                       </svg>
                       <span className="hidden sm:inline">Mes agendas</span>
                       <span className="sm:hidden">Mes</span>
-                      <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${mainViewMode === 'personal' ? 'bg-white/30' : 'bg-[#005f82]/10 text-[#005f82]'}`}>
+                      <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-semibold ${mainViewMode === 'personal' ? 'bg-white/30' : 'bg-[#005f82]/10 text-[#005f82]'}`}>
                         {calendarsToUse.filter(c => c.display).length}
                       </span>
                     </span>
@@ -564,25 +557,22 @@ export default function DashboardPage() {
                       setMainViewMode('group');
                       setIsCalendarDropdownOpen(!isCalendarDropdownOpen);
                     }}
-                    className={`relative px-3 sm:px-4 py-2 rounded-lg font-bold transition-all duration-300 text-xs sm:text-sm overflow-hidden group ${
+                    className={`relative px-2 sm:px-2.5 py-1.5 rounded-md font-semibold transition-all duration-200 text-xs overflow-hidden ${
                       mainViewMode === 'group'
-                        ? 'text-white shadow-xl scale-105'
+                        ? 'text-white shadow-sm scale-[1.02]'
                         : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50/80'
                     }`}
                   >
                     {mainViewMode === 'group' && (
-                      <>
-                        <span className="absolute inset-0 bg-linear-to-r from-[#005f82] to-[#007ba8]"></span>
-                        <span className="absolute inset-0 bg-linear-to-r from-[#007ba8] to-[#005f82] opacity-0 group-hover:opacity-100 transition-opacity duration-300"></span>
-                      </>
+                      <span className="absolute inset-0 bg-linear-to-r from-[#005f82] to-[#007ba8]"></span>
                     )}
-                    <span className="relative z-10 flex items-center gap-2">
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <span className="relative z-10 flex items-center gap-1.5">
+                      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
                       </svg>
-                      <span className="hidden sm:inline">Agenda de groupe</span>
+                      <span className="hidden sm:inline">Groupe</span>
                       <span className="sm:hidden">Grp</span>
-                      <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${mainViewMode === 'group' ? 'bg-white/30' : 'bg-[#005f82]/10 text-[#005f82]'}`}>
+                      <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-semibold ${mainViewMode === 'group' ? 'bg-white/30' : 'bg-[#005f82]/10 text-[#005f82]'}`}>
                         {calendarsToUse.filter(c => c.display && !c.description?.toLowerCase().includes("resource")).length}
                       </span>
                     </span>
@@ -738,26 +728,23 @@ export default function DashboardPage() {
               </div>
 
               {/* Spacer entre les deux groupes de switches */}
-              <div className="hidden sm:block w-px h-10 bg-gradient-to-b from-transparent via-slate-300 to-transparent"></div>
+              <div className="hidden sm:block w-px h-6 bg-gradient-to-b from-transparent via-slate-300 to-transparent"></div>
 
-              {/* Sub View Mode Selector (Day / Week / Month) */}
-              <div className="hidden sm:flex gap-1.5 bg-gradient-to-r from-white/90 to-white/80 backdrop-blur-sm p-1.5 rounded-xl shadow-md border border-slate-200/80 hover:border-[#005f82]/30 transition-all duration-300">
+              {/* Sub View Mode Selector (Day / Week / Month) - Version compacte optimisée */}
+              <div className="hidden sm:flex gap-1 bg-gradient-to-r from-white/90 to-white/80 backdrop-blur-sm p-1 rounded-lg shadow-sm border border-slate-200/80">
                 <button
                   onClick={() => mainViewMode === 'personal' ? setViewMode('day') : setGroupViewMode('day')}
-                  className={`relative px-4 py-2 rounded-lg font-bold transition-all duration-300 text-xs sm:text-sm overflow-hidden group ${
+                  className={`relative px-2.5 py-1.5 rounded-md font-semibold transition-all duration-200 text-xs overflow-hidden ${
                     (mainViewMode === 'personal' ? viewMode : groupViewMode) === 'day'
-                      ? 'text-white shadow-xl scale-105'
+                      ? 'text-white shadow-sm'
                       : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50/80'
                   }`}
                 >
                   {(mainViewMode === 'personal' ? viewMode : groupViewMode) === 'day' && (
-                    <>
-                      <span className="absolute inset-0 bg-gradient-to-r from-[#005f82] to-[#007ba8]"></span>
-                      <span className="absolute inset-0 bg-gradient-to-r from-[#007ba8] to-[#005f82] opacity-0 group-hover:opacity-100 transition-opacity duration-300"></span>
-                    </>
+                    <span className="absolute inset-0 bg-gradient-to-r from-[#005f82] to-[#007ba8]"></span>
                   )}
                   <span className="relative z-10 flex items-center gap-1.5">
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
                     </svg>
                     Jour
@@ -765,20 +752,17 @@ export default function DashboardPage() {
                 </button>
                 <button
                   onClick={() => mainViewMode === 'personal' ? setViewMode('week') : setGroupViewMode('week')}
-                  className={`relative px-4 py-2 rounded-lg font-bold transition-all duration-300 text-xs sm:text-sm overflow-hidden group ${
+                  className={`relative px-2.5 py-1.5 rounded-md font-semibold transition-all duration-200 text-xs overflow-hidden ${
                     (mainViewMode === 'personal' ? viewMode : groupViewMode) === 'week'
-                      ? 'text-white shadow-xl scale-105'
+                      ? 'text-white shadow-sm'
                       : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50/80'
                   }`}
                 >
                   {(mainViewMode === 'personal' ? viewMode : groupViewMode) === 'week' && (
-                    <>
-                      <span className="absolute inset-0 bg-gradient-to-r from-[#005f82] to-[#007ba8]"></span>
-                      <span className="absolute inset-0 bg-gradient-to-r from-[#007ba8] to-[#005f82] opacity-0 group-hover:opacity-100 transition-opacity duration-300"></span>
-                    </>
+                    <span className="absolute inset-0 bg-gradient-to-r from-[#005f82] to-[#007ba8]"></span>
                   )}
                   <span className="relative z-10 flex items-center gap-1.5">
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
                     </svg>
                     Semaine
@@ -786,20 +770,17 @@ export default function DashboardPage() {
                 </button>
                 <button
                   onClick={() => mainViewMode === 'personal' ? setViewMode('month') : setGroupViewMode('month')}
-                  className={`relative px-4 py-2 rounded-lg font-bold transition-all duration-300 text-xs sm:text-sm overflow-hidden group ${
+                  className={`relative px-2.5 py-1.5 rounded-md font-semibold transition-all duration-200 text-xs overflow-hidden ${
                     (mainViewMode === 'personal' ? viewMode : groupViewMode) === 'month'
-                      ? 'text-white shadow-xl scale-105'
+                      ? 'text-white shadow-sm'
                       : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50/80'
                   }`}
                 >
                   {(mainViewMode === 'personal' ? viewMode : groupViewMode) === 'month' && (
-                    <>
-                      <span className="absolute inset-0 bg-gradient-to-r from-[#005f82] to-[#007ba8]"></span>
-                      <span className="absolute inset-0 bg-gradient-to-r from-[#007ba8] to-[#005f82] opacity-0 group-hover:opacity-100 transition-opacity duration-300"></span>
-                    </>
+                    <span className="absolute inset-0 bg-gradient-to-r from-[#005f82] to-[#007ba8]"></span>
                   )}
                   <span className="relative z-10 flex items-center gap-1.5">
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M4 5a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM14 5a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1h-4a1 1 0 01-1-1V5zM4 15a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1H5a1 1 0 01-1-1v-4zM14 15a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1h-4a1 1 0 01-1-1v-4z" />
                     </svg>
                     Mois
@@ -809,22 +790,22 @@ export default function DashboardPage() {
             </div>
 
             {/* Actions */}
-            <div className="flex items-center gap-2 sm:gap-3">
-              <div className="flex items-center gap-2 bg-gradient-to-r from-white to-purple-50/30 px-3 py-2 rounded-xl shadow-md border border-slate-200/80 hover:border-purple-300/50 transition-all duration-300 hover:shadow-lg">
-                <svg className="w-4 h-4 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <div className="flex items-center gap-1.5">
+              <div className="flex items-center gap-1.5 bg-white px-2 py-1.5 rounded-lg shadow-sm border border-slate-200/80">
+                <svg className="w-3.5 h-3.5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
                 </svg>
-                <span className="hidden sm:inline text-xs font-bold text-slate-700">Rappels</span>
+                <span className="hidden sm:inline text-xs font-semibold text-slate-700">Rappels</span>
                 <button
                   onClick={() => setShowRappels(!showRappels)}
-                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-purple-400 focus:ring-offset-2 ${
-                    showRappels ? 'bg-gradient-to-r from-purple-500 to-purple-600 shadow-md' : 'bg-slate-300'
+                  className={`relative inline-flex h-5 w-9 items-center rounded-full transition-all duration-200 ${
+                    showRappels ? 'bg-gradient-to-r from-purple-500 to-purple-600' : 'bg-slate-300'
                   }`}
                   title={showRappels ? 'Masquer les rappels' : 'Afficher les rappels'}
                 >
                   <span
-                    className={`inline-block h-4 w-4 transform rounded-full bg-white shadow-lg transition-transform duration-300 ${
-                      showRappels ? 'translate-x-6' : 'translate-x-1'
+                    className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white shadow-sm transition-transform duration-200 ${
+                      showRappels ? 'translate-x-4.5' : 'translate-x-0.5'
                     }`}
                   />
                 </button>
@@ -836,36 +817,35 @@ export default function DashboardPage() {
                   setModalInitialHour(undefined);
                   setIsModalOpen(true);
                 }}
-                className="group relative flex items-center gap-2 overflow-hidden bg-gradient-to-r from-[#005f82] to-[#007ba8] text-white px-4 sm:px-5 py-2.5 rounded-xl transition-all duration-300 font-bold text-xs sm:text-sm shadow-xl hover:shadow-2xl transform hover:scale-105 active:scale-95 border border-[#004d6b]"
+                className="group relative flex items-center gap-1.5 overflow-hidden bg-gradient-to-r from-[#005f82] to-[#007ba8] text-white px-2.5 sm:px-3.5 py-1.5 rounded-lg transition-all duration-200 font-semibold text-xs shadow-sm hover:shadow-md"
               >
-                <span className="absolute inset-0 bg-gradient-to-r from-[#007ba8] to-[#005f82] opacity-0 group-hover:opacity-100 transition-opacity duration-300"></span>
-                <Plus className="relative z-10 w-4 h-4 transition-transform duration-300 group-hover:rotate-90" />
+                <Plus className="relative z-10 w-3.5 h-3.5" />
                 <span className="relative z-10 hidden sm:inline">Nouveau</span>
               </button>
               <button
                 onClick={handleLogout}
-                className="group flex items-center justify-center bg-white hover:bg-red-50 text-slate-700 hover:text-red-600 p-2.5 rounded-xl transition-all duration-300 border-2 border-slate-200 hover:border-red-300 shadow-md hover:shadow-lg transform hover:scale-105"
+                className="group flex items-center justify-center bg-white hover:bg-red-50 text-slate-700 hover:text-red-600 p-2 rounded-lg transition-all duration-200 border border-slate-200 hover:border-red-300 shadow-sm"
                 title="Déconnexion"
               >
-                <LogOut className="w-4 h-4 transition-transform duration-300 group-hover:translate-x-1 group-hover:scale-110" />
+                <LogOut className="w-3.5 h-3.5" />
               </button>
             </div>
           </div>
         </div>
       </header>
 
-      <div className="max-w-[1920px] mx-auto px-4 sm:px-6 py-3">
-        <div className="flex gap-4 h-[calc(100vh-88px)]">
+      <div className="max-w-[1920px] mx-auto px-1 sm:px-2 py-1">
+        <div className="flex gap-2 h-[calc(100vh-58px)]">
           {/* Main Calendar */}
           <div className="flex-1 flex flex-col min-w-0">
             {/* Mobile View Mode Selector (Day/Week/Month) - Visible seulement sur mobile */}
-            <div className="sm:hidden mb-3 flex justify-center">
-              <div className="flex gap-1.5 bg-gradient-to-r from-white/90 to-white/80 backdrop-blur-sm p-1.5 rounded-xl shadow-md border border-slate-200/80">
+            <div className="sm:hidden mb-1.5 flex justify-center">
+              <div className="flex gap-1 bg-white p-1 rounded-lg shadow-sm border border-slate-200/80">
                 <button
                   onClick={() => mainViewMode === 'personal' ? setViewMode('day') : setGroupViewMode('day')}
-                  className={`relative px-4 py-2 rounded-lg font-bold transition-all duration-300 text-xs overflow-hidden ${
+                  className={`relative px-2.5 py-1.5 rounded-md font-semibold transition-all duration-200 text-xs overflow-hidden ${
                     (mainViewMode === 'personal' ? viewMode : groupViewMode) === 'day'
-                      ? 'text-white shadow-lg'
+                      ? 'text-white shadow-sm'
                       : 'text-slate-600'
                   }`}
                 >
@@ -876,9 +856,9 @@ export default function DashboardPage() {
                 </button>
                 <button
                   onClick={() => mainViewMode === 'personal' ? setViewMode('week') : setGroupViewMode('week')}
-                  className={`relative px-4 py-2 rounded-lg font-bold transition-all duration-300 text-xs overflow-hidden ${
+                  className={`relative px-2.5 py-1.5 rounded-md font-semibold transition-all duration-200 text-xs overflow-hidden ${
                     (mainViewMode === 'personal' ? viewMode : groupViewMode) === 'week'
-                      ? 'text-white shadow-lg'
+                      ? 'text-white shadow-sm'
                       : 'text-slate-600'
                   }`}
                 >
@@ -889,9 +869,9 @@ export default function DashboardPage() {
                 </button>
                 <button
                   onClick={() => mainViewMode === 'personal' ? setViewMode('month') : setGroupViewMode('month')}
-                  className={`relative px-4 py-2 rounded-lg font-bold transition-all duration-300 text-xs overflow-hidden ${
+                  className={`relative px-2.5 py-1.5 rounded-md font-semibold transition-all duration-200 text-xs overflow-hidden ${
                     (mainViewMode === 'personal' ? viewMode : groupViewMode) === 'month'
-                      ? 'text-white shadow-lg'
+                      ? 'text-white shadow-sm'
                       : 'text-slate-600'
                   }`}
                 >

@@ -834,8 +834,8 @@ export default function Calendar({
         className="flex-1 overflow-y-scroll bg-linear-to-br from-slate-50/30 to-blue-50/20"
       >
         <div className="min-h-full flex relative">
-          {/* Colonne des heures */}
-          <div className="w-16 shrink-0 bg-linear-to-r from-slate-50 to-blue-50/50 border-r border-slate-300">
+          {/* Colonne des heures - version compacte */}
+          <div className="w-14 shrink-0 bg-linear-to-r from-slate-50 to-blue-50/50 border-r border-slate-300">
             {hours.map((hour) => {
               const isCurrentHour = isToday && hour === currentHour;
 
@@ -847,7 +847,7 @@ export default function Calendar({
                   style={{ height: "60px" }}
                 >
                   <div
-                    className={`px-2 py-1 text-xs font-semibold transition-all duration-200 ${
+                    className={`px-1.5 py-0.5 text-[10px] font-semibold transition-all duration-200 ${
                       isCurrentHour
                         ? "text-[#005f82] font-bold"
                         : "text-slate-700"
@@ -944,23 +944,23 @@ export default function Calendar({
 
     return (
       <div ref={dayViewRef} className="flex-1 overflow-auto bg-white">
-        {/* En-tête avec les jours de la semaine */}
-        <div className="flex border-b-2 border-slate-300 sticky top-0 z-20 bg-gradient-to-r from-slate-50 to-blue-50">
-          <div className="w-16 shrink-0 border-r border-slate-300"></div>
+        {/* En-tête avec les jours de la semaine - version compacte */}
+        <div className="flex border-b border-slate-300 sticky top-0 z-20 bg-gradient-to-r from-slate-50 to-blue-50">
+          <div className="w-14 shrink-0 border-r border-slate-300"></div>
           {weekDays.map((day) => (
             <div
               key={day.toString()}
-              className="flex-1 min-w-[100px] p-2 text-center border-r border-slate-200"
+              className="flex-1 min-w-[100px] py-1 px-1.5 text-center border-r border-slate-200"
             >
               <div
-                className={`font-semibold text-xs ${isSameDay(day, today) ? "text-[#005f82]" : "text-slate-600"}`}
+                className={`font-medium text-[10px] leading-tight ${isSameDay(day, today) ? "text-[#005f82]" : "text-slate-600"}`}
               >
                 {format(day, "EEE", { locale: fr })}
               </div>
               <div
-                className={`text-lg font-bold mt-0.5 ${
+                className={`text-sm font-bold mt-0.5 ${
                   isSameDay(day, today)
-                    ? "bg-gradient-to-r from-[#005f82] to-[#007ba8] text-white w-8 h-8 rounded-xl flex items-center justify-center mx-auto shadow-md text-sm"
+                    ? "bg-gradient-to-r from-[#005f82] to-[#007ba8] text-white w-6 h-6 rounded-lg flex items-center justify-center mx-auto shadow-sm text-xs"
                     : "text-slate-800"
                 }`}
               >
@@ -972,8 +972,8 @@ export default function Calendar({
 
         {/* Contenu avec grille horaire */}
         <div className="min-h-full flex relative">
-          {/* Colonne des heures */}
-          <div className="w-16 flex-shrink-0 bg-gradient-to-r from-slate-50 to-blue-50/50 border-r border-slate-300 sticky left-0 z-10">
+          {/* Colonne des heures - version compacte */}
+          <div className="w-14 flex-shrink-0 bg-gradient-to-r from-slate-50 to-blue-50/50 border-r border-slate-300 sticky left-0 z-10">
             {hours.map((hour) => {
               const isCurrentHour = hour === currentHour;
 
@@ -985,7 +985,7 @@ export default function Calendar({
                   style={{ height: "60px" }}
                 >
                   <div
-                    className={`px-2 py-1 text-xs font-semibold transition-all duration-200 ${
+                    className={`px-1.5 py-0.5 text-[10px] font-semibold transition-all duration-200 ${
                       isCurrentHour
                         ? "text-[#005f82] font-bold"
                         : "text-slate-700"
@@ -1193,23 +1193,23 @@ export default function Calendar({
     return (
       <div className="flex-1 overflow-auto bg-white">
         <div className="flex border-b border-slate-200 sticky top-0 z-10 bg-linear-to-r from-slate-50 to-blue-50">
-          <div className="w-48 shrink-0 border-r border-slate-200 p-2 text-left font-semibold text-slate-700">
+          <div className="w-48 shrink-0 border-r border-slate-200 py-1 px-2 text-left font-semibold text-slate-700 text-xs">
             Collaborateur / Calendrier
           </div>
           {daysToDisplay.map((day) => (
             <div
               key={day.toString()}
-              className="flex-1 min-w-[100px] p-2 text-center border-r border-slate-200"
+              className="flex-1 min-w-[100px] py-1 px-1.5 text-center border-r border-slate-200"
             >
               <div
-                className={`font-semibold text-xs ${isSameDay(day, new Date()) ? "text-[#005f82]" : "text-slate-600"}`}
+                className={`font-medium text-[10px] leading-tight ${isSameDay(day, new Date()) ? "text-[#005f82]" : "text-slate-600"}`}
               >
                 {format(day, "EEE", { locale: fr })}
               </div>
               <div
-                className={`text-lg font-bold mt-0.5 ${
+                className={`text-sm font-bold mt-0.5 ${
                   isSameDay(day, new Date())
-                    ? "bg-linear-to-r from-[#005f82] to-[#007ba8] text-white w-8 h-8 rounded-xl flex items-center justify-center mx-auto shadow-md text-sm"
+                    ? "bg-linear-to-r from-[#005f82] to-[#007ba8] text-white w-6 h-6 rounded-lg flex items-center justify-center mx-auto shadow-sm text-xs"
                     : "text-slate-800"
                 }`}
               >
@@ -1297,39 +1297,39 @@ export default function Calendar({
     <>
       <DndContext onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
         <div className="flex flex-col h-full bg-white rounded-lg sm:rounded-2xl overflow-hidden shadow-xl border border-slate-200/50 animate-fadeIn">
-          {/* Calendar Header */}
-          <div className="flex items-center justify-between p-2 sm:p-4 border-b border-slate-200/50 bg-gradient-to-r from-white via-blue-50/40 to-white backdrop-blur-sm">
-            <div className="flex items-center gap-1 sm:gap-3 flex-1 justify-center">
+          {/* Calendar Header - Version compacte */}
+          <div className="flex items-center justify-between p-1.5 sm:p-2.5 border-b border-slate-200/50 bg-gradient-to-r from-white via-blue-50/40 to-white backdrop-blur-sm">
+            <div className="flex items-center gap-1 sm:gap-2 flex-1 justify-center">
               <button
                 onClick={navigatePrevious}
                 disabled={isNavigating}
-                className={`group p-1.5 sm:p-2.5 hover:bg-gradient-to-r hover:from-blue-50 hover:to-indigo-50 rounded-lg sm:rounded-xl transition-all duration-300 text-slate-700 hover:shadow-lg border border-transparent hover:border-[#005f82]/20 ${isNavigating ? 'opacity-50 cursor-not-allowed' : ''}`}
+                className={`group p-1 sm:p-1.5 hover:bg-gradient-to-r hover:from-blue-50 hover:to-indigo-50 rounded-lg transition-all duration-300 text-slate-700 hover:shadow-md border border-transparent hover:border-[#005f82]/20 ${isNavigating ? 'opacity-50 cursor-not-allowed' : ''}`}
                 title="Période précédente"
               >
                 {isNavigating ? (
-                  <div className="w-4 h-4 sm:w-5 sm:h-5 border-2 border-slate-300 border-t-[#005f82] rounded-full animate-spin" />
+                  <div className="w-4 h-4 border-2 border-slate-300 border-t-[#005f82] rounded-full animate-spin" />
                 ) : (
-                  <ChevronLeft className="w-4 h-4 sm:w-5 sm:h-5 text-slate-600 group-hover:text-[#005f82] transition-all duration-300 group-hover:-translate-x-1" />
+                  <ChevronLeft className="w-4 h-4 text-slate-600 group-hover:text-[#005f82] transition-all duration-300 group-hover:-translate-x-1" />
                 )}
               </button>
-              <div className="text-center flex-1 px-2">
-                <h2 className="text-sm sm:text-lg font-bold bg-gradient-to-r from-[#005f82] to-[#007ba8] bg-clip-text text-transparent capitalize">
+              <div className="text-center flex-1 px-1">
+                <h2 className="text-xs sm:text-base font-bold bg-gradient-to-r from-[#005f82] to-[#007ba8] bg-clip-text text-transparent capitalize">
                   {getDateRange}
                   {isNavigating && (
-                    <span className="ml-2 text-xs text-slate-500 font-normal">Chargement...</span>
+                    <span className="ml-1 text-[10px] text-slate-500 font-normal">Chargement...</span>
                   )}
                 </h2>
               </div>
               <button
                 onClick={navigateNext}
                 disabled={isNavigating}
-                className={`group p-1.5 sm:p-2.5 hover:bg-gradient-to-r hover:from-blue-50 hover:to-indigo-50 rounded-lg sm:rounded-xl transition-all duration-300 text-slate-700 hover:shadow-lg border border-transparent hover:border-[#005f82]/20 ${isNavigating ? 'opacity-50 cursor-not-allowed' : ''}`}
+                className={`group p-1 sm:p-1.5 hover:bg-gradient-to-r hover:from-blue-50 hover:to-indigo-50 rounded-lg transition-all duration-300 text-slate-700 hover:shadow-md border border-transparent hover:border-[#005f82]/20 ${isNavigating ? 'opacity-50 cursor-not-allowed' : ''}`}
                 title="Période suivante"
               >
                 {isNavigating ? (
-                  <div className="w-4 h-4 sm:w-5 sm:h-5 border-2 border-slate-300 border-t-[#005f82] rounded-full animate-spin" />
+                  <div className="w-4 h-4 border-2 border-slate-300 border-t-[#005f82] rounded-full animate-spin" />
                 ) : (
-                  <ChevronRight className="w-4 h-4 sm:w-5 sm:h-5 text-slate-600 group-hover:text-[#005f82] transition-all duration-300 group-hover:translate-x-1" />
+                  <ChevronRight className="w-4 h-4 text-slate-600 group-hover:text-[#005f82] transition-all duration-300 group-hover:translate-x-1" />
                 )}
               </button>
             </div>

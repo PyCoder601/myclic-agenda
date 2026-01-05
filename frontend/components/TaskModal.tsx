@@ -483,7 +483,7 @@ export default function TaskModal({ isOpen, onClose, onSave, onDelete, task, ini
       return [{ start: startDateTime, end: endDateTime }];
     }
 
-    let currentDate = new Date(startDateTime);
+    const currentDate = new Date(startDateTime);
     let count = 0;
     const maxOccurrences = recurrenceEndType === 'count' ? recurrenceCount : 365; // Limite de sécurité
     const endDate = recurrenceEndType === 'until' ? new Date(recurrenceEndDate) : null;

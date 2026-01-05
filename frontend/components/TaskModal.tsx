@@ -393,12 +393,25 @@ export default function TaskModal({ isOpen, onClose, onSave, onDelete, task, ini
     console.log('=======================');
 
     // Envoyer les données avec toutes les infos du calendrier
+    // ✅ CORRECTION : Ne pas utiliser toISOString() qui convertit en UTC
+    // On garde l'heure locale en formatant manuellement
+    const formatLocalISO = (dateString: string) => {
+      const date = new Date(dateString);
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
+      const hours = String(date.getHours()).padStart(2, '0');
+      const minutes = String(date.getMinutes()).padStart(2, '0');
+      const seconds = String(date.getSeconds()).padStart(2, '0');
+      return `${year}-${month}-${day}T${hours}:${minutes}:${seconds}`;
+    };
+
     onSave({
       title: formData.title,
       description: formData.description,
       location: formData.location,
-      start_date: new Date(formData.start_date).toISOString(),
-      end_date: new Date(formData.end_date).toISOString(),
+      start_date: formatLocalISO(formData.start_date),
+      end_date: formatLocalISO(formData.end_date),
       calendar_source_name: selectedCalendar.displayname,
       calendar_source_id: selectedCalendar.id,
       calendar_source_uri: selectedCalendar.uri || '',
@@ -420,6 +433,17 @@ export default function TaskModal({ isOpen, onClose, onSave, onDelete, task, ini
     const recurrenceDates = generateRecurrenceDates();
     console.log('📅 Dates de récurrence générées:', recurrenceDates.length);
 
+    // ✅ CORRECTION : Fonction pour formater en ISO local (sans conversion UTC)
+    const formatLocalISO = (date: Date) => {
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
+      const hours = String(date.getHours()).padStart(2, '0');
+      const minutes = String(date.getMinutes()).padStart(2, '0');
+      const seconds = String(date.getSeconds()).padStart(2, '0');
+      return `${year}-${month}-${day}T${hours}:${minutes}:${seconds}`;
+    };
+
     // Créer l'événement dans chaque calendrier sélectionné pour chaque date de récurrence
     selectedCalendars.forEach(calendar => {
       console.log('Création dans:', calendar.displayname || calendar.defined_name);
@@ -429,8 +453,8 @@ export default function TaskModal({ isOpen, onClose, onSave, onDelete, task, ini
           title: formData.title,
           description: formData.description,
           location: formData.location,
-          start_date: dateInfo.start.toISOString(),
-          end_date: dateInfo.end.toISOString(),
+          start_date: formatLocalISO(dateInfo.start),
+          end_date: formatLocalISO(dateInfo.end),
           calendar_source_name: calendar.displayname,
           calendar_source_id: calendar.id,
           calendar_source_uri: calendar.uri || '',

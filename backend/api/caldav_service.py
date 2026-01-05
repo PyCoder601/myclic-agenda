@@ -124,14 +124,24 @@ class BaikalCalDAVClient:
                     print("CLIENT", vevent.get('CLIENT'))
                     print("AFFAIR", vevent.get('AFFAIRE'))
 
+                    # Parser les dates et enlever le timezone pour éviter les décalages horaires
+                    start_date = self._parse_ical_date(vevent.get('dtstart')) if vevent.get('dtstart') else None
+                    end_date = self._parse_ical_date(vevent.get('dtend')) if vevent.get('dtend') else None
+
+                    # Enlever le timezone des dates (garder l'heure telle quelle)
+                    if start_date and hasattr(start_date, 'tzinfo') and start_date.tzinfo:
+                        start_date = start_date.replace(tzinfo=None)
+                    if end_date and hasattr(end_date, 'tzinfo') and end_date.tzinfo:
+                        end_date = end_date.replace(tzinfo=None)
+
                     formatted_event = {
                         'id': str(vevent.get('uid', event.url)),
                         'title': str(vevent.get('summary', 'Sans titre')),
                         'description': str(vevent.get('description', '')),
                         'location': str(vevent.get('location', '')),
                         'type': str(vevent.get('eventtype', 'agenda_event')),
-                        'start_date': self._parse_ical_date(vevent.get('dtstart')) if vevent.get('dtstart') else None,
-                        'end_date': self._parse_ical_date(vevent.get('dtend')) if vevent.get('dtend') else None,
+                        'start_date': start_date,
+                        'end_date': end_date,
                         # 'lastmodified': self._parse_ical_date(vevent.get('last-modified')) if vevent.get('last-modified') else None,
                         'url': str(event.url),
                         "client_id": str(vevent.get('CLIENT', '')),
@@ -250,11 +260,12 @@ END:VCALENDAR"""
         """
         Format une date pour iCalendar
         Supporte: datetime, timestamp, string ISO
+        Les dates sans timezone sont traitées comme des heures locales
         """
         if isinstance(date_value, datetime):
-            # Si la date a un timezone, la convertir en UTC
+            # Si la date a un timezone, enlever le timezone (garder l'heure telle quelle)
             if date_value.tzinfo is not None:
-                date_value = date_value.astimezone(tz=None).replace(tzinfo=None)
+                date_value = date_value.replace(tzinfo=None)
             return date_value.strftime('%Y%m%dT%H%M%S')
         elif isinstance(date_value, (int, float)):
             # Timestamp UNIX
@@ -263,9 +274,14 @@ END:VCALENDAR"""
         elif isinstance(date_value, str):
             # Essayer de parser la string ISO
             try:
-                dt = datetime.fromisoformat(date_value.replace('Z', '+00:00'))
-                if dt.tzinfo is not None:
-                    dt = dt.astimezone(tz=None).replace(tzinfo=None)
+                # Si la date contient 'Z' ou '+', elle a un timezone
+                if 'Z' in date_value or '+' in date_value:
+                    dt = datetime.fromisoformat(date_value.replace('Z', '+00:00'))
+                    # Enlever le timezone mais garder l'heure
+                    dt = dt.replace(tzinfo=None)
+                else:
+                    # Date locale sans timezone - la parser directement
+                    dt = datetime.fromisoformat(date_value)
                 return dt.strftime('%Y%m%dT%H%M%S')
             except:
                 return date_value
@@ -403,7 +419,14 @@ END:VCALENDAR"""
             if 'start' in event_data:
                 start_date = event_data['start']
                 if isinstance(start_date, str):
-                    start_date = datetime.fromisoformat(start_date.replace('Z', '+00:00'))
+                    # Gérer les dates avec et sans timezone
+                    if 'Z' in start_date or '+' in start_date:
+                        start_date = datetime.fromisoformat(start_date.replace('Z', '+00:00'))
+                        # Enlever le timezone mais garder l'heure
+                        start_date = start_date.replace(tzinfo=None)
+                    else:
+                        # Date locale sans timezone
+                        start_date = datetime.fromisoformat(start_date)
                 elif isinstance(start_date, (int, float)):
                     start_date = datetime.fromtimestamp(start_date)
                 vevent['dtstart'].dt = start_date
@@ -411,7 +434,14 @@ END:VCALENDAR"""
             if 'end' in event_data:
                 end_date = event_data['end']
                 if isinstance(end_date, str):
-                    end_date = datetime.fromisoformat(end_date.replace('Z', '+00:00'))
+                    # Gérer les dates avec et sans timezone
+                    if 'Z' in end_date or '+' in end_date:
+                        end_date = datetime.fromisoformat(end_date.replace('Z', '+00:00'))
+                        # Enlever le timezone mais garder l'heure
+                        end_date = end_date.replace(tzinfo=None)
+                    else:
+                        # Date locale sans timezone
+                        end_date = datetime.fromisoformat(end_date)
                 elif isinstance(end_date, (int, float)):
                     end_date = datetime.fromtimestamp(end_date)
                 vevent['dtend'].dt = end_date

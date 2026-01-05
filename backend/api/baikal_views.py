@@ -217,6 +217,15 @@ class BaikalEventViewSet(viewsets.ViewSet):
 
     def _format_event_for_frontend(self, event, calendar_name, event_id=None):
         """Formate un événement CalDAV pour le frontend"""
+        # Gérer les dates et enlever le timezone pour éviter les décalages horaires
+        start_date = event.get('start')
+        end_date = event.get('end')
+
+        if start_date and hasattr(start_date, 'tzinfo') and start_date.tzinfo:
+            start_date = start_date.replace(tzinfo=None)
+        if end_date and hasattr(end_date, 'tzinfo') and end_date.tzinfo:
+            end_date = end_date.replace(tzinfo=None)
+
         return {
             'id': event_id or hash(event['id']),
             'calendar_id': calendar_name,
@@ -227,8 +236,8 @@ class BaikalEventViewSet(viewsets.ViewSet):
             'uri': event.get('url', ''),
             'title': event.get('summary', 'Sans titre'),
             'description': event.get('description', ''),
-            'start_date': event['start'].isoformat() if event.get('start') else None,
-            'end_date': event['end'].isoformat() if event.get('end') else None,
+            'start_date': start_date.isoformat() if start_date else None,
+            'end_date': end_date.isoformat() if end_date else None,
             'is_completed': False,
             'lastmodified': int(event['last_modified'].timestamp()) if event.get('last_modified') else None,
             'calendar_source_name': calendar_name,
@@ -382,10 +391,20 @@ class BaikalEventViewSet(viewsets.ViewSet):
             calendar_source_id = isinstance(calendar_source_id, tuple) and calendar_source_id[0] or calendar_source_id
 
 
-            # Parser les dates
+            # Parser les dates - gère à la fois les dates avec et sans timezone
             try:
-                start_dt = datetime.fromisoformat(start_date.replace('Z', '+00:00'))
-                end_dt = datetime.fromisoformat(end_date.replace('Z', '+00:00'))
+                # Si la date contient 'Z' ou '+', elle a un timezone, sinon c'est une heure locale
+                if 'Z' in start_date or '+' in start_date:
+                    start_dt = datetime.fromisoformat(start_date.replace('Z', '+00:00'))
+                else:
+                    # Date locale sans timezone - la parser directement
+                    start_dt = datetime.fromisoformat(start_date)
+
+                if 'Z' in end_date or '+' in end_date:
+                    end_dt = datetime.fromisoformat(end_date.replace('Z', '+00:00'))
+                else:
+                    # Date locale sans timezone - la parser directement
+                    end_dt = datetime.fromisoformat(end_date)
             except (ValueError, AttributeError) as e:
                 return Response(
                     {'error': f'Format de date invalide: {str(e)}'},

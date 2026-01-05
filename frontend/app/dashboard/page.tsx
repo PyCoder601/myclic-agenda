@@ -850,7 +850,7 @@ export default function DashboardPage() {
                   }`}
                 >
                   {(mainViewMode === 'personal' ? viewMode : groupViewMode) === 'day' && (
-                    <span className="absolute inset-0 bg-gradient-to-r from-[#005f82] to-[#007ba8]"></span>
+                    <span className="absolute inset-0 bg-linear-to-r from-[#005f82] to-[#007ba8]"></span>
                   )}
                   <span className="relative z-10">Jour</span>
                 </button>
@@ -863,7 +863,7 @@ export default function DashboardPage() {
                   }`}
                 >
                   {(mainViewMode === 'personal' ? viewMode : groupViewMode) === 'week' && (
-                    <span className="absolute inset-0 bg-gradient-to-r from-[#005f82] to-[#007ba8]"></span>
+                    <span className="absolute inset-0 bg-linear-to-r from-[#005f82] to-[#007ba8]"></span>
                   )}
                   <span className="relative z-10">Semaine</span>
                 </button>
@@ -876,7 +876,7 @@ export default function DashboardPage() {
                   }`}
                 >
                   {(mainViewMode === 'personal' ? viewMode : groupViewMode) === 'month' && (
-                    <span className="absolute inset-0 bg-gradient-to-r from-[#005f82] to-[#007ba8]"></span>
+                    <span className="absolute inset-0 bg-linear-to-r from-[#005f82] to-[#007ba8]"></span>
                   )}
                   <span className="relative z-10">Mois</span>
                 </button>

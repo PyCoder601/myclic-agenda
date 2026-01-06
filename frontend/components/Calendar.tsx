@@ -176,8 +176,8 @@ const TaskItem = ({
 }: {
   task: Task;
   onTaskClick: (task: Task) => void;
-  dragListeners?: any;
-  dragAttributes?: any;
+  dragListeners?: Record<string, unknown>;
+  dragAttributes?: Record<string, unknown>;
   calendars: CalendarSource[];
 }) => {
   const taskColor = getTaskColor(task, calendars);
@@ -219,8 +219,8 @@ const WeekTaskItem = ({
 }: {
   task: Task;
   onTaskClick: (task: Task) => void;
-  dragListeners?: any;
-  dragAttributes?: any;
+  dragListeners?: Record<string, unknown>;
+  dragAttributes?: Record<string, unknown>;
   calendars: CalendarSource[];
 }) => {
   const taskColor = getTaskColor(task, calendars);
@@ -400,7 +400,7 @@ const PositionedWeekEventItem = ({
   calendars: CalendarSource[];
   top: number;
   height: number;
-  onResize?: (eventId: number, newHeight: number) => void;
+  onResize?: (eventId: string | number, newHeight: number) => void;
 }) => {
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
     id: event.id,

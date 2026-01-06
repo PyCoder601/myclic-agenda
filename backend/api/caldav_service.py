@@ -200,7 +200,7 @@ class BaikalCalDAVClient:
                     return {'error': f"Champ requis manquant: {field}", 'success': False}
 
             # Générer un UID unique
-            uid = str(uuid.uuid4())
+            uid = event_data.get('uid', str(uuid.uuid4()))
 
             # Gérer les dates (support datetime et timestamp)
             start_date = event_data['start']
@@ -232,6 +232,9 @@ STATUS:CONFIRMED"""
 
             if 'affair_id' in event_data and event_data['affair_id']:
                 ical_content += f"\nAFFAIR:{event_data['affair_id']}"
+
+            if 'recurrence-id' in event_data:
+                ical_content += f"\nRECURRENCE-ID:{self._format_ical_date(event_data['recurrence-id'])}"
 
             ical_content += """
 END:VEVENT

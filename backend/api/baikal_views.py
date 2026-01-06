@@ -3,6 +3,8 @@ Vues pour l'API Baikal
 Architecture CalDAV pure: Toutes les opérations via le client CalDAV
 """
 import logging
+import uuid
+
 from rest_framework import viewsets, status
 from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.response import Response
@@ -360,6 +362,120 @@ class BaikalEventViewSet(viewsets.ViewSet):
                 {'error': str(e)},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
+
+    def bulk_create(self, request):
+        """Crée plusieurs événements en une seule requête (pour les récurrences)"""
+        client = self._get_caldav_client()
+        if not client:
+            return Response(
+                {'error': 'Client CalDAV non disponible. Veuillez configurer vos identifiants Baikal.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        try:
+
+            results = []
+
+            events_data = request.data.get('events')
+            calendar_source_name = request.data.get('calendar_source_name')
+            calendar_source_color = request.data.get('calendar_source_color')
+            calendar_source_uri = request.data.get('calendar_source_uri'),
+            calendar_source_id = request.data.get('calendar_source_id'),
+            client_id = request.data.get('client_id')
+            affair_id = request.data.get('affair_id')
+            sequence = request.data.get('sequence', 1)
+
+            calendar_source_uri = isinstance(calendar_source_uri, tuple) and calendar_source_uri[0] or calendar_source_uri
+            calendar_source_id = isinstance(calendar_source_id, tuple) and calendar_source_id[0] or calendar_source_id
+
+            uid = str(uuid.uuid4())
+
+            for event in events_data:
+
+                start_date = event.get('start_date')
+                end_date = event.get('end_date')
+
+                # Parser les dates - gère à la fois les dates avec et sans timezone
+                try:
+                    # Si la date contient 'Z' ou '+', elle a un timezone, sinon c'est une heure locale
+                    if 'Z' in start_date or '+' in start_date:
+                        start_dt = datetime.fromisoformat(start_date.replace('Z', '+00:00'))
+                    else:
+                        # Date locale sans timezone - la parser directement
+                        start_dt = datetime.fromisoformat(start_date)
+
+                    if 'Z' in end_date or '+' in end_date:
+                        end_dt = datetime.fromisoformat(end_date.replace('Z', '+00:00'))
+                    else:
+                        # Date locale sans timezone - la parser directement
+                        end_dt = datetime.fromisoformat(end_date)
+                except (ValueError, AttributeError) as e:
+                    return Response(
+                        {'error': f'Format de date invalide: {str(e)}'},
+                        status=status.HTTP_400_BAD_REQUEST
+                    )
+
+                # Créer l'événement via CalDAV
+                event_data = {
+                    'uid': uid,
+                    'title': event.get('title'),
+                    'description': event.get('description'),
+                    'client_id': client_id,
+                    'affair_id': affair_id,
+                    'location': event.get('location', ''),
+                    'start': start_dt,
+                    'end': end_dt,
+                    'sequence': sequence,
+                    'recurrence-id' : event.get('recurrence-id')
+                }
+
+                result = client.create_event(calendar_source_name, event_data)
+
+                if not result.get('id'):
+                    return Response(
+                        {'error': result.get('error', 'Erreur lors de la création')},
+                        status=status.HTTP_500_INTERNAL_SERVER_ERROR
+                    )
+
+                print("uri", calendar_source_uri)
+
+                url = f'https://www.myclic.fr/baikal/html/cal.php/calendars/{self.request.user.email}/{calendar_source_uri}/{result["id"]}.ics'
+
+                print(url)
+
+                # Retourner les données de l'événement créé
+                created_event = {
+                    'id': result['id'],
+                    'title': event.title,
+                    'description': event.description,
+                    'start_date': start_date,
+                    'end_date': end_date,
+                    'location': "",
+                    'client_id': client_id,
+                    'affair_id': affair_id,
+                    'url': url,
+                    'lastmodified': int(datetime.now().timestamp()),
+                    'calendar_source_name': calendar_source_name,
+                    'calendar_source_color': calendar_source_color,
+                    'calendar_source_id': calendar_source_id,
+                    'calendar_source_uri': calendar_source_uri,
+                }
+
+                results.append(created_event)
+
+            return Response(results, status=status.HTTP_201_CREATED)
+
+        except Exception as e:
+            logger.error(f"Erreur création événement: {e}", exc_info=True)
+            return Response(
+                {'error': f'Erreur lors de la création: {str(e)}'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+
+
+
+
+
 
     def create(self, request):
         """Crée un nouvel événement via CalDAV"""

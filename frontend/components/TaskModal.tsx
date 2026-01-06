@@ -12,7 +12,7 @@ interface TaskModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSave: (task: Omit<Task, 'id' | 'created_at' | 'updated_at'>) => void;
-  onDelete?: (url: string) => void;
+  onDelete?: (url: string, id: string, recurrenceId?: string) => void;
   task?: Task | null;
   initialDate?: Date;
   initialHour?: number;
@@ -426,9 +426,6 @@ export default function TaskModal({ isOpen, onClose, onSave, onDelete, task, ini
       // ✅ Ajouter client et affaire
       ...(selectedClient && { client_id: selectedClient.id }),
       ...(selectedAffair && { affair_id: selectedAffair.id }),
-      // ✅ IMPORTANT : Inclure l'URL de l'événement pour les mises à jour
-      ...(task && { url: task.url }),
-      ...(task && { recurrence_id: task.recurrence_id }),
     });
     onClose();
   };
@@ -468,7 +465,6 @@ export default function TaskModal({ isOpen, onClose, onSave, onDelete, task, ini
           calendar_source_color: calendar.calendarcolor,
           ...(selectedClient && { client_id: selectedClient.id }),
           ...(selectedAffair && { affair_id: selectedAffair.id }),
-          recurrence_id: undefined,
         });
       });
       onClose();
@@ -488,8 +484,6 @@ export default function TaskModal({ isOpen, onClose, onSave, onDelete, task, ini
           location: formData.location || '',
           start_date: formatLocalISO(dateInfo.start),
           end_date: formatLocalISO(dateInfo.end),
-          // ✅ RECURRENCE-ID : la date de début de chaque occurrence
-          recurrence_id: formatLocalISO(dateInfo.start),
         }));
 
         // ✅ Envoyer UNE SEULE requête pour tous les événements
@@ -605,7 +599,7 @@ export default function TaskModal({ isOpen, onClose, onSave, onDelete, task, ini
       } else {
         // Suppression directe pour les événements non récurrents
         if (onDelete) {
-          onDelete(task.url || '');
+          onDelete(task.url || '', task.id);
           onClose();
         }
       }
@@ -616,12 +610,11 @@ export default function TaskModal({ isOpen, onClose, onSave, onDelete, task, ini
     if (task && onDelete) {
       if (deleteOption === 'single' && task.recurrence_id) {
         // Supprimer uniquement cette occurrence
-        // On passe le recurrence_id en paramètre
-        const urlWithRecurrenceId = `${task.url}?recurrence_id=${encodeURIComponent(task.recurrence_id)}`;
-        onDelete(urlWithRecurrenceId);
+        // ✅ Passer l'ID de l'événement principal, puis le recurrence_id
+        onDelete(task.url || '', task.id, task.recurrence_id);
       } else {
         // Supprimer toutes les occurrences
-        onDelete(task.url || '');
+        onDelete(task.url || '', task.id);
       }
       setShowDeleteConfirm(false);
       onClose();

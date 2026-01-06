@@ -85,13 +85,14 @@ const mergeRanges = (ranges: DateRange[], newRange: DateRange): DateRange[] => {
 // Récupérer les calendriers (display != 0)
 export const fetchCalendars = createAsyncThunk(
     'calendar/fetchCalendars',
-    async (forceRefresh: boolean = false, {rejectWithValue}) => {
+    async (_forceRefresh: boolean = false, {rejectWithValue}) => {
         try {
             console.log('🔄 Fetch calendriers depuis l\'API');
             const response = await baikalAPI.getCalendars();
             return response.data;
-        } catch (error: any) {
-            return rejectWithValue(error.response?.data || 'Erreur lors de la récupération des calendriers');
+        } catch (error: unknown) {
+            const err = error as { response?: { data?: unknown } };
+            return rejectWithValue(err.response?.data || 'Erreur lors de la récupération des calendriers');
         }
     }
 );
@@ -104,8 +105,9 @@ export const fetchAllCalendars = createAsyncThunk(
             console.log('🔄 [Arrière-plan] Fetch TOUS les calendriers (même display == 0)');
             const response = await baikalAPI.getCalendars();
             return response.data;
-        } catch (error: any) {
-            return rejectWithValue(error.response?.data || 'Erreur lors de la récupération de tous les calendriers');
+        } catch (error: unknown) {
+            const err = error as { response?: { data?: unknown } };
+            return rejectWithValue(err.response?.data || 'Erreur lors de la récupération de tous les calendriers');
         }
     }
 );
@@ -130,8 +132,9 @@ export const fetchEvents = createAsyncThunk(
             });
 
             return { data: response.data, fromCache: false, range: { start: params.start_date, end: params.end_date } };
-        } catch (error: any) {
-            return rejectWithValue(error.response?.data || 'Erreur lors de la récupération des événements');
+        } catch (error: unknown) {
+            const err = error as { response?: { data?: unknown } };
+            return rejectWithValue(err.response?.data || 'Erreur lors de la récupération des événements');
         }
     }
 );
@@ -161,8 +164,9 @@ export const fetchAllGroupEvents = createAsyncThunk(
                 events: response.data,
                 dateRange: { start: params.start_date, end: params.end_date }
             };
-        } catch (error: any) {
-            return rejectWithValue(error.response?.data || 'Erreur lors de la récupération des événements de groupe');
+        } catch (error: unknown) {
+            const err = error as { response?: { data?: unknown } };
+            return rejectWithValue(err.response?.data || 'Erreur lors de la récupération des événements de groupe');
         }
     }
 );
@@ -180,8 +184,9 @@ export const fetchAllEventsBackground = createAsyncThunk(
             });
 
             return response.data;
-        } catch (error: any) {
-            return rejectWithValue(error.response?.data || 'Erreur lors de la récupération de tous les événements');
+        } catch (error: unknown) {
+            const err = error as { response?: { data?: unknown } };
+            return rejectWithValue(err.response?.data || 'Erreur lors de la récupération de tous les événements');
         }
     }
 );
@@ -195,7 +200,7 @@ export const createEvent = createAsyncThunk(
 
         // Créer un événement optimiste immédiatement
         const optimisticEvent: Task = {
-            id: tempId as any,
+            id: tempId,
             title: eventData.title || 'Sans titre',
             description: eventData.description || '',
             start_date: eventData.start_date!,
@@ -217,10 +222,11 @@ export const createEvent = createAsyncThunk(
 
             // Retourner l'événement réel du serveur avec l'ID temporaire pour le mapping
             return {tempId, serverEvent: response.data};
-        } catch (error: any) {
+        } catch (error: unknown) {
             // En cas d'erreur, supprimer l'événement optimiste
             dispatch(removeOptimisticEvent(tempId));
-            return rejectWithValue(error.response?.data || 'Erreur lors de la création de l\'événement');
+            const err = error as { response?: { data?: unknown } };
+            return rejectWithValue(err.response?.data || 'Erreur lors de la création de l\'événement');
         }
     }
 );
@@ -228,11 +234,11 @@ export const createEvent = createAsyncThunk(
 // Mettre à jour un événement
 export const updateEvent = createAsyncThunk(
     'calendar/updateEvent',
-    async ({id, data}: { id: number; data: Partial<Task> }, {rejectWithValue, getState}) => {
+    async ({id, data}: { id: string | number; data: Partial<Task> }, {rejectWithValue, getState}) => {
         try {
             // ✅ Récupérer l'événement existant pour obtenir son URL
             const state = getState() as { calendar: CalendarState };
-            const existingEvent = state.calendar.events.find(e => e.id === id);
+            const existingEvent = state.calendar.events.find(e => e.id === String(id));
 
             // ✅ Inclure l'URL dans les données envoyées
             const dataWithUrl = {
@@ -240,10 +246,11 @@ export const updateEvent = createAsyncThunk(
                 url: existingEvent?.url || data.url
             };
 
-            const response = await baikalAPI.updateEvent(id, dataWithUrl);
+            const response = await baikalAPI.updateEvent(typeof id === 'number' ? id : parseInt(id), dataWithUrl);
             return response.data;
-        } catch (error: any) {
-            return rejectWithValue(error.response?.data || 'Erreur lors de la mise à jour de l\'événement');
+        } catch (error: unknown) {
+            const err = error as { response?: { data?: unknown } };
+            return rejectWithValue(err.response?.data || 'Erreur lors de la mise à jour de l\'événement');
         }
     }
 );
@@ -251,53 +258,16 @@ export const updateEvent = createAsyncThunk(
 // Supprimer un événement
 export const deleteEvent = createAsyncThunk(
     'calendar/deleteEvent',
-    async (url: string, {rejectWithValue, getState}) => {
+    async ({url, id, recurrenceId} : { url: string; id: string, recurrenceId?: string }, {rejectWithValue}) => {
         try {
-            // ✅ Nettoyer l'URL en enlevant le recurrence_id si présent
-            const cleanUrl = url.split('?')[0];
-
-            // ✅ Récupérer l'événement existant pour obtenir son ID
-            const state = getState() as { calendar: CalendarState };
-
-            console.log('🔍 Recherche événement avec URL:', cleanUrl);
-            console.log('📋 Nombre d\'événements dans le store:', state.calendar.events.length);
-
-            const existingEvent = state.calendar.events.find(e => e.url === cleanUrl);
-
-            console.log('✅ Événement trouvé:', existingEvent);
-
-            if (!existingEvent) {
-                // Si l'événement n'est pas trouvé par URL, essayer de le trouver par recurrence_id
-                const recurrenceIdMatch = url.match(/recurrence_id=([^&]+)/);
-                if (recurrenceIdMatch) {
-                    const recurrenceId = decodeURIComponent(recurrenceIdMatch[1]);
-                    const eventByRecurrence = state.calendar.events.find(e =>
-                        e.recurrence_id === recurrenceId && e.url === cleanUrl
-                    );
-
-                    if (eventByRecurrence) {
-                        const id = String(eventByRecurrence.id);
-                        await baikalAPI.deleteEvent(url, id);
-                        return { url: cleanUrl, recurrenceId };
-                    }
-                }
-
-                console.error('❌ Événement non trouvé pour la suppression');
-                return rejectWithValue('Événement non trouvé pour la suppression');
+            await baikalAPI.deleteEvent(url, id, recurrenceId);
+            if (recurrenceId) {
+                return { url, recurrenceId};
             }
-
-            const id = String(existingEvent.id);
-            await baikalAPI.deleteEvent(url, id);
-
-            // Retourner l'URL propre et le recurrence_id s'il y en a un
-            const recurrenceIdMatch = url.match(/recurrence_id=([^&]+)/);
-            if (recurrenceIdMatch) {
-                return { url: cleanUrl, recurrenceId: decodeURIComponent(recurrenceIdMatch[1]) };
-            }
-
-            return { url: cleanUrl };
-        } catch (error: any) {
-            return rejectWithValue(error.response?.data || 'Erreur lors de la suppression de l\'événement');
+            return { url};
+        } catch (error: unknown) {
+            const err = error as { response?: { data?: unknown } };
+            return rejectWithValue(err.response?.data || 'Erreur lors de la suppression de l\'événement');
         }
     }
 );
@@ -309,8 +279,9 @@ export const updateCalendar = createAsyncThunk(
         try {
             const response = await baikalAPI.updateCalendar(id, data);
             return response.data;
-        } catch (error: any) {
-            return rejectWithValue(error.response?.data || 'Erreur lors de la mise à jour du calendrier');
+        } catch (error: unknown) {
+            const err = error as { response?: { data?: unknown } };
+            return rejectWithValue(err.response?.data || 'Erreur lors de la mise à jour du calendrier');
         }
     }
 );
@@ -338,13 +309,13 @@ const calendarSlice = createSlice({
             const tempId = action.payload;
             delete state.optimisticEvents[tempId];
             // Retirer de la liste des événements
-            state.events = state.events.filter(e => e.id !== tempId as any);
+            state.events = state.events.filter(e => e.id !== tempId);
         },
 
         // Mise à jour optimiste pour les modifications
-        optimisticUpdateEvent: (state, action: PayloadAction<{ id: number; data: Partial<Task> }>) => {
+        optimisticUpdateEvent: (state, action: PayloadAction<{ id: string | number; data: Partial<Task> }>) => {
             const {id, data} = action.payload;
-            const index = state.events.findIndex(e => e.id === id);
+            const index = state.events.findIndex(e => e.id === String(id));
             if (index !== -1) {
                 state.events[index] = {...state.events[index], ...data};
             }
@@ -430,7 +401,7 @@ const calendarSlice = createSlice({
         builder.addCase(fetchEvents.fulfilled, (state, action) => {
             state.eventsLoading = false;
 
-            const payload = action.payload as any;
+            const payload = action.payload as { data: Task[]; fromCache: boolean; range: { start: string; end: string } };
 
             // Si les données viennent du cache, ne rien faire
             if (payload.fromCache) {
@@ -468,7 +439,7 @@ const calendarSlice = createSlice({
         builder.addCase(fetchAllGroupEvents.fulfilled, (state, action) => {
             state.groupEventsLoading = false;
 
-            const payload = action.payload as any;
+            const payload = action.payload as { fromCache: boolean; events: Task[]; dateRange?: { start: string; end: string } };
 
             // Si les données viennent du cache, ne rien faire
             if (payload.fromCache) {
@@ -588,7 +559,7 @@ const calendarSlice = createSlice({
         builder.addCase(deleteEvent.fulfilled, (state, action) => {
             // Le payload peut être soit { url: string } soit { url: string, recurrenceId: string }
             const payload = action.payload as { url: string; recurrenceId?: string } | { url: string };
-            const url = typeof payload === 'string' ? payload : payload.url;
+            const url = payload.url;
             const recurrenceId = typeof payload === 'object' && 'recurrenceId' in payload ? payload.recurrenceId : null;
 
             if (recurrenceId) {

@@ -57,76 +57,6 @@ api.interceptors.response.use(
 );
 
 // ============================================================================
-// API CalDAV (Ancienne API - Conservation pour compatibilité)
-// ============================================================================
-// ⚠️ NOTE: Cette API est conservée pour la configuration et les anciennes
-// fonctionnalités. Pour les opérations CRUD sur les événements et calendriers,
-// utilisez baikalAPI ci-dessous.
-// ============================================================================
-export const caldavAPI = {
-    // Récupérer la configuration CalDAV
-    getConfig: () => api.get('/caldav/config/'),
-
-    // Créer ou mettre à jour la configuration CalDAV
-    saveConfig: (data: {
-        username: string;
-        password: string;
-        calendar_name?: string;
-        sync_enabled?: boolean;
-    }) => api.post('/caldav/config/', data),
-
-    // Mettre à jour la configuration CalDAV
-    updateConfig: (data: Partial<{
-        username: string;
-        password: string;
-        calendar_name: string;
-        sync_enabled: boolean;
-    }>) => api.put('/caldav/config/', data),
-
-    // Supprimer la configuration CalDAV
-    deleteConfig: () => api.delete('/caldav/config/'),
-
-    // Tester la connexion CalDAV
-    testConnection: () => api.post('/caldav/test/'),
-
-    // Synchroniser les tâches
-    sync: () => api.post('/caldav/sync/'),
-
-    // Synchroniser via le viewset des tâches
-    syncTasks: () => api.post('/tasks/sync/'),
-
-    // Découvrir tous les calendriers disponibles
-    discoverCalendars: () => api.get('/caldav/discover/'),
-
-    // Récupérer tous les calendriers (possédés et partagés)
-    getAllCalendars: () => api.get('/caldav/calendars/all/'),
-
-    // Récupérer les calendriers avec droit d'écriture
-    getWritableCalendars: () => api.get('/caldav/calendars/writable/'),
-
-    // Mettre à jour un calendrier (activer/désactiver, changer couleur, etc.)
-    updateCalendar: (calendarId: number, data: Partial<{
-        displayname: string;
-        display: boolean;
-        calendarcolor: string;
-    }>) => api.put(`/caldav/calendars/${calendarId}/`, data),
-
-    // Supprimer un calendrier
-    deleteCalendar: (calendarId: number) => api.delete(`/caldav/calendars/${calendarId}/`),
-
-    // Rechercher des utilisateurs
-    searchUsers: (query: string) => api.get(`/users/search/?query=${query}`),
-
-    // Partager un calendrier
-    shareCalendar: (calendarId: number, userId: number, permission = 'read') =>
-        api.post(`/caldav/calendars/${calendarId}/share/`, {user_id: userId, permission: permission}),
-
-    // Révoquer le partage
-    unshareCalendar: (calendarId: number, userId: number) =>
-        api.delete(`/caldav/calendars/${calendarId}/share/`, {data: {user_id: userId}}),
-};
-
-// ============================================================================
 // API Baikal (API Principale - Accès direct MySQL + CalDAV pour écritures)
 // ============================================================================
 // ✅ Architecture:
@@ -186,18 +116,10 @@ export const baikalAPI = {
     },
 
     // Supprimer un événement
-    deleteEvent: (url: string, id: string) => {
+    deleteEvent: (url: string, id: string, recurrenceId: string | undefined) => {
         console.log("eventUrl dans api.ts:", url);
 
-        // ✅ Extraire le recurrence_id de l'URL si présent
-        let recurrenceId = null;
-        let cleanUrl = url;
-
-        if (url.includes('?recurrence_id=')) {
-            const urlParts = url.split('?recurrence_id=');
-            cleanUrl = urlParts[0];
-            recurrenceId = decodeURIComponent(urlParts[1]);
-        }
+        const cleanUrl = url;
 
         console.log("Clean URL:", cleanUrl);
         console.log("Recurrence ID:", recurrenceId);

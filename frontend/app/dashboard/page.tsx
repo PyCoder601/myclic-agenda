@@ -132,7 +132,7 @@ export default function DashboardPage() {
         })).unwrap();
 
         // Vérifier si les données viennent du cache
-        const fromCache = (result as any)?.fromCache === true;
+        const fromCache = (result as { fromCache?: boolean })?.fromCache === true;
         console.log(`✅ Événements chargés ${fromCache ? '(depuis le cache)' : '(depuis le backend)'}`);
 
         return !fromCache; // Retourne true si fetch backend, false si cache
@@ -289,15 +289,14 @@ export default function DashboardPage() {
     }
   }, [dispatch, selectedTask]);
 
-  const handleDeleteTask = useCallback(async (url: string) => {
+  const handleDeleteTask = useCallback(async (url: string, id: string, recurrenceId?: string) => {
     try {
 
       // Dispatch deleteEvent thunk en arrière-plan
       console.log(`🗑️ Suppression de l'événement ${url}...`);
-      await dispatch(deleteEvent(url)).unwrap();
+      await dispatch(deleteEvent({url, recurrenceId, id})).unwrap();
 
       console.log(`✅ Événement ${url} supprimé`);
-
     } catch (error) {
       console.error('Erreur lors de la suppression de l\'événement:', error);
 

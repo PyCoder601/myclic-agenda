@@ -137,6 +137,16 @@ class BaikalCalDAVClient:
                     if end_date and hasattr(end_date, 'tzinfo') and end_date.tzinfo:
                         end_date = end_date.replace(tzinfo=None)
 
+                    # Parser le recurrence-id proprement
+                    recurrence_id = ''
+                    if vevent.get('recurrence-id'):
+                        recurrence_id_parsed = self._parse_ical_date(vevent.get('recurrence-id'))
+                        if recurrence_id_parsed:
+                            # Enlever le timezone et formater en ISO
+                            if hasattr(recurrence_id_parsed, 'tzinfo') and recurrence_id_parsed.tzinfo:
+                                recurrence_id_parsed = recurrence_id_parsed.replace(tzinfo=None)
+                            recurrence_id = recurrence_id_parsed.isoformat() if hasattr(recurrence_id_parsed, 'isoformat') else str(recurrence_id_parsed)
+
                     formatted_event = {
                         'id': str(vevent.get('uid', event.url)),
                         'title': str(vevent.get('summary', 'Sans titre')),
@@ -153,7 +163,7 @@ class BaikalCalDAVClient:
                         'calendar_source_id': calendar_obj['id'],
                         'calendar_source_uri': calendar_obj['uri'],
                         'calendar_source_color': calendar_obj["calendarcolor"],
-                        'recurrence_id': str(vevent.get('recurrence-id', ''))
+                        'recurrence_id': recurrence_id
                     }
                     formatted_events.append(formatted_event)
                 except Exception as e:
@@ -428,7 +438,21 @@ END:VCALENDAR"""
                 }
 
             # Parser la date de recurrence_id
-            recurrence_dt = datetime.fromisoformat(recurrence_id.replace('Z', '+00:00'))
+            # Gérer le cas où recurrence_id est un objet vDDDTypes stringifié
+            if 'vDDDTypes' in recurrence_id:
+                # Format: "vDDDTypes(2026-01-29 00:00:00+01:00, Parameters({'TZID': 'Europe/Paris'}))"
+                # Extraire la date entre les parenthèses
+                import re
+                match = re.search(r'vDDDTypes\(([^,]+),', recurrence_id)
+                if match:
+                    date_str = match.group(1).strip()
+                    # Parser la date avec timezone
+                    recurrence_dt = datetime.fromisoformat(date_str)
+                else:
+                    raise ValueError(f"Format vDDDTypes invalide: {recurrence_id}")
+            else:
+                # Format ISO standard
+                recurrence_dt = datetime.fromisoformat(recurrence_id.replace('Z', '+00:00'))
 
             # Récupérer le timezone du DTSTART
             dtstart = main_event.get('DTSTART')

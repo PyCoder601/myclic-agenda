@@ -430,7 +430,6 @@ class BaikalEventViewSet(viewsets.ViewSet):
             logger.info(f"⚡ Retour immédiat de {len(results)} événements au frontend")
 
             # 🔄 Créer les événements en arrière-plan
-            import threading
 
             def create_events_background():
                 """Fonction exécutée en arrière-plan pour créer les événements"""

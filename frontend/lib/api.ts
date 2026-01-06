@@ -157,6 +157,25 @@ export const baikalAPI = {
     // Créer un événement
     createEvent: (data: Partial<Task>) => api.post('/baikal/events/', data),
 
+    // Créer plusieurs événements en bulk (pour les récurrences)
+    bulkCreateEvents: (data: {
+        events: Array<{
+            title: string;
+            description: string;
+            location?: string;
+            start_date: string;
+            end_date: string;
+            recurrence_id?: string;
+        }>;
+        calendar_source_name: string;
+        calendar_source_color: string;
+        calendar_source_uri: string;
+        calendar_source_id: number;
+        client_id?: number;
+        affair_id?: number;
+        sequence: number;
+    }) => api.post('/baikal/events/bulk_create/', data),
+
     // Mettre à jour un événement
     updateEvent: (eventId: number, data: Partial<Task>) => {
         console.log('📝 baikalAPI.updateEvent appelé:', { eventId, data });

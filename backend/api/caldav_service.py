@@ -188,6 +188,10 @@ class BaikalCalDAVClient:
         Returns:
             Informations sur l'événement créé ou erreur
         """
+
+        print("event_data", event_data)
+        print("calendar_name", calendar_name)
+
         calendar = self.get_calendar_by_name(calendar_name)
         if not calendar:
             return {'error': f"Calendrier '{calendar_name}' non trouvé", 'success': False}
@@ -223,7 +227,6 @@ DTEND:{self._format_ical_date(end_date)}
 SUMMARY:{event_data.get('title', 'Nouvel événement')}
 DESCRIPTION:{event_data.get('description', '')}
 LOCATION:{event_data.get('location', '')}
-SEQUENCE:{event_data.get('sequence', 0)}
 STATUS:CONFIRMED"""
 
             # Ajouter CLIENT et AFFAIR si présents
@@ -239,8 +242,10 @@ STATUS:CONFIRMED"""
             ical_content += """
 END:VEVENT
 END:VCALENDAR"""
-
             # Sauvegarder l'événement
+            print("ical_content", ical_content)
+            print("calendar", calendar)
+            print("Type of calendar object", type(calendar))
             calendar.save_event(ical_content)
 
             logger.info(f"Événement créé: {event_data.get('title')} dans '{calendar_name}'")

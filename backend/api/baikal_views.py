@@ -363,6 +363,7 @@ class BaikalEventViewSet(viewsets.ViewSet):
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
 
+    @action(detail=False, methods=['post'])
     def bulk_create(self, request):
         """Crée plusieurs événements en une seule requête (pour les récurrences)"""
         client = self._get_caldav_client()
@@ -389,12 +390,17 @@ class BaikalEventViewSet(viewsets.ViewSet):
 
             uid = str(uuid.uuid4())
 
+            print("Calendar source uri", calendar_source_uri)
+            print("Calendar source id", calendar_source_id)
+            print("Calendar source name", calendar_source_name)
+
             for event in events_data:
 
                 start_date = event.get('start_date')
                 end_date = event.get('end_date')
+                recurrence_id = event.get('recurrence_id')
 
-                # Parser les dates - gère à la fois les dates avec et sans timezone
+                # Parser les dates - comme dans create()
                 try:
                     # Si la date contient 'Z' ou '+', elle a un timezone, sinon c'est une heure locale
                     if 'Z' in start_date or '+' in start_date:
@@ -408,6 +414,15 @@ class BaikalEventViewSet(viewsets.ViewSet):
                     else:
                         # Date locale sans timezone - la parser directement
                         end_dt = datetime.fromisoformat(end_date)
+
+                    # Parser recurrence_id si fourni
+                    recurrence_id_dt = None
+                    if recurrence_id:
+                        if 'Z' in recurrence_id or '+' in recurrence_id:
+                            recurrence_id_dt = datetime.fromisoformat(recurrence_id.replace('Z', '+00:00'))
+                        else:
+                            recurrence_id_dt = datetime.fromisoformat(recurrence_id)
+
                 except (ValueError, AttributeError) as e:
                     return Response(
                         {'error': f'Format de date invalide: {str(e)}'},
@@ -425,8 +440,11 @@ class BaikalEventViewSet(viewsets.ViewSet):
                     'start': start_dt,
                     'end': end_dt,
                     'sequence': sequence,
-                    'recurrence-id' : event.get('recurrence-id')
                 }
+
+                # Ajouter recurrence-id seulement si fourni
+                if recurrence_id_dt:
+                    event_data['recurrence-id'] = recurrence_id_dt
 
                 result = client.create_event(calendar_source_name, event_data)
 
@@ -445,11 +463,12 @@ class BaikalEventViewSet(viewsets.ViewSet):
                 # Retourner les données de l'événement créé
                 created_event = {
                     'id': result['id'],
-                    'title': event.title,
-                    'description': event.description,
+                    'uid': uid,
+                    'title': event.get('title'),
+                    'description': event.get('description'),
                     'start_date': start_date,
                     'end_date': end_date,
-                    'location': "",
+                    'location': event.get('location', ''),
                     'client_id': client_id,
                     'affair_id': affair_id,
                     'url': url,
@@ -470,11 +489,6 @@ class BaikalEventViewSet(viewsets.ViewSet):
                 {'error': f'Erreur lors de la création: {str(e)}'},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
-
-
-
-
-
 
 
     def create(self, request):

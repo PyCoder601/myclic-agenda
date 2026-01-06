@@ -425,7 +425,7 @@ export default function TaskModal({ isOpen, onClose, onSave, onDelete, task, ini
     onClose();
   };
 
-  const submitWithMultipleCalendars = (selectedCalendars: CalendarSource[]) => {
+  const submitWithMultipleCalendars = async (selectedCalendars: CalendarSource[]) => {
     console.log('=== TaskModal Submit Multiple Calendars ===');
     console.log('Calendriers sélectionnés:', selectedCalendars);
 
@@ -444,11 +444,10 @@ export default function TaskModal({ isOpen, onClose, onSave, onDelete, task, ini
       return `${year}-${month}-${day}T${hours}:${minutes}:${seconds}`;
     };
 
-    // Créer l'événement dans chaque calendrier sélectionné pour chaque date de récurrence
-    selectedCalendars.forEach(calendar => {
-      console.log('Création dans:', calendar.displayname || calendar.defined_name);
-
-      recurrenceDates.forEach((dateInfo, index) => {
+    // Si pas de récurrence OU une seule occurrence, utiliser l'ancienne méthode
+    if (recurrenceDates.length === 1) {
+      selectedCalendars.forEach(calendar => {
+        const dateInfo = recurrenceDates[0];
         onSave({
           title: formData.title,
           description: formData.description,
@@ -459,14 +458,52 @@ export default function TaskModal({ isOpen, onClose, onSave, onDelete, task, ini
           calendar_source_id: calendar.id,
           calendar_source_uri: calendar.uri || '',
           calendar_source_color: calendar.calendarcolor,
-          // ✅ Ajouter client et affaire
           ...(selectedClient && { client_id: selectedClient.id }),
           ...(selectedAffair && { affair_id: selectedAffair.id }),
-          // ✅ Ajouter le numéro de séquence pour la récurrence
-          sequence: index + 1,
         });
       });
-    });
+      onClose();
+      return;
+    }
+
+    // ✅ Pour les récurrences multiples, utiliser bulk_create
+    try {
+      for (const calendar of selectedCalendars) {
+        console.log('🔄 Création bulk dans:', calendar.displayname || calendar.defined_name);
+
+        // Préparer tous les événements pour ce calendrier
+        const events = recurrenceDates.map((dateInfo) => ({
+          title: formData.title,
+          description: formData.description,
+          location: formData.location || '',
+          start_date: formatLocalISO(dateInfo.start),
+          end_date: formatLocalISO(dateInfo.end),
+          // ✅ RECURRENCE-ID : la date de début de chaque occurrence
+          recurrence_id: formatLocalISO(dateInfo.start),
+        }));
+
+        // ✅ Envoyer UNE SEULE requête pour tous les événements
+        await baikalAPI.bulkCreateEvents({
+          events,
+          calendar_source_name: calendar.displayname || calendar.defined_name as string,
+          calendar_source_color: calendar.calendarcolor || '#005f82',
+          calendar_source_uri: calendar.uri || '',
+          calendar_source_id: calendar.id,
+          client_id: selectedClient?.id,
+          affair_id: selectedAffair?.id,
+          // ✅ SEQUENCE : nombre total d'occurrences (pas l'index)
+          sequence: recurrenceDates.length,
+        });
+
+        console.log(`✅ ${events.length} événements créés en bulk pour ${calendar.displayname}`);
+      }
+
+      // Recharger les événements après la création
+      window.location.reload();
+    } catch (error) {
+      console.error('❌ Erreur lors de la création bulk:', error);
+      alert('Erreur lors de la création des événements récurrents');
+    }
 
     onClose();
   };

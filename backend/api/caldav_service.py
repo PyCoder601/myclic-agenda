@@ -239,14 +239,30 @@ STATUS:CONFIRMED"""
             if 'recurrence-id' in event_data:
                 ical_content += f"\nRECURRENCE-ID:{self._format_ical_date(event_data['recurrence-id'])}"
 
+            # Ajouter SEQUENCE si fourni
+            if 'sequence' in event_data:
+                ical_content += f"\nSEQUENCE:{event_data['sequence']}"
+
             ical_content += """
 END:VEVENT
 END:VCALENDAR"""
-            # Sauvegarder l'événement
-            print("ical_content", ical_content)
-            print("calendar", calendar)
-            print("Type of calendar object", type(calendar))
-            calendar.save_event(ical_content)
+
+            # Construire l'URL de l'événement
+            # Format: base_url/calendars/user@example.com/calendar_uri/uid.ics
+            calendar_url = str(calendar.url).rstrip('/')
+            event_url = f"{calendar_url}/{uid}.ics"
+
+            # Sauvegarder l'événement via PUT
+            # Note: Pas de If-None-Match pour les événements récurrents (même UID, RECURRENCE-ID différents)
+            headers = {
+                'Content-Type': 'text/calendar; charset=utf-8',
+            }
+
+            response = self._session.put(event_url, data=ical_content.encode('utf-8'), headers=headers)
+
+            if response.status_code not in [200, 201, 204]:
+                logger.error(f"Erreur création événement: HTTP {response.status_code} - {response.text}")
+                return {'error': f'Erreur HTTP {response.status_code}: {response.text}', 'success': False}
 
             logger.info(f"Événement créé: {event_data.get('title')} dans '{calendar_name}'")
 

@@ -341,7 +341,7 @@ export default function DashboardPage() {
   }, []);
 
   const handleTaskDrop = useCallback(async (taskId: number | string, newDate: Date) => {
-    const task = events.find(t => t.id === taskId);
+    const task = events.find(t => String(t.id) === String(taskId));
     if (!task) return;
 
     const oldStartDate = new Date(task.start_date);
@@ -413,7 +413,7 @@ export default function DashboardPage() {
   }, [events, dispatch, currentDate, mainViewMode]);
 
   const handleTaskResize = useCallback(async (taskId: number | string, newEndDate: Date) => {
-    const task = events.find(t => t.id === taskId);
+    const task = events.find(t => String(t.id) === String(taskId));
     if (!task) return;
 
     const startDate = new Date(task.start_date);

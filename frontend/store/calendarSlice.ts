@@ -512,7 +512,7 @@ const calendarSlice = createSlice({
             delete state.optimisticEvents[tempId];
 
             // Remplacer l'événement temporaire par l'événement réel du serveur
-            const index = state.events.findIndex(e => e.id === tempId as any);
+            const index = state.events.findIndex(e => e.id === tempId);
             if (index !== -1) {
                 state.events[index] = serverEvent;
             } else {
@@ -522,7 +522,7 @@ const calendarSlice = createSlice({
 
             // Aussi ajouter à allEvents si chargé
             if (state.allEventsLoaded) {
-                const allIndex = state.allEvents.findIndex(e => e.id === tempId as any);
+                const allIndex = state.allEvents.findIndex(e => e.id === tempId);
                 if (allIndex !== -1) {
                     state.allEvents[allIndex] = serverEvent;
                 } else {

@@ -34,8 +34,8 @@ interface CalendarProps {
   onDateChange: (date: Date) => void;
   onTaskClick: (task: Task) => void;
   onAddTask: (date: Date, hour?: number) => void;
-  onTaskDrop: (taskId: number, newDate: Date) => void;
-  onTaskResize?: (taskId: number, newEndDate: Date) => void;
+  onTaskDrop: (taskId: number | string, newDate: Date) => void;
+  onTaskResize?: (taskId: number | string, newEndDate: Date) => void;
   calendars: CalendarSource[];
   isNavigating?: boolean;
   pendingDate?: Date | null;
@@ -270,7 +270,7 @@ const PositionedEventItem = ({
   calendars: CalendarSource[];
   top: number;
   height: number;
-  onResize?: (eventId: number, newHeight: number) => void;
+  onResize?: (eventId: string | number, newHeight: number) => void;
 }) => {
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
     id: event.id,
@@ -534,7 +534,7 @@ export default function Calendar({
   const [activeTask, setActiveTask] = useState<Task | null>(null);
 
   // Handler pour le redimensionnement des événements
-  const handleEventResize = useCallback((eventId: number, newHeight: number) => {
+  const handleEventResize = useCallback((eventId: number | string, newHeight: number) => {
     if (!onTaskResize) return;
 
     const task = tasks.find(t => t.id === eventId);
@@ -565,7 +565,7 @@ export default function Calendar({
       let newDate = over.data.current?.date as Date;
 
       if (taskId && newDate) {
-        const task = tasks.find((t) => t.id === taskId);
+        const task = tasks.find((t) => String(t.id) === String(taskId));
 
         if (task) {
           // Pour les vues jour et semaine, calculer la position exacte basée sur le delta

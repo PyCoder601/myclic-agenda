@@ -4,6 +4,7 @@ Architecture CalDAV pure: Toutes les opérations via le client CalDAV
 """
 import logging
 import uuid
+import threading
 
 from rest_framework import viewsets, status
 from rest_framework.decorators import action, api_view, permission_classes
@@ -365,7 +366,10 @@ class BaikalEventViewSet(viewsets.ViewSet):
 
     @action(detail=False, methods=['post'])
     def bulk_create(self, request):
-        """Crée plusieurs événements en une seule requête (pour les récurrences)"""
+        """
+        Crée plusieurs événements en une seule requête (pour les récurrences)
+        ⚡ Optimisé : Retourne immédiatement les données, création en arrière-plan
+        """
         client = self._get_caldav_client()
         if not client:
             return Response(
@@ -373,9 +377,6 @@ class BaikalEventViewSet(viewsets.ViewSet):
                 status=status.HTTP_400_BAD_REQUEST
             )
         try:
-
-            results = []
-
             events_data = request.data.get('events')
             calendar_source_name = request.data.get('calendar_source_name')
             calendar_source_color = request.data.get('calendar_source_color')
@@ -390,79 +391,19 @@ class BaikalEventViewSet(viewsets.ViewSet):
 
             uid = str(uuid.uuid4())
 
-            print("Calendar source uri", calendar_source_uri)
-            print("Calendar source id", calendar_source_id)
-            print("Calendar source name", calendar_source_name)
+            # ⚡ Préparer la réponse immédiate avec les données optimistes
+            results = []
 
             for event in events_data:
-
                 start_date = event.get('start_date')
                 end_date = event.get('end_date')
-                recurrence_id = event.get('recurrence_id')
 
-                # Parser les dates - comme dans create()
-                try:
-                    # Si la date contient 'Z' ou '+', elle a un timezone, sinon c'est une heure locale
-                    if 'Z' in start_date or '+' in start_date:
-                        start_dt = datetime.fromisoformat(start_date.replace('Z', '+00:00'))
-                    else:
-                        # Date locale sans timezone - la parser directement
-                        start_dt = datetime.fromisoformat(start_date)
+                # Générer l'URL de l'événement
+                url = f'https://www.myclic.fr/baikal/html/cal.php/calendars/{self.request.user.email}/{calendar_source_uri}/{uid}.ics'
 
-                    if 'Z' in end_date or '+' in end_date:
-                        end_dt = datetime.fromisoformat(end_date.replace('Z', '+00:00'))
-                    else:
-                        # Date locale sans timezone - la parser directement
-                        end_dt = datetime.fromisoformat(end_date)
-
-                    # Parser recurrence_id si fourni
-                    recurrence_id_dt = None
-                    if recurrence_id:
-                        if 'Z' in recurrence_id or '+' in recurrence_id:
-                            recurrence_id_dt = datetime.fromisoformat(recurrence_id.replace('Z', '+00:00'))
-                        else:
-                            recurrence_id_dt = datetime.fromisoformat(recurrence_id)
-
-                except (ValueError, AttributeError) as e:
-                    return Response(
-                        {'error': f'Format de date invalide: {str(e)}'},
-                        status=status.HTTP_400_BAD_REQUEST
-                    )
-
-                # Créer l'événement via CalDAV
-                event_data = {
-                    'uid': uid,
-                    'title': event.get('title'),
-                    'description': event.get('description'),
-                    'client_id': client_id,
-                    'affair_id': affair_id,
-                    'location': event.get('location', ''),
-                    'start': start_dt,
-                    'end': end_dt,
-                    'sequence': sequence,
-                }
-
-                # Ajouter recurrence-id seulement si fourni
-                if recurrence_id_dt:
-                    event_data['recurrence-id'] = recurrence_id_dt
-
-                result = client.create_event(calendar_source_name, event_data)
-
-                if not result.get('id'):
-                    return Response(
-                        {'error': result.get('error', 'Erreur lors de la création')},
-                        status=status.HTTP_500_INTERNAL_SERVER_ERROR
-                    )
-
-                print("uri", calendar_source_uri)
-
-                url = f'https://www.myclic.fr/baikal/html/cal.php/calendars/{self.request.user.email}/{calendar_source_uri}/{result["id"]}.ics'
-
-                print(url)
-
-                # Retourner les données de l'événement créé
+                # Créer la réponse optimiste (comme si c'était déjà créé)
                 created_event = {
-                    'id': result['id'],
+                    'id': uid,
                     'uid': uid,
                     'title': event.get('title'),
                     'description': event.get('description'),
@@ -477,10 +418,86 @@ class BaikalEventViewSet(viewsets.ViewSet):
                     'calendar_source_color': calendar_source_color,
                     'calendar_source_id': calendar_source_id,
                     'calendar_source_uri': calendar_source_uri,
+                    'is_completed': False,
+                    'calendar_id': calendar_source_id,
+                    'calendar_source': calendar_source_name,
+                    'etag': '',
+                    'uri': url,
                 }
-
                 results.append(created_event)
 
+            # ⚡ Retourner immédiatement la réponse au frontend
+            logger.info(f"⚡ Retour immédiat de {len(results)} événements au frontend")
+
+            # 🔄 Créer les événements en arrière-plan
+            import threading
+
+            def create_events_background():
+                """Fonction exécutée en arrière-plan pour créer les événements"""
+                try:
+                    logger.info(f"🔄 Début création arrière-plan de {len(events_data)} événements")
+
+                    for event in events_data:
+                        start_date = event.get('start_date')
+                        end_date = event.get('end_date')
+                        recurrence_id = event.get('recurrence_id')
+
+                        # Parser les dates
+                        try:
+                            if 'Z' in start_date or '+' in start_date:
+                                start_dt = datetime.fromisoformat(start_date.replace('Z', '+00:00'))
+                            else:
+                                start_dt = datetime.fromisoformat(start_date)
+
+                            if 'Z' in end_date or '+' in end_date:
+                                end_dt = datetime.fromisoformat(end_date.replace('Z', '+00:00'))
+                            else:
+                                end_dt = datetime.fromisoformat(end_date)
+
+                            recurrence_id_dt = None
+                            if recurrence_id:
+                                if 'Z' in recurrence_id or '+' in recurrence_id:
+                                    recurrence_id_dt = datetime.fromisoformat(recurrence_id.replace('Z', '+00:00'))
+                                else:
+                                    recurrence_id_dt = datetime.fromisoformat(recurrence_id)
+
+                        except (ValueError, AttributeError) as e:
+                            logger.error(f"❌ Erreur parsing date en arrière-plan: {e}")
+                            continue
+
+                        # Créer l'événement via CalDAV
+                        event_data = {
+                            'uid': uid,
+                            'title': event.get('title'),
+                            'description': event.get('description'),
+                            'client_id': client_id,
+                            'affair_id': affair_id,
+                            'location': event.get('location', ''),
+                            'start': start_dt,
+                            'end': end_dt,
+                            'sequence': sequence,
+                        }
+
+                        if recurrence_id_dt:
+                            event_data['recurrence-id'] = recurrence_id_dt
+
+                        result = client.create_event(calendar_source_name, event_data)
+
+                        if result.get('id'):
+                            logger.info(f"✅ Événement créé en arrière-plan: {event.get('title')} - {start_date}")
+                        else:
+                            logger.error(f"❌ Échec création arrière-plan: {result.get('error')}")
+
+                    logger.info(f"✅ Fin création arrière-plan de {len(events_data)} événements")
+
+                except Exception as e:
+                    logger.error(f"❌ Erreur globale arrière-plan: {e}", exc_info=True)
+
+            # Lancer le thread en arrière-plan
+            thread = threading.Thread(target=create_events_background, daemon=True)
+            thread.start()
+
+            # Retourner immédiatement les résultats optimistes
             return Response(results, status=status.HTTP_201_CREATED)
 
         except Exception as e:

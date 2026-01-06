@@ -299,6 +299,13 @@ const calendarSlice = createSlice({
             state.events.push(event);
         },
 
+        // Ajouter plusieurs événements d'un coup (bulk)
+        addBulkEvents: (state, action: PayloadAction<Task[]>) => {
+            const newEvents = action.payload;
+            // Ajouter tous les nouveaux événements
+            state.events.push(...newEvents);
+        },
+
         removeOptimisticEvent: (state, action: PayloadAction<string>) => {
             const tempId = action.payload;
             delete state.optimisticEvents[tempId];
@@ -577,6 +584,7 @@ const calendarSlice = createSlice({
 
 export const {
     addOptimisticEvent,
+    addBulkEvents,
     removeOptimisticEvent,
     optimisticUpdateEvent,
     setCalendarsEnabledByMode,

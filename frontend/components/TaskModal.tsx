@@ -5,7 +5,7 @@ import { X } from 'lucide-react';
 import { Task, CalendarSource, Client, Affaire } from '@/lib/types';
 import RichTextEditor from './RichTextEditor';
 import { useAppSelector, useAppDispatch } from '@/store/hooks';
-import { fetchCalendars } from '@/store/calendarSlice';
+import { fetchCalendars, addBulkEvents } from '@/store/calendarSlice';
 import { baikalAPI } from '@/lib/api';
 
 interface TaskModalProps {
@@ -63,6 +63,9 @@ export default function TaskModal({ isOpen, onClose, onSave, onDelete, task, ini
   const [recurrenceEndType, setRecurrenceEndType] = useState<'never' | 'count' | 'until'>('never');
   const [recurrenceCount, setRecurrenceCount] = useState(10);
   const [recurrenceEndDate, setRecurrenceEndDate] = useState('');
+
+  // État de chargement pour la création d'événements
+  const [isCreating, setIsCreating] = useState(false);
   const [customRecurrenceInterval, setCustomRecurrenceInterval] = useState(1);
   const [customRecurrenceUnit, setCustomRecurrenceUnit] = useState<'days' | 'weeks' | 'months' | 'years'>('weeks');
   const [showRecurrenceDropdown, setShowRecurrenceDropdown] = useState(false);
@@ -467,6 +470,7 @@ export default function TaskModal({ isOpen, onClose, onSave, onDelete, task, ini
     }
 
     // ✅ Pour les récurrences multiples, utiliser bulk_create
+    setIsCreating(true); // Activer le loading
     try {
       for (const calendar of selectedCalendars) {
         console.log('🔄 Création bulk dans:', calendar.displayname || calendar.defined_name);
@@ -483,7 +487,7 @@ export default function TaskModal({ isOpen, onClose, onSave, onDelete, task, ini
         }));
 
         // ✅ Envoyer UNE SEULE requête pour tous les événements
-        await baikalAPI.bulkCreateEvents({
+        const response = await baikalAPI.bulkCreateEvents({
           events,
           calendar_source_name: calendar.displayname || calendar.defined_name as string,
           calendar_source_color: calendar.calendarcolor || '#005f82',
@@ -496,16 +500,22 @@ export default function TaskModal({ isOpen, onClose, onSave, onDelete, task, ini
         });
 
         console.log(`✅ ${events.length} événements créés en bulk pour ${calendar.displayname}`);
+
+        // ⚡ Ajouter les événements au store Redux immédiatement
+        if (response.data && Array.isArray(response.data)) {
+          dispatch(addBulkEvents(response.data));
+        }
       }
 
-      // Recharger les événements après la création
-      window.location.reload();
+      // ✅ Fermer le modal et désactiver le loading
+      setIsCreating(false);
+      onClose();
+
     } catch (error) {
       console.error('❌ Erreur lors de la création bulk:', error);
-      alert('Erreur lors de la création des événements récurrents');
+      setIsCreating(false); // Désactiver le loading en cas d'erreur
+      alert(`Erreur lors de la création des événements récurrents.\n${error instanceof Error ? error.message : 'Erreur inconnue'}`);
     }
-
-    onClose();
   };
 
   // Fonction pour générer les dates de récurrence
@@ -1562,15 +1572,35 @@ export default function TaskModal({ isOpen, onClose, onSave, onDelete, task, ini
           <div className="border-t border-slate-200 bg-slate-50 px-4 py-3 flex gap-2 shrink-0">
             <button
               type="submit"
-              className="flex-1 bg-[#005f82] hover:bg-[#004a65] text-white font-semibold py-2 px-5 text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-[#005f82] focus:ring-offset-2 shadow-sm"
+              disabled={isCreating}
+              className={`flex-1 font-semibold py-2 px-5 text-sm transition-all focus:outline-none focus:ring-2 focus:ring-[#005f82] focus:ring-offset-2 shadow-sm flex items-center justify-center gap-2 ${
+                isCreating
+                  ? 'bg-slate-400 cursor-not-allowed'
+                  : 'bg-[#005f82] hover:bg-[#004a65] text-white'
+              }`}
             >
-              {task ? 'Mettre à jour' : 'Créer l\'événement'}
+              {isCreating ? (
+                <>
+                  <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                  <span>Création en cours...</span>
+                </>
+              ) : (
+                <span>{task ? 'Mettre à jour' : 'Créer l\'événement'}</span>
+              )}
             </button>
             {task && onDelete && (
               <button
                 type="button"
                 onClick={handleDelete}
-                className="bg-red-600 hover:bg-red-700 text-white font-semibold py-2 px-5 text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-red-600 focus:ring-offset-2 shadow-sm"
+                disabled={isCreating}
+                className={`font-semibold py-2 px-5 text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-red-600 focus:ring-offset-2 shadow-sm ${
+                  isCreating
+                    ? 'bg-slate-300 text-slate-500 cursor-not-allowed'
+                    : 'bg-red-600 hover:bg-red-700 text-white'
+                }`}
               >
                 Supprimer
               </button>
@@ -1578,7 +1608,12 @@ export default function TaskModal({ isOpen, onClose, onSave, onDelete, task, ini
             <button
               type="button"
               onClick={onClose}
-              className="bg-white hover:bg-slate-100 text-slate-700 font-semibold py-2 px-5 text-sm border border-slate-300 transition-colors focus:outline-none focus:ring-2 focus:ring-slate-400 focus:ring-offset-2"
+              disabled={isCreating}
+              className={`font-semibold py-2 px-5 text-sm border border-slate-300 transition-colors focus:outline-none focus:ring-2 focus:ring-slate-400 focus:ring-offset-2 ${
+                isCreating
+                  ? 'bg-slate-100 text-slate-400 cursor-not-allowed'
+                  : 'bg-white hover:bg-slate-100 text-slate-700'
+              }`}
             >
               Annuler
             </button>

@@ -340,7 +340,7 @@ export default function DashboardPage() {
     setIsModalOpen(true);
   }, []);
 
-  const handleTaskDrop = useCallback(async (taskId: number, newDate: Date) => {
+  const handleTaskDrop = useCallback(async (taskId: number | string, newDate: Date) => {
     const task = events.find(t => t.id === taskId);
     if (!task) return;
 
@@ -412,7 +412,7 @@ export default function DashboardPage() {
     }
   }, [events, dispatch, currentDate, mainViewMode]);
 
-  const handleTaskResize = useCallback(async (taskId: number, newEndDate: Date) => {
+  const handleTaskResize = useCallback(async (taskId: number | string, newEndDate: Date) => {
     const task = events.find(t => t.id === taskId);
     if (!task) return;
 

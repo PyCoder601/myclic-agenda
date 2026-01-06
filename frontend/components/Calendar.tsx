@@ -22,6 +22,8 @@ import {
   DragStartEvent,
   useDraggable,
   useDroppable,
+  type DraggableAttributes,
+  type DraggableSyntheticListeners,
 } from "@dnd-kit/core";
 import { Task, ViewMode, CalendarSource } from "@/lib/types";
 import { baikalAPI } from "@/lib/api";
@@ -176,8 +178,8 @@ const TaskItem = ({
 }: {
   task: Task;
   onTaskClick: (task: Task) => void;
-  dragListeners?: Record<string, unknown>;
-  dragAttributes?: Record<string, unknown>;
+  dragListeners?: DraggableSyntheticListeners;
+  dragAttributes?: DraggableAttributes;
   calendars: CalendarSource[];
 }) => {
   const taskColor = getTaskColor(task, calendars);
@@ -219,8 +221,8 @@ const WeekTaskItem = ({
 }: {
   task: Task;
   onTaskClick: (task: Task) => void;
-  dragListeners?: Record<string, unknown>;
-  dragAttributes?: Record<string, unknown>;
+  dragListeners?: DraggableSyntheticListeners;
+  dragAttributes?: DraggableAttributes;
   calendars: CalendarSource[];
 }) => {
   const taskColor = getTaskColor(task, calendars);

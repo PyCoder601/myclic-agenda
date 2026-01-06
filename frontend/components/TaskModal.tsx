@@ -89,6 +89,10 @@ export default function TaskModal({ isOpen, onClose, onSave, onDelete, task, ini
   const [clientInfoLoading, setClientInfoLoading] = useState(false);
   const [affairInfoLoading, setAffairInfoLoading] = useState(false);
 
+  // État pour la boîte de dialogue de confirmation de suppression
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deleteOption, setDeleteOption] = useState<'all' | 'single'>('single');
+
   // Filtrer les calendriers (non-ressources) selon la recherche
   const filteredCalendars = calendars.filter(cal => {
     const calName = (cal.defined_name || cal.share_href || cal.displayname || '').toLowerCase();
@@ -424,6 +428,7 @@ export default function TaskModal({ isOpen, onClose, onSave, onDelete, task, ini
       ...(selectedAffair && { affair_id: selectedAffair.id }),
       // ✅ IMPORTANT : Inclure l'URL de l'événement pour les mises à jour
       ...(task && { url: task.url }),
+      ...(task && { recurrence_id: task.recurrence_id }),
     });
     onClose();
   };
@@ -463,6 +468,7 @@ export default function TaskModal({ isOpen, onClose, onSave, onDelete, task, ini
           calendar_source_color: calendar.calendarcolor,
           ...(selectedClient && { client_id: selectedClient.id }),
           ...(selectedAffair && { affair_id: selectedAffair.id }),
+          recurrence_id: undefined,
         });
       });
       onClose();
@@ -591,14 +597,100 @@ export default function TaskModal({ isOpen, onClose, onSave, onDelete, task, ini
   };
 
   const handleDelete = () => {
+    if (task) {
+      // Si l'événement a un recurrence_id, c'est un événement récurrent
+      if (task.recurrence_id) {
+        // Afficher la boîte de dialogue de confirmation
+        setShowDeleteConfirm(true);
+      } else {
+        // Suppression directe pour les événements non récurrents
+        if (onDelete) {
+          onDelete(task.url || '');
+          onClose();
+        }
+      }
+    }
+  };
+
+  const handleConfirmDelete = () => {
     if (task && onDelete) {
-      onDelete(task.url || '');
+      if (deleteOption === 'single' && task.recurrence_id) {
+        // Supprimer uniquement cette occurrence
+        // On passe le recurrence_id en paramètre
+        const urlWithRecurrenceId = `${task.url}?recurrence_id=${encodeURIComponent(task.recurrence_id)}`;
+        onDelete(urlWithRecurrenceId);
+      } else {
+        // Supprimer toutes les occurrences
+        onDelete(task.url || '');
+      }
+      setShowDeleteConfirm(false);
       onClose();
     }
   };
 
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-2 sm:p-3 animate-fadeIn">
+      {/* Boîte de dialogue de confirmation de suppression */}
+      {showDeleteConfirm && (
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-60">
+          <div className="bg-white rounded-lg shadow-2xl max-w-md w-full mx-4 p-6">
+            <h3 className="text-xl font-bold text-[#005f82] mb-4">
+              Supprimer l&apos;événement récurrent
+            </h3>
+            <p className="text-slate-600 mb-6">
+              Cet événement fait partie d&apos;une série récurrente. Que souhaitez-vous supprimer ?
+            </p>
+
+            <div className="space-y-3 mb-6">
+              <label className="flex items-center space-x-3 cursor-pointer p-3 border border-slate-300 rounded-lg hover:bg-slate-50 transition-colors">
+                <input
+                  type="radio"
+                  name="deleteOption"
+                  value="single"
+                  checked={deleteOption === 'single'}
+                  onChange={(e) => setDeleteOption(e.target.value as 'all' | 'single')}
+                  className="w-4 h-4 text-[#005f82] focus:ring-[#005f82]"
+                />
+                <div>
+                  <div className="font-semibold text-slate-800">Cet événement uniquement</div>
+                  <div className="text-sm text-slate-500">Les autres occurrences seront conservées</div>
+                </div>
+              </label>
+
+              <label className="flex items-center space-x-3 cursor-pointer p-3 border border-slate-300 rounded-lg hover:bg-slate-50 transition-colors">
+                <input
+                  type="radio"
+                  name="deleteOption"
+                  value="all"
+                  checked={deleteOption === 'all'}
+                  onChange={(e) => setDeleteOption(e.target.value as 'all' | 'single')}
+                  className="w-4 h-4 text-[#005f82] focus:ring-[#005f82]"
+                />
+                <div>
+                  <div className="font-semibold text-slate-800">Toutes les occurrences</div>
+                  <div className="text-sm text-slate-500">Supprime l&apos;événement récurrent complet</div>
+                </div>
+              </label>
+            </div>
+
+            <div className="flex justify-end space-x-3">
+              <button
+                onClick={() => setShowDeleteConfirm(false)}
+                className="px-4 py-2 text-sm font-semibold text-slate-700 bg-white border border-slate-300 rounded hover:bg-slate-100 transition-colors"
+              >
+                Annuler
+              </button>
+              <button
+                onClick={handleConfirmDelete}
+                className="px-4 py-2 text-sm font-semibold text-white bg-red-600 rounded hover:bg-red-700 transition-colors"
+              >
+                Supprimer
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="bg-white max-w-4xl w-full max-h-[90vh] overflow-hidden shadow-xl border border-slate-200/80 flex flex-col rounded-xl">
         {/* Header compact */}
         <div className="flex items-center justify-between px-5 py-2.5 border-b border-slate-200 bg-linear-to-r from-slate-50 to-white shrink-0">

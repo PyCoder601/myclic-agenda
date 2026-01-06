@@ -253,21 +253,49 @@ export const deleteEvent = createAsyncThunk(
     'calendar/deleteEvent',
     async (url: string, {rejectWithValue, getState}) => {
         try {
+            // ✅ Nettoyer l'URL en enlevant le recurrence_id si présent
+            const cleanUrl = url.split('?')[0];
+
             // ✅ Récupérer l'événement existant pour obtenir son ID
             const state = getState() as { calendar: CalendarState };
 
-            console.log(state.calendar.events)
-            const existingEvent = state.calendar.events.find(e => e.url === url);
+            console.log('🔍 Recherche événement avec URL:', cleanUrl);
+            console.log('📋 Nombre d\'événements dans le store:', state.calendar.events.length);
 
-            console.log(existingEvent)
+            const existingEvent = state.calendar.events.find(e => e.url === cleanUrl);
+
+            console.log('✅ Événement trouvé:', existingEvent);
 
             if (!existingEvent) {
+                // Si l'événement n'est pas trouvé par URL, essayer de le trouver par recurrence_id
+                const recurrenceIdMatch = url.match(/recurrence_id=([^&]+)/);
+                if (recurrenceIdMatch) {
+                    const recurrenceId = decodeURIComponent(recurrenceIdMatch[1]);
+                    const eventByRecurrence = state.calendar.events.find(e =>
+                        e.recurrence_id === recurrenceId && e.url === cleanUrl
+                    );
+
+                    if (eventByRecurrence) {
+                        const id = String(eventByRecurrence.id);
+                        await baikalAPI.deleteEvent(url, id);
+                        return { url: cleanUrl, recurrenceId };
+                    }
+                }
+
+                console.error('❌ Événement non trouvé pour la suppression');
                 return rejectWithValue('Événement non trouvé pour la suppression');
             }
 
             const id = String(existingEvent.id);
             await baikalAPI.deleteEvent(url, id);
-            return url;
+
+            // Retourner l'URL propre et le recurrence_id s'il y en a un
+            const recurrenceIdMatch = url.match(/recurrence_id=([^&]+)/);
+            if (recurrenceIdMatch) {
+                return { url: cleanUrl, recurrenceId: decodeURIComponent(recurrenceIdMatch[1]) };
+            }
+
+            return { url: cleanUrl };
         } catch (error: any) {
             return rejectWithValue(error.response?.data || 'Erreur lors de la suppression de l\'événement');
         }
@@ -558,11 +586,27 @@ const calendarSlice = createSlice({
 
         // Delete événement
         builder.addCase(deleteEvent.fulfilled, (state, action) => {
-            state.events = state.events.filter(e => e.url !== action.payload);
+            // Le payload peut être soit { url: string } soit { url: string, recurrenceId: string }
+            const payload = action.payload as { url: string; recurrenceId?: string } | { url: string };
+            const url = typeof payload === 'string' ? payload : payload.url;
+            const recurrenceId = typeof payload === 'object' && 'recurrenceId' in payload ? payload.recurrenceId : null;
 
-            // Aussi supprimer de allEvents si chargé
-            if (state.allEventsLoaded) {
-                state.allEvents = state.allEvents.filter(e => e.url !== action.payload);
+            if (recurrenceId) {
+                // Suppression d'une occurrence spécifique - garder l'événement mais le marquer comme supprimé
+                // Note: Le backend ajoute une EXDATE, donc l'occurrence ne reviendra plus lors du prochain fetch
+                console.log(`🗑️ Occurrence supprimée: ${url} - ${recurrenceId}`);
+                // On peut filtrer l'occurrence spécifique du store
+                state.events = state.events.filter(e => !(e.url === url && e.recurrence_id === recurrenceId));
+                if (state.allEventsLoaded) {
+                    state.allEvents = state.allEvents.filter(e => !(e.url === url && e.recurrence_id === recurrenceId));
+                }
+            } else {
+                // Suppression complète - supprimer toutes les occurrences avec cette URL
+                console.log(`🗑️ Événement complet supprimé: ${url}`);
+                state.events = state.events.filter(e => e.url !== url);
+                if (state.allEventsLoaded) {
+                    state.allEvents = state.allEvents.filter(e => e.url !== url);
+                }
             }
         });
         builder.addCase(deleteEvent.rejected, (state, action) => {

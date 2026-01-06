@@ -188,10 +188,26 @@ export const baikalAPI = {
     // Supprimer un événement
     deleteEvent: (url: string, id: string) => {
         console.log("eventUrl dans api.ts:", url);
-        // ✅ Envoyer l'URL dans le body de la requête DELETE
-        console.log(url)
+
+        // ✅ Extraire le recurrence_id de l'URL si présent
+        let recurrenceId = null;
+        let cleanUrl = url;
+
+        if (url.includes('?recurrence_id=')) {
+            const urlParts = url.split('?recurrence_id=');
+            cleanUrl = urlParts[0];
+            recurrenceId = decodeURIComponent(urlParts[1]);
+        }
+
+        console.log("Clean URL:", cleanUrl);
+        console.log("Recurrence ID:", recurrenceId);
+
+        // ✅ Envoyer l'URL et le recurrence_id dans le body de la requête DELETE
         return api.delete(`/baikal/events/${id}/`, {
-            data: url ? { url: url } : {}
+            data: {
+                url: cleanUrl,
+                ...(recurrenceId && { recurrence_id: recurrenceId })
+            }
         });
     },
 

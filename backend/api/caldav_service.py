@@ -6,6 +6,9 @@ from caldav.objects import Calendar
 from datetime import datetime, timedelta, timezone
 import niquests
 from niquests.auth import HTTPDigestAuth
+from icalendar import Calendar as iCalendar, vDatetime, vDate
+from datetime import datetime
+import pytz
 from typing import List, Optional, Dict, Any
 
 from .baikal_models import BaikalCalendarInstance, BaikalCalendar
@@ -149,7 +152,8 @@ class BaikalCalDAVClient:
                         'calendar_source_name': calendar_name,
                         'calendar_source_id': calendar_obj['id'],
                         'calendar_source_uri': calendar_obj['uri'],
-                        'calendar_source_color': calendar_obj["calendarcolor"]
+                        'calendar_source_color': calendar_obj["calendarcolor"],
+                        'recurrence_id': str(vevent.get('recurrence-id', ''))
                     }
                     formatted_events.append(formatted_event)
                 except Exception as e:
@@ -222,8 +226,8 @@ PRODID:-//Baïkal Python Client//FR
 BEGIN:VEVENT
 UID:{uid}
 DTSTAMP:{datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%SZ')}
-DTSTART:{self._format_ical_date(start_date)}
-DTEND:{self._format_ical_date(end_date)}
+DTSTART:{self.format_ical_date(start_date)}
+DTEND:{self.format_ical_date(end_date)}
 SUMMARY:{event_data.get('title', 'Nouvel événement')}
 DESCRIPTION:{event_data.get('description', '')}
 LOCATION:{event_data.get('location', '')}
@@ -237,7 +241,7 @@ STATUS:CONFIRMED"""
                 ical_content += f"\nAFFAIR:{event_data['affair_id']}"
 
             if 'recurrence-id' in event_data:
-                ical_content += f"\nRECURRENCE-ID:{self._format_ical_date(event_data['recurrence-id'])}"
+                ical_content += f"\nRECURRENCE-ID:{self.format_ical_date(event_data['recurrence-id'])}"
 
             # Ajouter SEQUENCE si fourni
             if 'sequence' in event_data:
@@ -280,7 +284,7 @@ END:VCALENDAR"""
             logger.error(f"Erreur création événement: {e}", exc_info=True)
             return {'error': str(e), 'success': False}
 
-    def _format_ical_date(self, date_value):
+    def format_ical_date(self, date_value):
         """
         Format une date pour iCalendar
         Supporte: datetime, timestamp, string ISO
@@ -375,6 +379,130 @@ END:VCALENDAR"""
 
         except Exception as e:
             logger.error(f"Erreur suppression événement: {e}")
+            return {
+                'success': False,
+                'error': str(e),
+                'event_url': event_url
+            }
+
+    def delete_event_occurrence(self, event_url: str, recurrence_id: str) -> Dict[str, Any]:
+        """
+        Supprime une occurrence spécifique d'un événement récurrent en ajoutant une EXDATE
+
+        Args:
+            event_url: URL complète de l'événement récurrent
+            recurrence_id: Date/heure de l'occurrence à supprimer (format ISO)
+
+        Returns:
+            Dictionnaire avec le résultat de la suppression
+        """
+        try:
+
+            # Récupérer l'événement principal
+            get_response = self._session.get(event_url)
+
+            if get_response.status_code == 404:
+                return {
+                    'success': False,
+                    'error': 'Événement non trouvé',
+                    'event_url': event_url
+                }
+
+            # Parser l'événement iCalendar
+            cal = iCalendar.from_ical(get_response.content)
+            event_found = False
+            main_event = None
+
+            for component in cal.walk():
+                if component.name == "VEVENT" and not component.get('RECURRENCE-ID'):
+                    # C'est l'événement principal (pas une occurrence)
+                    event_found = True
+                    main_event = component
+                    break
+
+            if not event_found or not main_event:
+                return {
+                    'success': False,
+                    'error': 'Événement principal non trouvé',
+                    'event_url': event_url
+                }
+
+            # Parser la date de recurrence_id
+            recurrence_dt = datetime.fromisoformat(recurrence_id.replace('Z', '+00:00'))
+
+            # Récupérer le timezone du DTSTART
+            dtstart = main_event.get('DTSTART')
+            if hasattr(dtstart, 'dt'):
+                dt_value = dtstart.dt
+                if hasattr(dt_value, 'tzinfo') and dt_value.tzinfo:
+                    # Utiliser le même timezone que l'événement
+                    if recurrence_dt.tzinfo is None:
+                        recurrence_dt = recurrence_dt.replace(tzinfo=dt_value.tzinfo)
+                    else:
+                        recurrence_dt = recurrence_dt.astimezone(dt_value.tzinfo)
+                elif recurrence_dt.tzinfo is None:
+                    # Pas de timezone, utiliser Europe/Paris par défaut
+                    recurrence_dt = pytz.timezone('Europe/Paris').localize(recurrence_dt)
+
+            # Ajouter l'EXDATE (exception de récurrence)
+            exdates = main_event.get('EXDATE')
+
+            if exdates is None:
+                # Pas d'EXDATE existant, en créer un nouveau
+                main_event.add('EXDATE', recurrence_dt)
+            elif isinstance(exdates, list):
+                # Plusieurs EXDATE existantes
+                main_event.add('EXDATE', recurrence_dt)
+            else:
+                # Une seule EXDATE, la convertir en liste
+                existing_exdate = exdates.dts if hasattr(exdates, 'dts') else [exdates]
+                main_event.pop('EXDATE')
+                for ex in existing_exdate:
+                    main_event.add('EXDATE', ex.dt)
+                main_event.add('EXDATE', recurrence_dt)
+
+            # Incrémenter SEQUENCE
+            sequence = main_event.get('SEQUENCE', 0)
+            main_event['SEQUENCE'] = int(sequence) + 1
+
+            # Mettre à jour DTSTAMP
+            main_event['DTSTAMP'] = vDatetime(datetime.now(pytz.UTC))
+
+            # Mettre à jour l'événement via PUT
+            ical_content = cal.to_ical()
+
+            # Récupérer l'ETag si disponible
+            etag = get_response.headers.get('ETag')
+            headers = {
+                'Content-Type': 'text/calendar; charset=utf-8',
+            }
+            if etag:
+                headers['If-Match'] = etag
+
+            response = self._session.put(
+                event_url,
+                data=ical_content,
+                headers=headers
+            )
+
+            if response.status_code in [200, 201, 204]:
+                logger.info(f"Occurrence supprimée via EXDATE: {event_url} - {recurrence_id}")
+                return {
+                    'success': True,
+                    'message': 'Occurrence supprimée avec succès',
+                    'event_url': event_url,
+                    'recurrence_id': recurrence_id
+                }
+            else:
+                logger.error(f"Erreur suppression occurrence: HTTP {response.status_code} - {response.text}")
+                return {
+                    'success': False,
+                    'error': f'Erreur HTTP {response.status_code}: {response.text}',
+                    'event_url': event_url
+                }
+
+        except Exception as e:
+            logger.error(f"Erreur suppression occurrence: {e}", exc_info=True)
             return {
                 'success': False,
                 'error': str(e),

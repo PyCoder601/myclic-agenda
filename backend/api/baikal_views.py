@@ -397,19 +397,27 @@ class BaikalEventViewSet(viewsets.ViewSet):
             for event in events_data:
                 start_date = event.get('start_date')
                 end_date = event.get('end_date')
+                recurrence_id = event.get('recurrence_id')
 
                 # Générer l'URL de l'événement
                 url = f'https://www.myclic.fr/baikal/html/cal.php/calendars/{self.request.user.email}/{calendar_source_uri}/{uid}.ics'
 
-                # Créer la réponse optimiste (comme si c'était déjà créé)
+                recurrence_id_dt = None
+                if recurrence_id:
+                    if 'Z' in recurrence_id or '+' in recurrence_id:
+                        recurrence_id_dt = datetime.fromisoformat(recurrence_id.replace('Z', '+00:00'))
+                    else:
+                        recurrence_id_dt = datetime.fromisoformat(recurrence_id)
+
+                recurrence_id = client.format_ical_date(recurrence_id_dt)
+
                 created_event = {
                     'id': uid,
-                    'uid': uid,
                     'title': event.get('title'),
                     'description': event.get('description'),
+                    'location': event.get('location', ''),
                     'start_date': start_date,
                     'end_date': end_date,
-                    'location': event.get('location', ''),
                     'client_id': client_id,
                     'affair_id': affair_id,
                     'url': url,
@@ -418,12 +426,10 @@ class BaikalEventViewSet(viewsets.ViewSet):
                     'calendar_source_color': calendar_source_color,
                     'calendar_source_id': calendar_source_id,
                     'calendar_source_uri': calendar_source_uri,
-                    'is_completed': False,
-                    'calendar_id': calendar_source_id,
-                    'calendar_source': calendar_source_name,
-                    'etag': '',
-                    'uri': url,
+                    'type': "agenda_event",
+                    "recurrence_id": recurrence_id
                 }
+                # Créer la réponse optimiste (comme si c'était déjà créé)
                 results.append(created_event)
 
             # ⚡ Retourner immédiatement la réponse au frontend
@@ -709,7 +715,7 @@ class BaikalEventViewSet(viewsets.ViewSet):
         return self.update(request, pk)
 
     def destroy(self, request, pk=None):
-        """Supprime un événement via CalDAV"""
+        """Supprime un événement via CalDAV (toutes les occurrences ou une seule)"""
         client = self._get_caldav_client()
         if not client:
             return Response(
@@ -720,7 +726,9 @@ class BaikalEventViewSet(viewsets.ViewSet):
         try:
             # ✅ Récupérer l'URL depuis le body ou query params
             event_url = request.data.get('url') or request.query_params.get('url')
+            recurrence_id = request.data.get('recurrence_id') or request.query_params.get('recurrence_id')
             print('url', event_url)
+            print('recurrence_id', recurrence_id)
 
             if not event_url:
                 return Response(
@@ -728,14 +736,19 @@ class BaikalEventViewSet(viewsets.ViewSet):
                         status=status.HTTP_404_NOT_FOUND
                     )
 
-            # Supprimer via CalDAV
-            result = client.delete_event(event_url)
+            # Si recurrence_id est fourni, supprimer uniquement cette occurrence
+            if recurrence_id:
+                result = client.delete_event_occurrence(event_url, recurrence_id)
+            else:
+                # Sinon, supprimer toutes les occurrences (événement complet)
+                result = client.delete_event(event_url)
 
             if result.get('success'):
                 return Response(
                     {
                         'message': result.get('message', 'Événement supprimé avec succès'),
-                        'event_url': event_url
+                        'event_url': event_url,
+                        'recurrence_id': recurrence_id
                     },
                     status=status.HTTP_204_NO_CONTENT
                 )

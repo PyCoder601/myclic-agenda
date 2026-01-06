@@ -48,6 +48,7 @@ export interface Task {
     client_id?: number;
     affair_id?: number;
     sequence?: number; // ✅ Numéro de séquence pour la récurrence
+    recurrence_id?: string; // ✅ Identifiant de l'occurrence spécifique (optionnel)
 }
 
 export interface Client {

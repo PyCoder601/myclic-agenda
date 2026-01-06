@@ -1202,10 +1202,19 @@ export default function Calendar({
     // Déterminer la largeur des cellules en fonction du mode de vue
     const cellWidth = viewMode === 'month' ? 'w-[120px]' : 'flex-1 min-w-[100px]';
 
+    // Calculer le nombre total de lignes de calendrier
+    const totalCalendarRows = Object.values(calendarsByUser).reduce(
+      (acc, userCalendars) => acc + userCalendars.length,
+      0
+    );
+
+    // Hauteur minimale par ligne de calendrier pour remplir l'écran
+    const minRowHeight = totalCalendarRows > 0 ? Math.max(60, Math.floor(600 / totalCalendarRows)) : 60;
+
     return (
-      <div className="flex-1 bg-white overflow-x-auto">
-        <div className="inline-flex min-w-full">
-          <div className="flex-1">
+      <div className="flex-1 bg-white overflow-x-auto min-h-[calc(100vh-250px)]">
+        <div className="inline-flex min-w-full h-full">
+          <div className="flex-1 flex flex-col h-full">
             <div className="flex border-b border-slate-200 sticky top-0 z-10 bg-linear-to-r from-slate-50 to-blue-50">
               <div className="w-48 shrink-0 border-r border-slate-200 py-1 px-2 text-left font-semibold text-slate-700 text-xs sticky left-0 bg-slate-50 z-20">
                 Collaborateur / Calendrier
@@ -1232,9 +1241,9 @@ export default function Calendar({
                 </div>
               ))}
             </div>
-            <div className="min-h-full">
+            <div className="flex-1 flex flex-col">
               {Object.entries(calendarsByUser).map(([username, userCalendars]) => (
-                <div key={username}>
+                <div key={username} className="flex-1">
                   <div className="flex border-b border-slate-200 bg-slate-50/50">
                     <div className="w-48 shrink-0 border-r border-slate-200 p-2 font-bold text-slate-800 text-sm sticky left-0 bg-slate-50/50 z-10">
                       {/*{username}*/}
@@ -1250,6 +1259,7 @@ export default function Calendar({
                     <div
                       key={calendar.id}
                       className="flex border-b border-slate-200 group hover:bg-blue-50/20 transition-colors duration-200"
+                      style={{ minHeight: `${minRowHeight}px` }}
                     >
                       <div className="w-48 shrink-0 border-r border-slate-200 p-2 text-sm text-slate-700 font-medium flex items-center gap-2 sticky left-0 bg-white group-hover:bg-blue-50/20 z-10">
                         <div
@@ -1273,7 +1283,7 @@ export default function Calendar({
                             key={day.toString()}
                             id={`${format(day, "yyyy-MM-dd")}-${calendar.id}`} // Unique ID for droppable cell
                             date={cellDate}
-                            className={`${cellWidth} shrink-0 p-1 border-r border-slate-200 cursor-pointer`}
+                            className={`${cellWidth} shrink-0 p-1 border-r border-slate-200 cursor-pointer h-full`}
                           >
                             <div className="space-y-1">
                               {dayTasks.map((task) => (

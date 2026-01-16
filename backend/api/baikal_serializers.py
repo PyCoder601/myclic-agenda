@@ -9,8 +9,6 @@ from .baikal_models import (
 )
 from icalendar import Calendar
 from datetime import datetime
-import pytz
-from django.utils import timezone
 
 
 class BaikalCalendarSerializer(serializers.ModelSerializer):
@@ -127,7 +125,7 @@ class BaikalEventSerializer(serializers.ModelSerializer):
         return ''
     
     def get_start_date(self, obj):
-        """Extraire la date de début"""
+        """Extraire la date de début - SANS conversion timezone"""
         component = self._parse_ical(obj)
         if component:
             dtstart = component.get('dtstart')
@@ -136,17 +134,17 @@ class BaikalEventSerializer(serializers.ModelSerializer):
                 # Convertir en datetime si c'est une date
                 if not isinstance(dt, datetime):
                     dt = datetime.combine(dt, datetime.min.time())
-                    dt = pytz.UTC.localize(dt)
-                
-                # Assurer que la date a un timezone
-                if timezone.is_naive(dt):
-                    dt = timezone.make_aware(dt)
-                
-                return dt.isoformat()
+
+                # Supprimer le timezone si présent pour garder l'heure locale
+                if hasattr(dt, 'tzinfo') and dt.tzinfo is not None:
+                    dt = dt.replace(tzinfo=None)
+
+                # Format: YYYY-MM-DDTHH:MM:SS (sans Z, sans timezone)
+                return dt.strftime('%Y-%m-%dT%H:%M:%S')
         return None
     
     def get_end_date(self, obj):
-        """Extraire la date de fin"""
+        """Extraire la date de fin - SANS conversion timezone"""
         component = self._parse_ical(obj)
         if component:
             dtend = component.get('dtend')
@@ -155,13 +153,13 @@ class BaikalEventSerializer(serializers.ModelSerializer):
                 # Convertir en datetime si c'est une date
                 if not isinstance(dt, datetime):
                     dt = datetime.combine(dt, datetime.min.time())
-                    dt = pytz.UTC.localize(dt)
-                
-                # Assurer que la date a un timezone
-                if timezone.is_naive(dt):
-                    dt = timezone.make_aware(dt)
-                
-                return dt.isoformat()
+
+                # Supprimer le timezone si présent pour garder l'heure locale
+                if hasattr(dt, 'tzinfo') and dt.tzinfo is not None:
+                    dt = dt.replace(tzinfo=None)
+
+                # Format: YYYY-MM-DDTHH:MM:SS (sans Z, sans timezone)
+                return dt.strftime('%Y-%m-%dT%H:%M:%S')
         return None
     
     def get_is_completed(self, obj):

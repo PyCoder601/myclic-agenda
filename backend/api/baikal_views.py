@@ -219,15 +219,23 @@ class BaikalEventViewSet(viewsets.ViewSet):
         )
 
     def _format_event_for_frontend(self, event, calendar_name, event_id=None):
-        """Formate un événement CalDAV pour le frontend"""
+        """Formate un événement CalDAV pour le frontend - SANS conversion timezone"""
         # Gérer les dates et enlever le timezone pour éviter les décalages horaires
         start_date = event.get('start')
         end_date = event.get('end')
 
-        if start_date and hasattr(start_date, 'tzinfo') and start_date.tzinfo:
-            start_date = start_date.replace(tzinfo=None)
-        if end_date and hasattr(end_date, 'tzinfo') and end_date.tzinfo:
-            end_date = end_date.replace(tzinfo=None)
+        # Supprimer tout timezone et formater en string local
+        if start_date:
+            if hasattr(start_date, 'tzinfo') and start_date.tzinfo:
+                start_date = start_date.replace(tzinfo=None)
+            if hasattr(start_date, 'strftime'):
+                start_date = start_date.strftime('%Y-%m-%dT%H:%M:%S')
+
+        if end_date:
+            if hasattr(end_date, 'tzinfo') and end_date.tzinfo:
+                end_date = end_date.replace(tzinfo=None)
+            if hasattr(end_date, 'strftime'):
+                end_date = end_date.strftime('%Y-%m-%dT%H:%M:%S')
 
         return {
             'id': event_id or hash(event['id']),
@@ -239,8 +247,8 @@ class BaikalEventViewSet(viewsets.ViewSet):
             'uri': event.get('url', ''),
             'title': event.get('summary', 'Sans titre'),
             'description': event.get('description', ''),
-            'start_date': start_date.isoformat() if start_date else None,
-            'end_date': end_date.isoformat() if end_date else None,
+            'start_date': start_date,
+            'end_date': end_date,
             'is_completed': False,
             'lastmodified': int(event['last_modified'].timestamp()) if event.get('last_modified') else None,
             'calendar_source_name': calendar_name,

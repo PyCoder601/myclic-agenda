@@ -21,6 +21,25 @@ import { Calendar as CalendarIcon, LogOut, Plus } from 'lucide-react';
 import Calendar from '@/components/Calendar';
 import TaskModal from '@/components/TaskModal';
 import { Task, ViewMode } from '@/lib/types';
+import {format} from "date-fns";
+
+// ✅ Helper pour formater les dates en local SANS conversion timezone
+const formatLocalDateTime = (date: Date): string => {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  const hours = String(date.getHours()).padStart(2, '0');
+  const minutes = String(date.getMinutes()).padStart(2, '0');
+  const seconds = String(date.getSeconds()).padStart(2, '0');
+  return `${year}-${month}-${day}T${hours}:${minutes}:${seconds}`;
+};
+
+const formatLocalDate = (date: Date): string => {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
 
 export default function DashboardPage() {
   const { user, loading: authLoading } = useAppSelector((state) => state.auth);
@@ -98,8 +117,8 @@ export default function DashboardPage() {
       const end = new Date(year, month + 4, 0); // 3 mois après
 
       dispatch(fetchAllEventsBackground({
-        start_date: start.toISOString().split('T')[0],
-        end_date: end.toISOString().split('T')[0]
+        start_date: formatLocalDate(start),
+        end_date: formatLocalDate(end)
       }));
     }
   }, [user, calendars.length, events.length, currentDate, dispatch]);
@@ -111,8 +130,8 @@ export default function DashboardPage() {
     const start = new Date(year, month, -7);
     const end = new Date(year, month + 1, 7);
 
-    const startStr = start.toISOString().split('T')[0];
-    const endStr = end.toISOString().split('T')[0];
+    const startStr = formatLocalDate(start);
+    const endStr = formatLocalDate(end);
 
     console.log(`📡 Chargement des événements pour ${startStr} à ${endStr}... (Mode: ${mainViewMode})`);
 
@@ -308,13 +327,13 @@ export default function DashboardPage() {
 
       if (mainViewMode === 'group') {
         dispatch(fetchAllGroupEvents({
-          start_date: start.toISOString().split('T')[0],
-          end_date: end.toISOString().split('T')[0]
+          start_date: formatLocalDate(start),
+          end_date: formatLocalDate(end)
         }));
       } else {
         dispatch(fetchEvents({
-          start_date: start.toISOString().split('T')[0],
-          end_date: end.toISOString().split('T')[0]
+          start_date: formatLocalDate(start),
+          end_date: formatLocalDate(end)
         }));
       }
     }
@@ -340,29 +359,41 @@ export default function DashboardPage() {
     setIsModalOpen(true);
   }, []);
 
-  const handleTaskDrop = useCallback(async (taskId: number | string, newDate: Date) => {
-    const task = events.find(t => String(t.id) === String(taskId));
-    if (!task) return;
+  const handleTaskDrop = useCallback(async (taskId: string, newDate: Date) => {
+    console.log('📦 handleTaskDrop:', { taskId, newDate: format(newDate, "dd/MM/yyyy HH:mm") });
+
+    const task = events.find(t => t.id === taskId);
+    if (!task) {
+      console.error('⚠️ Tâche non trouvée:', taskId);
+      return;
+    }
 
     const oldStartDate = new Date(task.start_date);
     const oldEndDate = new Date(task.end_date);
     const duration = oldEndDate.getTime() - oldStartDate.getTime();
 
-    const newStartDate = new Date(newDate);
+    // Créer une nouvelle date de début (copie pour éviter mutation)
+    const newStartDate = new Date(newDate.getTime());
 
     // Si le drop vient de la vue mois, le temps sera 00:00. Préserver le temps original.
-    if (newStartDate.getHours() === 0 && newStartDate.getMinutes() === 0) {
-      newStartDate.setHours(oldStartDate.getHours(), oldStartDate.getMinutes(), oldStartDate.getSeconds());
+    if (newStartDate.getHours() === 0 && newStartDate.getMinutes() === 0 && newStartDate.getSeconds() === 0) {
+      newStartDate.setHours(oldStartDate.getHours(), oldStartDate.getMinutes(), oldStartDate.getSeconds(), oldStartDate.getMilliseconds());
     }
 
     const newEndDate = new Date(newStartDate.getTime() + duration);
+
+    console.log('📅 Dates:', {
+      old: format(oldStartDate, "dd/MM/yyyy HH:mm"),
+      new: format(newStartDate, "dd/MM/yyyy HH:mm"),
+      duration: `${Math.floor(duration / (1000 * 60))} minutes`
+    });
 
     // Optimistic update immédiat - préserver les informations du calendrier
     dispatch(optimisticUpdateEvent({
       id: taskId,
       data: {
-        start_date: newStartDate.toISOString(),
-        end_date: newEndDate.toISOString(),
+        start_date: formatLocalDateTime(newStartDate),
+        end_date: formatLocalDateTime(newEndDate),
         // ✅ Préserver explicitement les informations de couleur
         calendar_source_color: task.calendar_source_color,
         calendar_source_name: task.calendar_source_name,
@@ -376,8 +407,8 @@ export default function DashboardPage() {
       await dispatch(updateEvent({
         id: taskId,
         data: {
-          start_date: newStartDate.toISOString(),
-          end_date: newEndDate.toISOString(),
+          start_date: formatLocalDateTime(newStartDate),
+          end_date: formatLocalDateTime(newEndDate),
           url: task.url, // ✅ Inclure l'URL pour assurer la mise à jour via CalDAV
           // ✅ Préserver les informations du calendrier pour éviter la perte de couleur
           calendar_source_color: task.calendar_source_color,
@@ -387,10 +418,10 @@ export default function DashboardPage() {
         }
       })).unwrap();
 
-      console.log(`✅ Événement ${taskId} déplacé`);
+      console.log(`✅ Événement ${taskId} déplacé avec succès`);
 
     } catch (error) {
-      console.error('Erreur lors du déplacement de l\'événement:', error);
+      console.error('❌ Erreur lors du déplacement de l\'événement:', error);
 
       // En cas d'erreur, recharger
       const year = currentDate.getFullYear();
@@ -400,32 +431,35 @@ export default function DashboardPage() {
 
       if (mainViewMode === 'group') {
         dispatch(fetchAllGroupEvents({
-          start_date: start.toISOString().split('T')[0],
-          end_date: end.toISOString().split('T')[0]
+          start_date: formatLocalDate(start),
+          end_date: formatLocalDate(end)
         }));
       } else {
         dispatch(fetchEvents({
-          start_date: start.toISOString().split('T')[0],
-          end_date: end.toISOString().split('T')[0]
+          start_date: formatLocalDate(start),
+          end_date: formatLocalDate(end)
         }));
       }
     }
   }, [events, dispatch, currentDate, mainViewMode]);
 
-  const handleTaskResize = useCallback(async (taskId: number | string, newEndDate: Date) => {
-    const task = events.find(t => String(t.id) === String(taskId));
-    if (!task) return;
+  const handleTaskResize = useCallback(async (taskId: string, newEndDate: Date) => {
+    const task = events.find(t => t.id === taskId);
+    if (!task) {
+      console.error('⚠️ Tâche non trouvée:', taskId);
+      return;
+    }
 
     const startDate = new Date(task.start_date);
 
-    console.log(`🎯 handleTaskResize appelé: taskId=${taskId}, startDate=${startDate.toISOString()}, newEndDate=${newEndDate.toISOString()}`);
+    console.log(`🎯 handleTaskResize: taskId=${taskId}, startDate=${format(startDate, "dd/MM/yyyy HH:mm")}, newEndDate=${format(newEndDate, "dd/MM/yyyy HH:mm")}`);
 
     // Optimistic update immédiat
     dispatch(optimisticUpdateEvent({
       id: taskId,
       data: {
-        start_date: startDate.toISOString(),
-        end_date: newEndDate.toISOString(),
+        start_date: formatLocalDateTime(startDate),
+        end_date: formatLocalDateTime(newEndDate),
         // ✅ Préserver les informations du calendrier
         calendar_source_color: task.calendar_source_color,
         calendar_source_name: task.calendar_source_name,
@@ -439,8 +473,8 @@ export default function DashboardPage() {
       await dispatch(updateEvent({
         id: taskId,
         data: {
-          start_date: startDate.toISOString(),
-          end_date: newEndDate.toISOString(),
+          start_date: formatLocalDateTime(startDate),
+          end_date: formatLocalDateTime(newEndDate),
           url: task.url,
           // ✅ Préserver les informations du calendrier
           calendar_source_color: task.calendar_source_color,
@@ -450,10 +484,10 @@ export default function DashboardPage() {
         }
       })).unwrap();
 
-      console.log(`✅ Événement ${taskId} redimensionné`);
+      console.log(`✅ Événement ${taskId} redimensionné avec succès`);
 
     } catch (error) {
-      console.error('Erreur lors du redimensionnement de l\'événement:', error);
+      console.error('❌ Erreur lors du redimensionnement de l\'événement:', error);
 
       // En cas d'erreur, recharger
       const year = currentDate.getFullYear();
@@ -463,13 +497,13 @@ export default function DashboardPage() {
 
       if (mainViewMode === 'group') {
         dispatch(fetchAllGroupEvents({
-          start_date: start.toISOString().split('T')[0],
-          end_date: end.toISOString().split('T')[0]
+          start_date: formatLocalDate(start),
+          end_date: formatLocalDate(end)
         }));
       } else {
         dispatch(fetchEvents({
-          start_date: start.toISOString().split('T')[0],
-          end_date: end.toISOString().split('T')[0]
+          start_date: formatLocalDate(start),
+          end_date: formatLocalDate(end)
         }));
       }
     }

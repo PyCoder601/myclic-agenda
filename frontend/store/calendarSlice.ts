@@ -234,11 +234,11 @@ export const createEvent = createAsyncThunk(
 // Mettre à jour un événement
 export const updateEvent = createAsyncThunk(
     'calendar/updateEvent',
-    async ({id, data}: { id: string | number; data: Partial<Task> }, {rejectWithValue, getState}) => {
+    async ({id, data}: { id: string; data: Partial<Task> }, {rejectWithValue, getState}) => {
         try {
             // ✅ Récupérer l'événement existant pour obtenir son URL
             const state = getState() as { calendar: CalendarState };
-            const existingEvent = state.calendar.events.find(e => e.id === String(id));
+            const existingEvent = state.calendar.events.find(e => e.id === id);
 
             // ✅ Inclure l'URL dans les données envoyées
             const dataWithUrl = {
@@ -246,7 +246,7 @@ export const updateEvent = createAsyncThunk(
                 url: existingEvent?.url || data.url
             };
 
-            const response = await baikalAPI.updateEvent(typeof id === 'number' ? id : parseInt(id), dataWithUrl);
+            const response = await baikalAPI.updateEvent(id, dataWithUrl);
             return response.data;
         } catch (error: unknown) {
             const err = error as { response?: { data?: unknown } };
@@ -313,9 +313,9 @@ const calendarSlice = createSlice({
         },
 
         // Mise à jour optimiste pour les modifications
-        optimisticUpdateEvent: (state, action: PayloadAction<{ id: string | number; data: Partial<Task> }>) => {
+        optimisticUpdateEvent: (state, action: PayloadAction<{ id: string; data: Partial<Task> }>) => {
             const {id, data} = action.payload;
-            const index = state.events.findIndex(e => e.id === String(id));
+            const index = state.events.findIndex(e => e.id === id);
             if (index !== -1) {
                 state.events[index] = {...state.events[index], ...data};
             }

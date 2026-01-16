@@ -107,7 +107,7 @@ export const baikalAPI = {
     }) => api.post('/baikal/events/bulk_create/', data),
 
     // Mettre à jour un événement
-    updateEvent: (eventId: number, data: Partial<Task>) => {
+    updateEvent: (eventId: string, data: Partial<Task>) => {
         console.log('📝 baikalAPI.updateEvent appelé:', { eventId, data });
         return api.patch(`/baikal/events/${eventId}/`, {
             ...data,

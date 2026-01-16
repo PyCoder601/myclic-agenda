@@ -36,8 +36,8 @@ interface CalendarProps {
   onDateChange: (date: Date) => void;
   onTaskClick: (task: Task) => void;
   onAddTask: (date: Date, hour?: number) => void;
-  onTaskDrop: (taskId: number | string, newDate: Date) => void;
-  onTaskResize?: (taskId: number | string, newEndDate: Date) => void;
+  onTaskDrop: (taskId: string, newDate: Date) => void;
+  onTaskResize?: (taskId: string, newEndDate: Date) => void;
   calendars: CalendarSource[];
   isNavigating?: boolean;
   pendingDate?: Date | null;
@@ -272,7 +272,7 @@ const PositionedEventItem = ({
   calendars: CalendarSource[];
   top: number;
   height: number;
-  onResize?: (eventId: string | number, newHeight: number) => void;
+  onResize?: (eventId: string, newHeight: number) => void;
 }) => {
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
     id: event.id,
@@ -402,7 +402,7 @@ const PositionedWeekEventItem = ({
   calendars: CalendarSource[];
   top: number;
   height: number;
-  onResize?: (eventId: string | number, newHeight: number) => void;
+  onResize?: (eventId: string, newHeight: number) => void;
 }) => {
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
     id: event.id,
@@ -536,7 +536,7 @@ export default function Calendar({
   const [activeTask, setActiveTask] = useState<Task | null>(null);
 
   // Handler pour le redimensionnement des événements
-  const handleEventResize = useCallback((eventId: number | string, newHeight: number) => {
+  const handleEventResize = useCallback((eventId: string, newHeight: number) => {
     if (!onTaskResize) return;
 
     const task = tasks.find(t => t.id === eventId);
@@ -546,7 +546,7 @@ export default function Calendar({
     // Calculer la nouvelle date de fin basée sur la nouvelle hauteur (1px = 1 minute)
     const newEndDate = new Date(startDate.getTime() + newHeight * 60 * 1000);
 
-    console.log(`📏 handleEventResize: eventId=${eventId}, height=${newHeight}px → newEndDate=${newEndDate.toISOString()}`);
+    console.log(`📏 handleEventResize: eventId=${eventId}, height=${newHeight}px → newEndDate=${format(newEndDate, "dd/MM/yyyy HH:mm")}`);
     onTaskResize(eventId, newEndDate);
   }, [tasks, onTaskResize]);
 
@@ -555,47 +555,76 @@ export default function Calendar({
     const task = tasks.find((t) => t.id === active.id);
     if (task) {
       setActiveTask(task);
+      console.log('🎯 Drag start:', task.id, format(new Date(task.start_date), "dd/MM/yyyy HH:mm"));
     }
   };
 
   const handleDragEnd = (event: DragEndEvent) => {
     setActiveTask(null);
-    const { active, over, delta } = event;
+    const { active, over } = event;
 
-    if (over && active.id !== over.id) {
-      const taskId = active.id as number;
-      let newDate = over.data.current?.date as Date;
-
-      if (taskId && newDate) {
-        const task = tasks.find((t) => String(t.id) === String(taskId));
-
-        if (task) {
-          // Pour les vues jour et semaine, calculer la position exacte basée sur le delta
-          if (viewMode === 'day' || viewMode === 'week') {
-            // Delta.y représente le déplacement vertical en pixels
-            // 1px = 1 minute dans notre grille
-            const minutesOffset = Math.round(delta.y);
-            newDate = new Date(newDate.getTime() + minutesOffset * 60 * 1000);
-          } else if (mainViewMode === "group") {
-            // Preserve original time when dropping in group view
-            const oldStartDate = new Date(task.start_date);
-            newDate.setHours(
-              oldStartDate.getHours(),
-              oldStartDate.getMinutes(),
-              oldStartDate.getSeconds(),
-              oldStartDate.getMilliseconds(),
-            );
-          }
-
-          // Prevent drop if the date/time is identical
-          if (new Date(task.start_date).getTime() === newDate.getTime()) {
-            return;
-          }
-
-          onTaskDrop(taskId, newDate);
-        }
-      }
+    if (!over) {
+      console.log('⚠️ Drop sans cible');
+      return;
     }
+
+    if (active.id === over.id) {
+      console.log('⚠️ Drop sur la même position');
+      return;
+    }
+
+    const taskId = active.id as string;
+    const dropTargetDate = over.data.current?.date as Date;
+
+    console.log('🎯 handleDragEnd:', {
+      taskId,
+      dropTargetDate: dropTargetDate ? format(dropTargetDate, "dd/MM/yyyy HH:mm:ss") : 'undefined',
+      dropTargetDateISO: dropTargetDate?.toISOString(),
+      dropTargetHours: dropTargetDate?.getHours(),
+      dropTargetMinutes: dropTargetDate?.getMinutes(),
+    });
+
+    if (!taskId || !dropTargetDate) {
+      console.log('⚠️ Données manquantes:', { taskId, dropTargetDate });
+      return;
+    }
+
+    const task = tasks.find((t) => t.id === taskId);
+    if (!task) {
+      console.log('⚠️ Tâche non trouvée:', taskId);
+      return;
+    }
+
+    // Créer une copie de la date cible pour éviter les mutations
+    const newDate = new Date(dropTargetDate);
+
+    // En mode groupe, préserver l'heure originale de la tâche
+    if (mainViewMode === "group") {
+      const oldStartDate = new Date(task.start_date);
+      newDate.setHours(
+        oldStartDate.getHours(),
+        oldStartDate.getMinutes(),
+        oldStartDate.getSeconds(),
+        oldStartDate.getMilliseconds(),
+      );
+    }
+
+    // Vérifier que la date a changé
+    const oldDate = new Date(task.start_date);
+    if (oldDate.getTime() === newDate.getTime()) {
+      console.log('⚠️ Même date/heure');
+      return;
+    }
+
+    console.log('✅ Drop:', {
+      taskId,
+      oldDate: format(oldDate, "dd/MM/yyyy HH:mm"),
+      newDate: format(newDate, "dd/MM/yyyy HH:mm"),
+      newDateHours: newDate.getHours(),
+      newDateMinutes: newDate.getMinutes(),
+    });
+
+    onTaskDrop(taskId, newDate);
   };
 
   useEffect(() => {
@@ -621,6 +650,16 @@ export default function Calendar({
     return tasks.map(task => {
       const startDate = new Date(task.start_date);
       const endDate = new Date(task.end_date);
+
+      // 🔍 LOG pour déboguer les conversions de dates
+      if (task.title && task.title.length > 0) {
+        console.log(`📍 Position événement "${task.title}":`, {
+          start_date_string: task.start_date,
+          start_date_parsed: format(startDate, "dd/MM/yyyy HH:mm"),
+          startHour: startDate.getHours(),
+          startMinute: startDate.getMinutes(),
+        });
+      }
 
       // Calculer la position en pixels (60px par heure)
       const startHour = startDate.getHours();
@@ -888,7 +927,7 @@ export default function Calendar({
                 {/* Zone cliquable pour ajouter un événement */}
                 <DroppableCell
                   id={`${format(currentDate, "yyyy-MM-dd")}-${hour}`}
-                  date={new Date(currentDate.setHours(hour, 0, 0, 0))}
+                  date={new Date(currentDate.getFullYear(), currentDate.getMonth(), currentDate.getDate(), hour, 0, 0, 0)}
                   className="absolute inset-0 hover:bg-blue-50/30 transition-colors cursor-pointer"
                 >
                   <div
@@ -899,8 +938,7 @@ export default function Calendar({
                       const clickY = e.clientY - rect.top;
                       const minute = Math.floor((clickY / 60) * 60); // 60px = 60 minutes
 
-                      const newDate = new Date(currentDate);
-                      newDate.setHours(hour, minute, 0, 0);
+                      const newDate = new Date(currentDate.getFullYear(), currentDate.getMonth(), currentDate.getDate(), hour, minute, 0, 0);
 
                       console.log(`➕ Clic pour créer événement: ${hour}:${minute.toString().padStart(2, '0')}`);
                       onAddTask(newDate);
@@ -1034,7 +1072,7 @@ export default function Calendar({
                     {/* Zone cliquable pour ajouter un événement */}
                     <DroppableCell
                       id={`${format(day, "yyyy-MM-dd")}-${hour}`}
-                      date={new Date(day.setHours(hour, 0, 0, 0))}
+                      date={new Date(day.getFullYear(), day.getMonth(), day.getDate(), hour, 0, 0, 0)}
                       className="absolute inset-0 hover:bg-blue-50/30 transition-colors cursor-pointer"
                     >
                       <div
@@ -1045,8 +1083,7 @@ export default function Calendar({
                           const clickY = e.clientY - rect.top;
                           const minute = Math.floor((clickY / 60) * 60); // 60px = 60 minutes
 
-                          const newDate = new Date(day);
-                          newDate.setHours(hour, minute, 0, 0);
+                          const newDate = new Date(day.getFullYear(), day.getMonth(), day.getDate(), hour, minute, 0, 0);
 
                           console.log(`➕ Clic pour créer événement: ${format(day, 'dd/MM')} ${hour}:${minute.toString().padStart(2, '0')}`);
                           onAddTask(newDate);

@@ -24,6 +24,10 @@ import {
   useDroppable,
   type DraggableAttributes,
   type DraggableSyntheticListeners,
+  useSensor,
+  useSensors,
+  MouseSensor,
+  TouchSensor,
 } from "@dnd-kit/core";
 import { Task, ViewMode, CalendarSource } from "@/lib/types";
 import { baikalAPI } from "@/lib/api";
@@ -249,9 +253,9 @@ const WeekTaskItem = ({
           onTaskClick(task);
         }}
       >
-        <div className="font-semibold  truncate">{task.title}</div>
+        <div className="font-semibold truncate">{task.title}</div>
         <div className="font-medium mt-0.5">
-          {format(new Date(task.start_date), "HH:mm")}
+          {format(new Date(task.start_date), "HH:mm")} - {format(new Date(task.end_date), "HH:mm")}
         </div>
       </div>
     </div>
@@ -535,6 +539,22 @@ export default function Calendar({
   const [dayTasksModalDate, setDayTasksModalDate] = useState<Date | null>(null);
   const [activeTask, setActiveTask] = useState<Task | null>(null);
 
+  // Configurer les sensors pour un drag & drop plus fluide
+  const mouseSensor = useSensor(MouseSensor, {
+    activationConstraint: {
+      distance: 5, // 5px de mouvement avant d'activer le drag
+    },
+  });
+
+  const touchSensor = useSensor(TouchSensor, {
+    activationConstraint: {
+      delay: 100,
+      tolerance: 5,
+    },
+  });
+
+  const sensors = useSensors(mouseSensor, touchSensor);
+
   // Handler pour le redimensionnement des événements
   const handleEventResize = useCallback((eventId: string, newHeight: number) => {
     if (!onTaskResize) return;
@@ -648,38 +668,24 @@ export default function Calendar({
   // Calculer les événements positionnés pour la vue jour/semaine
   const positionedEvents = useMemo(() => {
     return tasks.map(task => {
+      // Créer les objets Date à partir des chaînes ISO
       const startDate = new Date(task.start_date);
       const endDate = new Date(task.end_date);
 
-      // 🔍 LOG pour déboguer les conversions de dates
-      if (task.title && task.title.length > 0) {
-        console.log(`📍 Position événement "${task.title}":`, {
-          start_date_string: task.start_date,
-          start_date_parsed: format(startDate, "dd/MM/yyyy HH:mm"),
-          startHour: startDate.getHours(),
-          startMinute: startDate.getMinutes(),
-        });
-      }
-
-      // Calculer la position en pixels (60px par heure)
+      // Calculer la position en pixels (60px par heure) en utilisant directement les heures/minutes locales
       const startHour = startDate.getHours();
       const startMinute = startDate.getMinutes();
       const top = (startHour * 60) + startMinute; // pixels from top
 
-      const endHour = endDate.getHours();
-      const endMinute = endDate.getMinutes();
-
-      // Si l'événement se termine le jour suivant ou plus tard
-      const daysDiff = Math.floor((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24));
-      const totalEndMinutes = (endHour * 60) + endMinute + (daysDiff * 24 * 60);
-      const totalStartMinutes = (startHour * 60) + startMinute;
-
-      const height = totalEndMinutes - totalStartMinutes; // duration in minutes
+      // Calculer la durée en minutes
+      const durationMs = endDate.getTime() - startDate.getTime();
+      const durationMinutes = Math.floor(durationMs / (1000 * 60));
+      const height = Math.max(durationMinutes, 15); // minimum 15px (15 minutes)
 
       return {
         ...task,
         top,
-        height: Math.max(height, 15), // minimum 15px de hauteur
+        height,
         startDate,
         endDate,
       };
@@ -964,9 +970,8 @@ export default function Calendar({
             {/* Événements positionnés en absolu */}
             <div className="absolute inset-0 pointer-events-none" style={{ paddingLeft: "4px", paddingRight: "4px" }}>
               {dayEvents.map((event) => {
-                const eventStartOfDay = startOfDay(currentDate).getTime();
-                const eventStart = event.startDate.getTime();
-                const topOffset = Math.max(0, (eventStart - eventStartOfDay) / (1000 * 60)); // minutes depuis le début du jour
+                // Calculer la position en utilisant les heures/minutes locales
+                const topOffset = event.top; // déjà calculé dans positionedEvents
 
                 return (
                   <PositionedEventItem
@@ -1049,7 +1054,7 @@ export default function Calendar({
           </div>
 
           {/* Colonnes des jours */}
-          {weekDays.map((day, dayIndex) => {
+          {weekDays.map((day) => {
             const dayEvents = getPositionedEventsForDay(day);
             const isToday = isSameDay(day, today);
 
@@ -1109,9 +1114,8 @@ export default function Calendar({
                 {/* Événements positionnés en absolu */}
                 <div className="absolute inset-0 pointer-events-none" style={{ paddingLeft: "2px", paddingRight: "2px" }}>
                   {dayEvents.map((event) => {
-                    const eventStartOfDay = startOfDay(day).getTime();
-                    const eventStart = event.startDate.getTime();
-                    const topOffset = Math.max(0, (eventStart - eventStartOfDay) / (1000 * 60)); // minutes depuis le début du jour
+                    // Calculer la position en utilisant les heures/minutes locales
+                    const topOffset = event.top; // déjà calculé dans positionedEvents
 
                     // Limiter la hauteur à la fin de la journée
                     const maxHeight = (24 * 60) - topOffset;
@@ -1143,7 +1147,7 @@ export default function Calendar({
       <div className="flex-1 flex flex-col bg-white">
         {/* En-tête des jours de la semaine - responsive */}
         <div className="grid grid-cols-7 border-b border-slate-200 bg-gradient-to-r from-slate-50 to-blue-50 sticky top-0 z-10">
-          {weekDayLabels.map((day, index) => (
+          {weekDayLabels.map((day) => (
             <div
               key={day}
               className="p-1.5 sm:p-3 text-center font-semibold text-slate-700 border-r border-slate-200 last:border-r-0 text-xs sm:text-sm"
@@ -1360,7 +1364,11 @@ export default function Calendar({
 
   return (
     <>
-      <DndContext onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
+      <DndContext
+        sensors={sensors}
+        onDragStart={handleDragStart}
+        onDragEnd={handleDragEnd}
+      >
         <div className="flex flex-col bg-white rounded-lg sm:rounded-2xl shadow-xl border border-slate-200/50 animate-fadeIn">
           {/* Calendar Header - Version compacte */}
           <div className="flex items-center justify-between p-1.5 sm:p-2.5 border-b border-slate-200/50 bg-gradient-to-r from-white via-blue-50/40 to-white backdrop-blur-sm">

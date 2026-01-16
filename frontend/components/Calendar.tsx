@@ -352,7 +352,7 @@ const PositionedEventItem = ({
           <div
             {...listeners}
             {...attributes}
-            className="cursor-grab active:cursor-grabbing shrink-0 opacity-0 group-hover:opacity-100 transition-opacity p-0.5 hover:bg-white/20 rounded"
+            className="cursor-grab active:cursor-grabbing shrink-0 opacity-0 group-hover:opacity-100 transition-opacity px-0.5 hover:bg-white/20 rounded h-full flex items-center"
             onClick={(e) => e.stopPropagation()}
           >
             <GripVertical className="w-3 h-3 text-white" />
@@ -482,7 +482,7 @@ const PositionedWeekEventItem = ({
           <div
             {...listeners}
             {...attributes}
-            className="cursor-grab active:cursor-grabbing shrink-0 opacity-0 group-hover:opacity-100 transition-opacity p-0.5 hover:bg-white/20 rounded"
+            className="cursor-grab active:cursor-grabbing shrink-0 opacity-0 group-hover:opacity-100 transition-opacity px-0.5 hover:bg-white/20 rounded h-full flex items-center"
             onClick={(e) => e.stopPropagation()}
           >
             <GripVertical className="w-2.5 h-2.5" />
@@ -647,23 +647,24 @@ export default function Calendar({
     onTaskDrop(taskId, newDate);
   };
 
-  useEffect(() => {
-    if (
-      (viewMode === "day" || viewMode === "week") &&
-      currentHourRef.current
-    ) {
-      setTimeout(() => {
-        if (currentHourRef.current) {
-          // Utiliser scrollIntoView pour scroller la page vers l'heure actuelle
-          currentHourRef.current.scrollIntoView({
-            behavior: 'smooth',
-            block: 'center',
-            inline: 'nearest'
-          });
-        }
-      }, 100);
-    }
-  }, [viewMode, currentDate]);
+  // Scroll automatique désactivé
+  // useEffect(() => {
+  //   if (
+  //     (viewMode === "day" || viewMode === "week") &&
+  //     currentHourRef.current
+  //   ) {
+  //     setTimeout(() => {
+  //       if (currentHourRef.current) {
+  //         // Utiliser scrollIntoView pour scroller la page vers l'heure actuelle
+  //         currentHourRef.current.scrollIntoView({
+  //           behavior: 'smooth',
+  //           block: 'center',
+  //           inline: 'nearest'
+  //         });
+  //       }
+  //     }, 100);
+  //   }
+  // }, [viewMode, currentDate]);
 
   // Calculer les événements positionnés pour la vue jour/semaine
   const positionedEvents = useMemo(() => {
@@ -925,10 +926,6 @@ export default function Calendar({
                 {/* Ligne principale de l'heure (épaisse) */}
                 <div className="absolute top-0 left-0 right-0 border-t-2 border-slate-300"></div>
 
-                {/* Lignes des quarts d'heure (fines) */}
-                <div className="absolute left-0 right-0 border-t border-slate-200" style={{ top: "15px" }}></div>
-                <div className="absolute left-0 right-0 border-t border-slate-200" style={{ top: "30px" }}></div>
-                <div className="absolute left-0 right-0 border-t border-slate-200" style={{ top: "45px" }}></div>
 
                 {/* Zone cliquable pour ajouter un événement */}
                 <DroppableCell
@@ -1069,10 +1066,6 @@ export default function Calendar({
                     {/* Ligne principale de l'heure (épaisse) */}
                     <div className="absolute top-0 left-0 right-0 border-t-2 border-slate-300"></div>
 
-                    {/* Lignes des quarts d'heure (fines) */}
-                    <div className="absolute left-0 right-0 border-t border-slate-200" style={{ top: "15px" }}></div>
-                    <div className="absolute left-0 right-0 border-t border-slate-200" style={{ top: "30px" }}></div>
-                    <div className="absolute left-0 right-0 border-t border-slate-200" style={{ top: "45px" }}></div>
 
                     {/* Zone cliquable pour ajouter un événement */}
                     <DroppableCell

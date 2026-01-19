@@ -678,14 +678,24 @@ class BaikalEventViewSet(viewsets.ViewSet):
             calendar_source_uri = request.data.get('calendar_source_uri')
 
             if updated_event:
+                # ✅ Enlever le timezone des dates avant de faire isoformat()
+                start_dt = updated_event.get('start')
+                end_dt = updated_event.get('end')
+
+                # Supprimer le timezone si présent (garder l'heure locale telle quelle)
+                if start_dt and hasattr(start_dt, 'tzinfo') and start_dt.tzinfo:
+                    start_dt = start_dt.replace(tzinfo=None)
+                if end_dt and hasattr(end_dt, 'tzinfo') and end_dt.tzinfo:
+                    end_dt = end_dt.replace(tzinfo=None)
+
                 formatted_event = {
                     'id': pk,
                     'uid': updated_event['uid'],
                     'url': event_url,
                     'title': updated_event['summary'],
                     'description': updated_event['description'],
-                    'start_date': updated_event['start'].isoformat() if updated_event.get('start') else None,
-                    'end_date': updated_event['end'].isoformat() if updated_event.get('end') else None,
+                    'start_date': start_dt.isoformat() if start_dt else None,
+                    'end_date': end_dt.isoformat() if end_dt else None,
                     'location': updated_event.get('location', ''),
                     'calendar_source_name': calendar_source_name,
                     'calendar_source_id': calendar_source_id,

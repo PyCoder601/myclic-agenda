@@ -32,6 +32,32 @@ import {
 import { Task, ViewMode, CalendarSource } from "@/lib/types";
 import { baikalAPI } from "@/lib/api";
 
+// Helper pour parser les dates ISO locales sans conversion timezone
+const parseLocalDate = (dateString: string): Date => {
+  // Si la date contient déjà un Z ou un +/-, c'est une date UTC qu'il faut convertir
+  if (dateString.includes('Z') || /[+-]\d{2}:\d{2}$/.test(dateString)) {
+    return new Date(dateString);
+  }
+
+  // Sinon, c'est une date locale au format "YYYY-MM-DDTHH:mm:ss"
+  // On la parse manuellement pour éviter toute conversion timezone
+  const parts = dateString.match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})/);
+  if (parts) {
+    const [, year, month, day, hour, minute, second] = parts;
+    return new Date(
+      parseInt(year),
+      parseInt(month) - 1, // Les mois commencent à 0
+      parseInt(day),
+      parseInt(hour),
+      parseInt(minute),
+      parseInt(second)
+    );
+  }
+
+  // Fallback sur le parsing standard
+  return new Date(dateString);
+};
+
 interface CalendarProps {
   tasks: Task[];
   viewMode: ViewMode;
@@ -352,10 +378,11 @@ const PositionedEventItem = ({
           <div
             {...listeners}
             {...attributes}
-            className="cursor-grab active:cursor-grabbing shrink-0 opacity-0 group-hover:opacity-100 transition-opacity px-0.5 hover:bg-white/20 rounded h-full flex items-center"
+            className="cursor-grab active:cursor-grabbing shrink-0 opacity-0 group-hover:opacity-100 transition-opacity px-0.5 hover:bg-white/20 rounded flex items-center"
+            style={{ height: `${resizeHeight}px` }}
             onClick={(e) => e.stopPropagation()}
           >
-            <GripVertical className="w-3 h-3 text-white" />
+            <GripVertical className="w-3 text-white" style={{ height: '100%' }} />
           </div>
           <div className="flex-1 min-w-0 text-black">
             <div className="font-semibold text-sm truncate">{event.title}</div>
@@ -482,10 +509,11 @@ const PositionedWeekEventItem = ({
           <div
             {...listeners}
             {...attributes}
-            className="cursor-grab active:cursor-grabbing shrink-0 opacity-0 group-hover:opacity-100 transition-opacity px-0.5 hover:bg-white/20 rounded h-full flex items-center"
+            className="cursor-grab active:cursor-grabbing shrink-0 opacity-0 group-hover:opacity-100 transition-opacity px-0.5 hover:bg-white/20 rounded flex items-center"
+            style={{ height: `${resizeHeight}px` }}
             onClick={(e) => e.stopPropagation()}
           >
-            <GripVertical className="w-2.5 h-2.5" />
+            <GripVertical className="w-2.5 text-white" style={{ height: '100%' }} />
           </div>
           <div className="flex-1 min-w-0">
             <div className="font-semibold truncate leading-tight">{event.title}</div>
@@ -562,7 +590,7 @@ export default function Calendar({
     const task = tasks.find(t => t.id === eventId);
     if (!task) return;
 
-    const startDate = new Date(task.start_date);
+    const startDate = parseLocalDate(task.start_date);
     // Calculer la nouvelle date de fin basée sur la nouvelle hauteur (1px = 1 minute)
     const newEndDate = new Date(startDate.getTime() + newHeight * 60 * 1000);
 
@@ -575,7 +603,7 @@ export default function Calendar({
     const task = tasks.find((t) => t.id === active.id);
     if (task) {
       setActiveTask(task);
-      console.log('🎯 Drag start:', task.id, format(new Date(task.start_date), "dd/MM/yyyy HH:mm"));
+      console.log('🎯 Drag start:', task.id, format(parseLocalDate(task.start_date), "dd/MM/yyyy HH:mm"));
     }
   };
 
@@ -620,7 +648,7 @@ export default function Calendar({
 
     // En mode groupe, préserver l'heure originale de la tâche
     if (mainViewMode === "group") {
-      const oldStartDate = new Date(task.start_date);
+      const oldStartDate = parseLocalDate(task.start_date);
       newDate.setHours(
         oldStartDate.getHours(),
         oldStartDate.getMinutes(),
@@ -630,7 +658,7 @@ export default function Calendar({
     }
 
     // Vérifier que la date a changé
-    const oldDate = new Date(task.start_date);
+    const oldDate = parseLocalDate(task.start_date);
     if (oldDate.getTime() === newDate.getTime()) {
       console.log('⚠️ Même date/heure');
       return;
@@ -669,9 +697,9 @@ export default function Calendar({
   // Calculer les événements positionnés pour la vue jour/semaine
   const positionedEvents = useMemo(() => {
     return tasks.map(task => {
-      // Créer les objets Date à partir des chaînes ISO
-      const startDate = new Date(task.start_date);
-      const endDate = new Date(task.end_date);
+      // Créer les objets Date à partir des chaînes ISO - SANS conversion timezone
+      const startDate = parseLocalDate(task.start_date);
+      const endDate = parseLocalDate(task.end_date);
 
       // Calculer la position en pixels (60px par heure) en utilisant directement les heures/minutes locales
       const startHour = startDate.getHours();
@@ -699,8 +727,8 @@ export default function Calendar({
       const dayEnd = endOfDay(date);
 
       return tasks.filter((task) => {
-        const taskStart = new Date(task.start_date);
-        const taskEnd = new Date(task.end_date);
+        const taskStart = parseLocalDate(task.start_date);
+        const taskEnd = parseLocalDate(task.end_date);
         return taskStart <= dayEnd && taskEnd >= dayStart;
       });
     },

@@ -23,6 +23,32 @@ import TaskModal from '@/components/TaskModal';
 import { Task, ViewMode } from '@/lib/types';
 import {format} from "date-fns";
 
+// Helper pour parser les dates ISO locales sans conversion timezone
+const parseLocalDate = (dateString: string): Date => {
+  // Si la date contient déjà un Z ou un +/-, c'est une date UTC qu'il faut convertir
+  if (dateString.includes('Z') || /[+-]\d{2}:\d{2}$/.test(dateString)) {
+    return new Date(dateString);
+  }
+
+  // Sinon, c'est une date locale au format "YYYY-MM-DDTHH:mm:ss"
+  // On la parse manuellement pour éviter toute conversion timezone
+  const parts = dateString.match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})/);
+  if (parts) {
+    const [, year, month, day, hour, minute, second] = parts;
+    return new Date(
+      parseInt(year),
+      parseInt(month) - 1, // Les mois commencent à 0
+      parseInt(day),
+      parseInt(hour),
+      parseInt(minute),
+      parseInt(second)
+    );
+  }
+
+  // Fallback sur le parsing standard
+  return new Date(dateString);
+};
+
 // ✅ Helper pour formater les dates en local SANS conversion timezone
 const formatLocalDateTime = (date: Date): string => {
   const year = date.getFullYear();
@@ -368,8 +394,8 @@ export default function DashboardPage() {
       return;
     }
 
-    const oldStartDate = new Date(task.start_date);
-    const oldEndDate = new Date(task.end_date);
+    const oldStartDate = parseLocalDate(task.start_date);
+    const oldEndDate = parseLocalDate(task.end_date);
     const duration = oldEndDate.getTime() - oldStartDate.getTime();
 
     // Créer une nouvelle date de début (copie pour éviter mutation)
@@ -450,7 +476,7 @@ export default function DashboardPage() {
       return;
     }
 
-    const startDate = new Date(task.start_date);
+    const startDate = parseLocalDate(task.start_date);
 
     console.log(`🎯 handleTaskResize: taskId=${taskId}, startDate=${format(startDate, "dd/MM/yyyy HH:mm")}, newEndDate=${format(newEndDate, "dd/MM/yyyy HH:mm")}`);
 

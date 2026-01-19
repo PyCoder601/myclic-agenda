@@ -253,7 +253,7 @@ const TaskItem = ({
       <div
         {...dragListeners}
         {...dragAttributes}
-        className="cursor-grab active:cursor-grabbing shrink-0 opacity-0 group-hover/item:opacity-100 transition-opacity p-0.5 hover:bg-white/20 rounded"
+        className="cursor-grab active:cursor-grabbing shrink-0 opacity-0 group-hover/item:opacity-100 transition-opacity px-1.5 py-0.5 hover:bg-white/20 rounded"
         onClick={(e) => e.stopPropagation()}
       >
         <GripVertical className="w-3 h-3" />
@@ -296,7 +296,7 @@ const WeekTaskItem = ({
       <div
         {...dragListeners}
         {...dragAttributes}
-        className="cursor-grab active:cursor-grabbing shrink-0 opacity-0 group-hover/item:opacity-100 transition-opacity p-0.5 hover:bg-white/20 rounded mt-0.5"
+        className="cursor-grab active:cursor-grabbing shrink-0 opacity-0 group-hover/item:opacity-100 transition-opacity px-1.5 py-0.5 hover:bg-white/20 rounded mt-0.5"
         onClick={(e) => e.stopPropagation()}
       >
         <GripVertical className="w-3 h-3 text-white" />
@@ -414,7 +414,7 @@ const PositionedEventItem = ({
           <div
             {...listeners}
             {...attributes}
-            className="cursor-grab active:cursor-grabbing shrink-0 opacity-0 group-hover:opacity-100 transition-all duration-200 px-0.5 hover:bg-white/30 rounded flex items-center"
+            className="cursor-grab active:cursor-grabbing shrink-0 opacity-0 group-hover:opacity-100 transition-all duration-200 px-1.5 hover:bg-white/30 rounded flex items-center"
             style={{ height: `${resizeHeight}px` }}
             onClick={(e) => e.stopPropagation()}
           >
@@ -559,7 +559,7 @@ const PositionedWeekEventItem = ({
           <div
             {...listeners}
             {...attributes}
-            className="cursor-grab active:cursor-grabbing shrink-0 opacity-0 group-hover:opacity-100 transition-all duration-200 px-0.5 hover:bg-white/30 rounded flex items-center"
+            className="cursor-grab active:cursor-grabbing shrink-0 opacity-0 group-hover:opacity-100 transition-all duration-200 px-1.5 hover:bg-white/30 rounded flex items-center"
             style={{ height: `${resizeHeight}px` }}
             onClick={(e) => e.stopPropagation()}
           >

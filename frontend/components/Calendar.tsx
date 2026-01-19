@@ -319,6 +319,13 @@ const PositionedEventItem = ({
     setResizeHeight(height);
   }, [height]);
 
+  // Calculer l'heure de fin dynamique pendant le redimensionnement
+  const getDisplayEndTime = () => {
+    const startDate = parseLocalDate(event.start_date);
+    const endDate = new Date(startDate.getTime() + resizeHeight * 60 * 1000); // 1px = 1 minute
+    return format(endDate, "HH:mm");
+  };
+
   const handleResizeStart = (e: React.MouseEvent) => {
     e.stopPropagation();
     e.preventDefault();
@@ -386,8 +393,8 @@ const PositionedEventItem = ({
           </div>
           <div className="flex-1 min-w-0 text-black">
             <div className="font-semibold text-sm truncate">{event.title}</div>
-            <div className="text-xs opacity-90 mt-0.5 font-medium">
-              {format(parseLocalDate(event.start_date), "HH:mm")} - {format(parseLocalDate(event.end_date), "HH:mm")}
+            <div className={`text-xs opacity-90 mt-0.5 font-medium transition-all duration-150 ${isResizing ? 'scale-105 text-white font-bold' : ''}`}>
+              {format(parseLocalDate(event.start_date), "HH:mm")} - {getDisplayEndTime()}
             </div>
             {event.location && resizeHeight > 35 && (
               <div className="flex items-center gap-1 text-xs opacity-80 mt-0.5">
@@ -405,6 +412,13 @@ const PositionedEventItem = ({
             )}
           </div>
         </div>
+
+        {/* Badge de durée pendant le redimensionnement */}
+        {isResizing && (
+          <div className="absolute top-2 right-2 bg-white/95 backdrop-blur-sm text-black px-2 py-1 rounded-lg shadow-lg text-xs font-bold animate-pulse border-2 border-white">
+            {Math.floor(resizeHeight / 60)}h{String(resizeHeight % 60).padStart(2, '0')}
+          </div>
+        )}
 
         {/* Poignée de redimensionnement */}
         <div
@@ -449,6 +463,13 @@ const PositionedWeekEventItem = ({
   useEffect(() => {
     setResizeHeight(height);
   }, [height]);
+
+  // Calculer l'heure de fin dynamique pendant le redimensionnement
+  const getDisplayEndTime = () => {
+    const startDate = parseLocalDate(event.start_date);
+    const endDate = new Date(startDate.getTime() + resizeHeight * 60 * 1000); // 1px = 1 minute
+    return format(endDate, "HH:mm");
+  };
 
   const handleResizeStart = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -518,8 +539,8 @@ const PositionedWeekEventItem = ({
           <div className="flex-1 min-w-0">
             <div className="font-semibold truncate leading-tight">{event.title}</div>
             {resizeHeight > 25 && (
-              <div className="opacity-90 mt-0.5 leading-tight font-medium">
-                {format(parseLocalDate(event.start_date), "HH:mm")} - {format(parseLocalDate(event.end_date), "HH:mm")}
+              <div className={`opacity-90 mt-0.5 leading-tight font-medium transition-all duration-150 ${isResizing ? 'scale-105 text-white font-bold opacity-100' : ''}`}>
+                {format(parseLocalDate(event.start_date), "HH:mm")} - {getDisplayEndTime()}
               </div>
             )}
             {event.location && resizeHeight > 40 && (
@@ -533,6 +554,13 @@ const PositionedWeekEventItem = ({
             )}
           </div>
         </div>
+
+        {/* Badge de durée pendant le redimensionnement */}
+        {isResizing && (
+          <div className="absolute top-1 right-1 bg-white/95 backdrop-blur-sm text-black px-1.5 py-0.5 rounded shadow-lg text-[10px] font-bold animate-pulse border border-white">
+            {Math.floor(resizeHeight / 60)}h{String(resizeHeight % 60).padStart(2, '0')}
+          </div>
+        )}
 
         {/* Poignée de redimensionnement */}
         <div

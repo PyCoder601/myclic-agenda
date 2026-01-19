@@ -33,15 +33,29 @@ import { Task, ViewMode, CalendarSource } from "@/lib/types";
 import { baikalAPI } from "@/lib/api";
 
 // Helper pour parser les dates ISO locales sans conversion timezone
-const parseLocalDate = (dateString: string): Date => {
+const parseLocalDate = (dateString: string | Date | undefined | null): Date => {
+  // Si c'est déjà une Date, la retourner directement
+  if (dateString instanceof Date) {
+    return dateString;
+  }
+
+  // Si c'est null ou undefined, retourner la date actuelle (fallback sécurisé)
+  if (!dateString) {
+    console.warn('parseLocalDate: date vide ou null, utilisation de la date actuelle');
+    return new Date();
+  }
+
+  // Convertir en string si ce n'est pas déjà le cas
+  const dateStr = String(dateString);
+
   // Si la date contient déjà un Z ou un +/-, c'est une date UTC qu'il faut convertir
-  if (dateString.includes('Z') || /[+-]\d{2}:\d{2}$/.test(dateString)) {
-    return new Date(dateString);
+  if (dateStr.includes('Z') || /[+-]\d{2}:\d{2}$/.test(dateStr)) {
+    return new Date(dateStr);
   }
 
   // Sinon, c'est une date locale au format "YYYY-MM-DDTHH:mm:ss"
   // On la parse manuellement pour éviter toute conversion timezone
-  const parts = dateString.match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})/);
+  const parts = dateStr.match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})/);
   if (parts) {
     const [, year, month, day, hour, minute, second] = parts;
     return new Date(
@@ -55,7 +69,22 @@ const parseLocalDate = (dateString: string): Date => {
   }
 
   // Fallback sur le parsing standard
-  return new Date(dateString);
+  return new Date(dateStr);
+};
+
+// Helper pour ajouter des minutes à une date SANS conversion timezone
+const addMinutesLocal = (date: Date, minutes: number): Date => {
+  // Ne PAS utiliser getTime() + minutes * 60 * 1000 car ça peut causer des problèmes de timezone
+  // À la place, manipuler directement les composants de la date
+  const result = new Date(
+    date.getFullYear(),
+    date.getMonth(),
+    date.getDate(),
+    date.getHours(),
+    date.getMinutes() + minutes,
+    date.getSeconds()
+  );
+  return result;
 };
 
 interface CalendarProps {
@@ -322,7 +351,7 @@ const PositionedEventItem = ({
   // Calculer l'heure de fin dynamique pendant le redimensionnement
   const getDisplayEndTime = () => {
     const startDate = parseLocalDate(event.start_date);
-    const endDate = new Date(startDate.getTime() + resizeHeight * 60 * 1000); // 1px = 1 minute
+    const endDate = addMinutesLocal(startDate, resizeHeight); // 1px = 1 minute
     return format(endDate, "HH:mm");
   };
 
@@ -467,7 +496,7 @@ const PositionedWeekEventItem = ({
   // Calculer l'heure de fin dynamique pendant le redimensionnement
   const getDisplayEndTime = () => {
     const startDate = parseLocalDate(event.start_date);
-    const endDate = new Date(startDate.getTime() + resizeHeight * 60 * 1000); // 1px = 1 minute
+    const endDate = addMinutesLocal(startDate, resizeHeight); // 1px = 1 minute
     return format(endDate, "HH:mm");
   };
 
@@ -620,7 +649,7 @@ export default function Calendar({
 
     const startDate = parseLocalDate(task.start_date);
     // Calculer la nouvelle date de fin basée sur la nouvelle hauteur (1px = 1 minute)
-    const newEndDate = new Date(startDate.getTime() + newHeight * 60 * 1000);
+    const newEndDate = addMinutesLocal(startDate, newHeight);
 
     console.log(`📏 handleEventResize: eventId=${eventId}, height=${newHeight}px → newEndDate=${format(newEndDate, "dd/MM/yyyy HH:mm")}`);
     onTaskResize(eventId, newEndDate);

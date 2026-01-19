@@ -24,15 +24,29 @@ import { Task, ViewMode } from '@/lib/types';
 import {format} from "date-fns";
 
 // Helper pour parser les dates ISO locales sans conversion timezone
-const parseLocalDate = (dateString: string): Date => {
+const parseLocalDate = (dateString: string | Date | undefined | null): Date => {
+  // Si c'est déjà une Date, la retourner directement
+  if (dateString instanceof Date) {
+    return dateString;
+  }
+
+  // Si c'est null ou undefined, retourner la date actuelle (fallback sécurisé)
+  if (!dateString) {
+    console.warn('parseLocalDate: date vide ou null, utilisation de la date actuelle');
+    return new Date();
+  }
+
+  // Convertir en string si ce n'est pas déjà le cas
+  const dateStr = String(dateString);
+
   // Si la date contient déjà un Z ou un +/-, c'est une date UTC qu'il faut convertir
-  if (dateString.includes('Z') || /[+-]\d{2}:\d{2}$/.test(dateString)) {
-    return new Date(dateString);
+  if (dateStr.includes('Z') || /[+-]\d{2}:\d{2}$/.test(dateStr)) {
+    return new Date(dateStr);
   }
 
   // Sinon, c'est une date locale au format "YYYY-MM-DDTHH:mm:ss"
   // On la parse manuellement pour éviter toute conversion timezone
-  const parts = dateString.match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})/);
+  const parts = dateStr.match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})/);
   if (parts) {
     const [, year, month, day, hour, minute, second] = parts;
     return new Date(
@@ -46,7 +60,22 @@ const parseLocalDate = (dateString: string): Date => {
   }
 
   // Fallback sur le parsing standard
-  return new Date(dateString);
+  return new Date(dateStr);
+};
+
+// Helper pour ajouter des minutes à une date SANS conversion timezone
+const addMinutesLocal = (date: Date, minutes: number): Date => {
+  // Ne PAS utiliser getTime() + minutes * 60 * 1000 car ça peut causer des problèmes de timezone
+  // À la place, manipuler directement les composants de la date
+  const result = new Date(
+    date.getFullYear(),
+    date.getMonth(),
+    date.getDate(),
+    date.getHours(),
+    date.getMinutes() + minutes,
+    date.getSeconds()
+  );
+  return result;
 };
 
 // ✅ Helper pour formater les dates en local SANS conversion timezone
@@ -396,22 +425,32 @@ export default function DashboardPage() {
 
     const oldStartDate = parseLocalDate(task.start_date);
     const oldEndDate = parseLocalDate(task.end_date);
-    const duration = oldEndDate.getTime() - oldStartDate.getTime();
+
+    // Calculer la durée en minutes (pas en millisecondes pour éviter les problèmes de timezone)
+    const durationMinutes = Math.floor((oldEndDate.getTime() - oldStartDate.getTime()) / (60 * 1000));
 
     // Créer une nouvelle date de début (copie pour éviter mutation)
-    const newStartDate = new Date(newDate.getTime());
+    const newStartDate = new Date(
+      newDate.getFullYear(),
+      newDate.getMonth(),
+      newDate.getDate(),
+      newDate.getHours(),
+      newDate.getMinutes(),
+      newDate.getSeconds()
+    );
 
     // Si le drop vient de la vue mois, le temps sera 00:00. Préserver le temps original.
     if (newStartDate.getHours() === 0 && newStartDate.getMinutes() === 0 && newStartDate.getSeconds() === 0) {
-      newStartDate.setHours(oldStartDate.getHours(), oldStartDate.getMinutes(), oldStartDate.getSeconds(), oldStartDate.getMilliseconds());
+      newStartDate.setHours(oldStartDate.getHours(), oldStartDate.getMinutes(), oldStartDate.getSeconds(), 0);
     }
 
-    const newEndDate = new Date(newStartDate.getTime() + duration);
+    // Utiliser addMinutesLocal au lieu de getTime() + duration
+    const newEndDate = addMinutesLocal(newStartDate, durationMinutes);
 
     console.log('📅 Dates:', {
       old: format(oldStartDate, "dd/MM/yyyy HH:mm"),
       new: format(newStartDate, "dd/MM/yyyy HH:mm"),
-      duration: `${Math.floor(duration / (1000 * 60))} minutes`
+      duration: `${durationMinutes} minutes`
     });
 
     // Optimistic update immédiat - préserver les informations du calendrier

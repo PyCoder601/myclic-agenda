@@ -130,8 +130,8 @@ const DayTasksModal = memo(
               tasks
                 .sort(
                   (a, b) =>
-                    new Date(a.start_date).getTime() -
-                    new Date(b.start_date).getTime(),
+                    parseLocalDate(a.start_date).getTime() -
+                    parseLocalDate(b.start_date).getTime(),
                 )
                 .map((task) => {
                   const taskColor = getTaskColor(task, calendars);
@@ -166,10 +166,10 @@ const DayTasksModal = memo(
                           dangerouslySetInnerHTML={{ __html: task.description }}
                         />
                       )}
-                      <div className="flex items-center justify-between mt-2 text-xs text-slate-600">
+                      <div className="flex items-center justify-between mt-2 text-xs text-slate-600 font-medium">
                         <span>
-                          {format(new Date(task.start_date), "HH:mm")} -{" "}
-                          {format(new Date(task.end_date), "HH:mm")}
+                          {format(parseLocalDate(task.start_date), "HH:mm")} -{" "}
+                          {format(parseLocalDate(task.end_date), "HH:mm")}
                         </span>
                         {task.calendar_source_name && (
                           <div
@@ -281,7 +281,7 @@ const WeekTaskItem = ({
       >
         <div className="font-semibold truncate">{task.title}</div>
         <div className="font-medium mt-0.5">
-          {format(new Date(task.start_date), "HH:mm")} - {format(new Date(task.end_date), "HH:mm")}
+          {format(parseLocalDate(task.start_date), "HH:mm")} - {format(parseLocalDate(task.end_date), "HH:mm")}
         </div>
       </div>
     </div>
@@ -378,16 +378,16 @@ const PositionedEventItem = ({
           <div
             {...listeners}
             {...attributes}
-            className="cursor-grab active:cursor-grabbing shrink-0 opacity-0 group-hover:opacity-100 transition-opacity px-0.5 hover:bg-white/20 rounded flex items-center"
+            className="cursor-grab active:cursor-grabbing shrink-0 opacity-0 group-hover:opacity-100 transition-all duration-200 px-0.5 hover:bg-white/30 rounded flex items-center"
             style={{ height: `${resizeHeight}px` }}
             onClick={(e) => e.stopPropagation()}
           >
-            <GripVertical className="w-3 text-white" style={{ height: '100%' }} />
+            <GripVertical className="w-3 text-white drop-shadow-sm" style={{ height: '100%' }} />
           </div>
           <div className="flex-1 min-w-0 text-black">
             <div className="font-semibold text-sm truncate">{event.title}</div>
-            <div className="text-xs opacity-90 mt-0.5">
-              {format(new Date(event.start_date), "HH:mm")} - {format(new Date(event.end_date), "HH:mm")}
+            <div className="text-xs opacity-90 mt-0.5 font-medium">
+              {format(parseLocalDate(event.start_date), "HH:mm")} - {format(parseLocalDate(event.end_date), "HH:mm")}
             </div>
             {event.location && resizeHeight > 35 && (
               <div className="flex items-center gap-1 text-xs opacity-80 mt-0.5">
@@ -408,11 +408,11 @@ const PositionedEventItem = ({
 
         {/* Poignée de redimensionnement */}
         <div
-          className="absolute bottom-0 left-0 right-0 h-2 cursor-ns-resize opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center"
+          className="absolute bottom-0 left-0 right-0 h-2 cursor-ns-resize opacity-0 group-hover:opacity-100 transition-all duration-200 flex items-center justify-center"
           onMouseDown={handleResizeStart}
           onClick={(e) => e.stopPropagation()}
         >
-          <div className="w-12 h-1 bg-white/50 rounded-full"></div>
+          <div className="w-12 h-1 bg-white/60 rounded-full shadow-sm"></div>
         </div>
       </div>
     </div>
@@ -509,17 +509,17 @@ const PositionedWeekEventItem = ({
           <div
             {...listeners}
             {...attributes}
-            className="cursor-grab active:cursor-grabbing shrink-0 opacity-0 group-hover:opacity-100 transition-opacity px-0.5 hover:bg-white/20 rounded flex items-center"
+            className="cursor-grab active:cursor-grabbing shrink-0 opacity-0 group-hover:opacity-100 transition-all duration-200 px-0.5 hover:bg-white/30 rounded flex items-center"
             style={{ height: `${resizeHeight}px` }}
             onClick={(e) => e.stopPropagation()}
           >
-            <GripVertical className="w-2.5 text-white" style={{ height: '100%' }} />
+            <GripVertical className="w-2.5 text-white drop-shadow-sm" style={{ height: '100%' }} />
           </div>
           <div className="flex-1 min-w-0">
             <div className="font-semibold truncate leading-tight">{event.title}</div>
             {resizeHeight > 25 && (
-              <div className="opacity-90 mt-0.5 leading-tight">
-                {format(new Date(event.start_date), "HH:mm")}
+              <div className="opacity-90 mt-0.5 leading-tight font-medium">
+                {format(parseLocalDate(event.start_date), "HH:mm")} - {format(parseLocalDate(event.end_date), "HH:mm")}
               </div>
             )}
             {event.location && resizeHeight > 40 && (
@@ -536,11 +536,11 @@ const PositionedWeekEventItem = ({
 
         {/* Poignée de redimensionnement */}
         <div
-          className="absolute bottom-0 left-0 right-0 h-1.5 cursor-ns-resize opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center"
+          className="absolute bottom-0 left-0 right-0 h-1.5 cursor-ns-resize opacity-0 group-hover:opacity-100 transition-all duration-200 flex items-center justify-center"
           onMouseDown={handleResizeStart}
           onClick={(e) => e.stopPropagation()}
         >
-          <div className="w-8 h-0.5 bg-white/50 rounded-full"></div>
+          <div className="w-8 h-0.5 bg-white/60 rounded-full shadow-sm"></div>
         </div>
       </div>
     </div>

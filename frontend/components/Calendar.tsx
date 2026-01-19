@@ -394,7 +394,7 @@ const PositionedEventItem = ({
         top: `${top}px`,
         height: `${resizeHeight}px`,
         zIndex: isDragging || isResizing ? 50 : 10,
-        opacity: isDragging ? 0.5 : 1,
+        opacity: isDragging ? 0 : 1, // ✅ Cacher complètement pendant le drag
       }}
     >
       <div
@@ -539,7 +539,7 @@ const PositionedWeekEventItem = ({
         top: `${top}px`,
         height: `${resizeHeight}px`,
         zIndex: isDragging || isResizing ? 50 : 10,
-        opacity: isDragging ? 0.5 : 1,
+        opacity: isDragging ? 0 : 1, // ✅ Cacher complètement pendant le drag
       }}
     >
       <div
@@ -762,6 +762,7 @@ export default function Calendar({
       const startHour = startDate.getHours();
       const startMinute = startDate.getMinutes();
       const top = (startHour * 60) + startMinute; // pixels from top
+
 
       // Calculer la durée en minutes
       const durationMs = endDate.getTime() - startDate.getTime();

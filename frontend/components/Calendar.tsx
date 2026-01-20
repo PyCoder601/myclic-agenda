@@ -1,36 +1,36 @@
 "use client";
 
-import { useState, useEffect, useRef, useMemo, useCallback, memo } from "react";
+import {memo, useCallback, useEffect, useMemo, useRef, useState} from "react";
 import {
-  format,
-  startOfWeek,
-  endOfWeek,
-  startOfMonth,
-  endOfMonth,
-  eachDayOfInterval,
-  isSameDay,
   addDays,
-  startOfDay,
+  eachDayOfInterval,
   endOfDay,
+  endOfMonth,
+  endOfWeek,
+  format,
+  isSameDay,
+  startOfDay,
+  startOfMonth,
+  startOfWeek,
 } from "date-fns";
-import { fr } from "date-fns/locale";
-import { ChevronLeft, ChevronRight, X, GripVertical } from "lucide-react";
+import {fr} from "date-fns/locale";
+import {ChevronLeft, ChevronRight, GripVertical, X} from "lucide-react";
 import {
   DndContext,
   DragEndEvent,
-  DragOverlay,
-  DragStartEvent,
-  useDraggable,
-  useDroppable,
   type DraggableAttributes,
   type DraggableSyntheticListeners,
-  useSensor,
-  useSensors,
+  DragOverlay,
+  DragStartEvent,
   MouseSensor,
   TouchSensor,
+  useDraggable,
+  useDroppable,
+  useSensor,
+  useSensors,
 } from "@dnd-kit/core";
-import { Task, ViewMode, CalendarSource } from "@/lib/types";
-import { baikalAPI } from "@/lib/api";
+import {CalendarSource, Task, ViewMode} from "@/lib/types";
+import {baikalAPI} from "@/lib/api";
 
 // Helper pour parser les dates ISO locales sans conversion timezone
 const parseLocalDate = (dateString: string | Date | undefined | null): Date => {
@@ -76,15 +76,15 @@ const parseLocalDate = (dateString: string | Date | undefined | null): Date => {
 const addMinutesLocal = (date: Date, minutes: number): Date => {
   // Ne PAS utiliser getTime() + minutes * 60 * 1000 car ça peut causer des problèmes de timezone
   // À la place, manipuler directement les composants de la date
-  const result = new Date(
-    date.getFullYear(),
-    date.getMonth(),
-    date.getDate(),
-    date.getHours(),
-    date.getMinutes() + minutes,
-    date.getSeconds()
+
+  return new Date(
+      date.getFullYear(),
+      date.getMonth(),
+      date.getDate(),
+      date.getHours(),
+      date.getMinutes() + minutes,
+      date.getSeconds()
   );
-  return result;
 };
 
 interface CalendarProps {

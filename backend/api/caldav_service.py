@@ -124,8 +124,8 @@ class BaikalCalDAVClient:
                     if not vevent:
                         continue
 
-                    print("CLIENT", vevent.get('CLIENT'))
-                    print("AFFAIR", vevent.get('AFFAIRE'))
+                    if vevent.get('summary') == "ddd" or vevent.get('summary') == "Exemple":
+                        print(vevent)
 
                     # Parser les dates et enlever le timezone pour éviter les décalages horaires
                     start_date = self._parse_ical_date(vevent.get('dtstart')) if vevent.get('dtstart') else None
@@ -146,6 +146,7 @@ class BaikalCalDAVClient:
                             if hasattr(recurrence_id_parsed, 'tzinfo') and recurrence_id_parsed.tzinfo:
                                 recurrence_id_parsed = recurrence_id_parsed.replace(tzinfo=None)
                             recurrence_id = recurrence_id_parsed.isoformat() if hasattr(recurrence_id_parsed, 'isoformat') else str(recurrence_id_parsed)
+
 
                     formatted_event = {
                         'id': str(vevent.get('uid', event.url)),
@@ -229,37 +230,45 @@ class BaikalCalDAVClient:
             if isinstance(end_date, (int, float)):
                 end_date = datetime.fromtimestamp(end_date)
 
-            # Construire le contenu iCalendar
-            ical_content = f"""BEGIN:VCALENDAR
-VERSION:2.0
-PRODID:-//Baïkal Python Client//FR
-BEGIN:VEVENT
-UID:{uid}
-DTSTAMP:{datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%SZ')}
-DTSTART:{self.format_ical_date(start_date)}
-DTEND:{self.format_ical_date(end_date)}
-SUMMARY:{event_data.get('title', 'Nouvel événement')}
-DESCRIPTION:{event_data.get('description', '')}
-LOCATION:{event_data.get('location', '')}
-STATUS:CONFIRMED"""
+            # ✅ Utiliser icalendar pour générer le bon format avec TZID
+            from icalendar import Event, vText
+
+            cal = iCalendar()
+            cal.add('prodid', '-//Baïkal Python Client//FR')
+            cal.add('version', '2.0')
+
+            event = Event()
+            event.add('uid', uid)
+            event.add('dtstamp', datetime.now(timezone.utc))
+
+            # ✅ Ajouter les dates avec timezone
+            event.add('dtstart', self.format_ical_date(start_date, use_timezone=True))
+            event.add('dtend', self.format_ical_date(end_date, use_timezone=True))
+
+            event.add('summary', event_data.get('title', 'Nouvel événement'))
+            event.add('description', event_data.get('description', ''))
+            event.add('location', event_data.get('location', ''))
+            event.add('status', vText('CONFIRMED'))
 
             # Ajouter CLIENT et AFFAIR si présents
             if 'client_id' in event_data and event_data['client_id']:
-                ical_content += f"\nCLIENT:{event_data['client_id']}"
+                event.add('client', str(event_data['client_id']))
 
             if 'affair_id' in event_data and event_data['affair_id']:
-                ical_content += f"\nAFFAIR:{event_data['affair_id']}"
+                event.add('affair', str(event_data['affair_id']))
 
+            # ✅ RECURRENCE-ID avec timezone si présent
             if 'recurrence-id' in event_data:
-                ical_content += f"\nRECURRENCE-ID:{self.format_ical_date(event_data['recurrence-id'])}"
+                event.add('recurrence-id', self.format_ical_date(event_data['recurrence-id'], use_timezone=True))
 
             # Ajouter SEQUENCE si fourni
             if 'sequence' in event_data:
-                ical_content += f"\nSEQUENCE:{event_data['sequence']}"
+                event.add('sequence', event_data['sequence'])
 
-            ical_content += """
-END:VEVENT
-END:VCALENDAR"""
+            cal.add_component(event)
+
+            # Générer le contenu iCalendar
+            ical_content = cal.to_ical()
 
             # Construire l'URL de l'événement
             # Format: base_url/calendars/user@example.com/calendar_uri/uid.ics
@@ -267,18 +276,17 @@ END:VCALENDAR"""
             event_url = f"{calendar_url}/{uid}.ics"
 
             # Sauvegarder l'événement via PUT
-            # Note: Pas de If-None-Match pour les événements récurrents (même UID, RECURRENCE-ID différents)
             headers = {
                 'Content-Type': 'text/calendar; charset=utf-8',
             }
 
-            response = self._session.put(event_url, data=ical_content.encode('utf-8'), headers=headers)
+            response = self._session.put(event_url, data=ical_content, headers=headers)
 
             if response.status_code not in [200, 201, 204]:
                 logger.error(f"Erreur création événement: HTTP {response.status_code} - {response.text}")
                 return {'error': f'Erreur HTTP {response.status_code}: {response.text}', 'success': False}
 
-            logger.info(f"Événement créé: {event_data.get('title')} dans '{calendar_name}'")
+            logger.info(f"Événement créé: {event_data.get('title')} dans '{calendar_name}' (format TZID)")
 
             return {
                 'id': uid,
@@ -294,35 +302,147 @@ END:VCALENDAR"""
             logger.error(f"Erreur création événement: {e}", exc_info=True)
             return {'error': str(e), 'success': False}
 
-    def format_ical_date(self, date_value):
+    def create_recurring_event(self, calendar_name: str, uid: str, occurrences: list) -> Dict[str, Any]:
         """
-        Format une date pour iCalendar
+        Crée un événement récurrent avec plusieurs occurrences dans un seul fichier .ics
+        Utilise icalendar pour générer le bon format avec TZID
+
+        Args:
+            calendar_name: Nom du calendrier
+            uid: UID unique pour toute la série d'événements
+            occurrences: Liste des occurrences avec leurs données
+
+        Returns:
+            Informations sur l'événement créé ou erreur
+        """
+        try:
+            calendar = self.get_calendar_by_name(calendar_name)
+            if not calendar:
+                return {'error': f"Calendrier '{calendar_name}' non trouvé", 'success': False}
+
+            # Construire l'URL de l'événement
+            calendar_url = str(calendar.url).rstrip('/')
+            event_url = f"{calendar_url}/{uid}.ics"
+
+            # ✅ Utiliser icalendar pour créer le fichier avec le bon format TZID
+            from icalendar import Event, vText
+
+            cal = iCalendar()
+            cal.add('prodid', '-//Baïkal Python Client//FR')
+            cal.add('version', '2.0')
+
+            # Ajouter un VEVENT pour chaque occurrence
+            for occurrence in occurrences:
+                start_date = occurrence['start']
+                end_date = occurrence['end']
+                recurrence_id = occurrence.get('recurrence_id')
+
+                if isinstance(start_date, (int, float)):
+                    start_date = datetime.fromtimestamp(start_date)
+                if isinstance(end_date, (int, float)):
+                    end_date = datetime.fromtimestamp(end_date)
+
+                # Créer un nouvel événement
+                event = Event()
+                event.add('uid', uid)
+                event.add('dtstamp', datetime.now(timezone.utc))
+
+                # ✅ Ajouter les dates avec timezone (icalendar générera TZID automatiquement)
+                event.add('dtstart', self.format_ical_date(start_date, use_timezone=True))
+                event.add('dtend', self.format_ical_date(end_date, use_timezone=True))
+
+                event.add('summary', occurrence.get('title', 'Nouvel événement'))
+                event.add('description', occurrence.get('description', ''))
+                event.add('location', occurrence.get('location', ''))
+                event.add('status', vText('CONFIRMED'))
+
+                if occurrence.get('client_id'):
+                    event.add('client', str(occurrence['client_id']))
+                if occurrence.get('affair_id'):
+                    event.add('affair', str(occurrence['affair_id']))
+
+                # ✅ RECURRENCE-ID avec timezone (icalendar générera le bon format)
+                if recurrence_id:
+                    event.add('recurrence-id', self.format_ical_date(recurrence_id, use_timezone=True))
+
+                if occurrence.get('sequence'):
+                    event.add('sequence', occurrence['sequence'])
+
+                cal.add_component(event)
+
+            # Générer le contenu iCalendar
+            ical_content = cal.to_ical()
+
+            # Sauvegarder l'événement via PUT
+            headers = {
+                'Content-Type': 'text/calendar; charset=utf-8',
+            }
+
+            logger.info(f"📝 Création fichier .ics avec {len(occurrences)} VEVENT (format TZID)")
+            logger.debug(f"Contenu iCal:\n{ical_content.decode('utf-8')}")
+
+            response = self._session.put(event_url, data=ical_content, headers=headers)
+
+            if response.status_code not in [200, 201, 204]:
+                logger.error(f"Erreur création événement récurrent: HTTP {response.status_code} - {response.text}")
+                return {'error': f'Erreur HTTP {response.status_code}: {response.text}', 'success': False}
+
+            logger.info(f"✅ Événement récurrent créé: {len(occurrences)} occurrences dans '{calendar_name}'")
+
+            return {
+                'success': True,
+                'id': uid,
+                'occurrences': len(occurrences),
+                'calendar_source_name': calendar_name,
+            }
+
+        except Exception as e:
+            logger.error(f"Erreur création événement récurrent: {e}", exc_info=True)
+            return {'error': str(e), 'success': False}
+
+    def format_ical_date(self, date_value, use_timezone=True):
+        """
+        Format une date pour iCalendar avec timezone (Europe/Paris)
         Supporte: datetime, timestamp, string ISO
-        Les dates sans timezone sont traitées comme des heures locales
+
+        Args:
+            date_value: La date à formater
+            use_timezone: Si True, retourne un datetime avec timezone pour icalendar
         """
+        paris_tz = pytz.timezone('Europe/Paris')
+
         if isinstance(date_value, datetime):
-            # Si la date a un timezone, enlever le timezone (garder l'heure telle quelle)
-            if date_value.tzinfo is not None:
-                date_value = date_value.replace(tzinfo=None)
-            return date_value.strftime('%Y%m%dT%H%M%S')
+            # Si la date n'a pas de timezone, on localise en Europe/Paris
+            if date_value.tzinfo is None:
+                dt = paris_tz.localize(date_value)
+            else:
+                # Convertir vers Europe/Paris
+                dt = date_value.astimezone(paris_tz)
+
+            # Retourner le datetime avec timezone (icalendar le formatera correctement avec TZID)
+            return dt if use_timezone else dt.strftime('%Y%m%dT%H%M%S')
+
         elif isinstance(date_value, (int, float)):
             # Timestamp UNIX
             dt = datetime.fromtimestamp(date_value)
-            return dt.strftime('%Y%m%dT%H%M%S')
+            dt = paris_tz.localize(dt)
+            return dt if use_timezone else dt.strftime('%Y%m%dT%H%M%S')
+
         elif isinstance(date_value, str):
             # Essayer de parser la string ISO
             try:
-                # Si la date contient 'Z' ou '+', elle a un timezone
                 if 'Z' in date_value or '+' in date_value:
                     dt = datetime.fromisoformat(date_value.replace('Z', '+00:00'))
-                    # Enlever le timezone mais garder l'heure
-                    dt = dt.replace(tzinfo=None)
+                    dt = dt.astimezone(paris_tz)
                 else:
-                    # Date locale sans timezone - la parser directement
+                    # Date locale sans timezone
                     dt = datetime.fromisoformat(date_value)
-                return dt.strftime('%Y%m%dT%H%M%S')
+                    dt = paris_tz.localize(dt)
+
+                return dt if use_timezone else dt.strftime('%Y%m%dT%H%M%S')
             except:
                 return date_value
+
         return str(date_value)
 
     def delete_event(self, event_url: str) -> Dict[str, Any]:
@@ -397,7 +517,7 @@ END:VCALENDAR"""
 
     def delete_event_occurrence(self, event_url: str, recurrence_id: str) -> Dict[str, Any]:
         """
-        Supprime une occurrence spécifique d'un événement récurrent en ajoutant une EXDATE
+        Supprime une occurrence spécifique d'un événement récurrent en retirant le VEVENT du fichier .ics
 
         Args:
             event_url: URL complète de l'événement récurrent
@@ -407,8 +527,9 @@ END:VCALENDAR"""
             Dictionnaire avec le résultat de la suppression
         """
         try:
+            logger.info(f"🗑️ Suppression occurrence: {event_url} - {recurrence_id}")
 
-            # Récupérer l'événement principal
+            # Récupérer l'événement
             get_response = self._session.get(event_url)
 
             if get_response.status_code == 404:
@@ -420,105 +541,167 @@ END:VCALENDAR"""
 
             # Parser l'événement iCalendar
             cal = iCalendar.from_ical(get_response.content)
-            event_found = False
-            main_event = None
 
-            for component in cal.walk():
-                if component.name == "VEVENT" and not component.get('RECURRENCE-ID'):
-                    # C'est l'événement principal (pas une occurrence)
-                    event_found = True
-                    main_event = component
-                    break
+            # ✅ Parser le recurrence_id pour la comparaison
+            try:
+                # Format ISO standard : 2026-01-23T16:00:00 ou 2026-01-23
+                if 'Z' in recurrence_id or '+' in recurrence_id:
+                    recurrence_dt = datetime.fromisoformat(recurrence_id.replace('Z', '+00:00'))
+                else:
+                    # Date locale sans timezone
+                    try:
+                        recurrence_dt = datetime.fromisoformat(recurrence_id)
+                    except ValueError:
+                        # Peut-être une date sans heure (YYYY-MM-DD)
+                        from datetime import date
+                        recurrence_dt = datetime.strptime(recurrence_id, '%Y-%m-%d')
 
-            if not event_found or not main_event:
+                # Enlever le timezone pour comparer avec les dates du calendrier
+                if hasattr(recurrence_dt, 'tzinfo') and recurrence_dt.tzinfo is not None:
+                    recurrence_dt = recurrence_dt.replace(tzinfo=None)
+
+            except Exception as e:
+                logger.error(f"❌ Erreur parsing recurrence_id '{recurrence_id}': {e}")
                 return {
                     'success': False,
-                    'error': 'Événement principal non trouvé',
+                    'error': f'Format de recurrence_id invalide: {recurrence_id}',
                     'event_url': event_url
                 }
 
-            # Parser la date de recurrence_id
-            # Gérer le cas où recurrence_id est un objet vDDDTypes stringifié
-            if 'vDDDTypes' in recurrence_id:
-                # Format: "vDDDTypes(2026-01-29 00:00:00+01:00, Parameters({'TZID': 'Europe/Paris'}))"
-                # Extraire la date entre les parenthèses
-                import re
-                match = re.search(r'vDDDTypes\(([^,]+),', recurrence_id)
-                if match:
-                    date_str = match.group(1).strip()
-                    # Parser la date avec timezone
-                    recurrence_dt = datetime.fromisoformat(date_str)
+            # ✅ Trouver et retirer le VEVENT avec ce RECURRENCE-ID
+            vevents_to_keep = []
+            occurrence_found = False
+
+            logger.info(f"🔍 Recherche de l'occurrence avec recurrence_id: {recurrence_dt}")
+
+            # ✅ Utiliser subcomponents pour avoir TOUS les VEVENT (pas walk qui peut être incomplet)
+            all_vevents = [comp for comp in cal.subcomponents if comp.name == "VEVENT"]
+            logger.info(f"📊 Nombre total de VEVENT trouvés: {len(all_vevents)}")
+
+            for component in all_vevents:
+                # ✅ Parser le RECURRENCE-ID avec la bonne clé (peut être 'RECURRENCE-ID' ou 'recurrence-id')
+                vevent_recurrence_id = component.get('RECURRENCE-ID') or component.get('recurrence-id')
+
+                # Debug : afficher les infos de base du VEVENT
+                vevent_uid = component.get('UID', 'N/A')
+                vevent_summary = component.get('SUMMARY', 'N/A')
+                vevent_dtstart = component.get('DTSTART')
+                logger.info(f"🔎 VEVENT trouvé: UID={vevent_uid}, SUMMARY={vevent_summary}, DTSTART={vevent_dtstart}, RECURRENCE-ID={vevent_recurrence_id}")
+
+                if vevent_recurrence_id:
+                    logger.info(f"📅 RECURRENCE-ID trouvé dans VEVENT: {vevent_recurrence_id}")
+                    vevent_rec_dt = self._parse_ical_date(vevent_recurrence_id)
+                    logger.info(f"📅 Après parsing: {vevent_rec_dt} (type: {type(vevent_rec_dt)})")
                 else:
-                    raise ValueError(f"Format vDDDTypes invalide: {recurrence_id}")
-            else:
-                # Format ISO standard
-                recurrence_dt = datetime.fromisoformat(recurrence_id.replace('Z', '+00:00'))
+                    # ✅ Fallback : Si pas de RECURRENCE-ID, utiliser DTSTART
+                    # Cela arrive avec certains événements all-day créés par d'autres clients
+                    logger.info(f"⚠️ Pas de RECURRENCE-ID, utilisation de DTSTART comme fallback")
+                    vevent_rec_dt = self._parse_ical_date(vevent_dtstart)
+                    logger.info(f"📅 DTSTART parsé: {vevent_rec_dt} (type: {type(vevent_rec_dt)})")
 
-            # Récupérer le timezone du DTSTART
-            dtstart = main_event.get('DTSTART')
-            if hasattr(dtstart, 'dt'):
-                dt_value = dtstart.dt
-                if hasattr(dt_value, 'tzinfo') and dt_value.tzinfo:
-                    # Utiliser le même timezone que l'événement
-                    if recurrence_dt.tzinfo is None:
-                        recurrence_dt = recurrence_dt.replace(tzinfo=dt_value.tzinfo)
-                    else:
-                        recurrence_dt = recurrence_dt.astimezone(dt_value.tzinfo)
-                elif recurrence_dt.tzinfo is None:
-                    # Pas de timezone, utiliser Europe/Paris par défaut
-                    recurrence_dt = pytz.timezone('Europe/Paris').localize(recurrence_dt)
+                # ✅ Normaliser et comparer (pour RECURRENCE-ID ou DTSTART)
+                if vevent_rec_dt:
+                        if hasattr(vevent_rec_dt, 'tzinfo') and vevent_rec_dt.tzinfo:
+                            logger.info(f"🌍 Timezone avant suppression: {vevent_rec_dt.tzinfo}")
+                            vevent_rec_dt = vevent_rec_dt.replace(tzinfo=None)
+                            logger.info(f"📅 Après suppression timezone: {vevent_rec_dt}")
 
-            # Ajouter l'EXDATE (exception de récurrence)
-            exdates = main_event.get('EXDATE')
+                        # ✅ Comparaison ultra-flexible pour supporter tous les formats
+                        try:
+                            from datetime import date as date_type
 
-            if exdates is None:
-                # Pas d'EXDATE existant, en créer un nouveau
-                main_event.add('EXDATE', recurrence_dt)
-            elif isinstance(exdates, list):
-                # Plusieurs EXDATE existantes
-                main_event.add('EXDATE', recurrence_dt)
-            else:
-                # Une seule EXDATE, la convertir en liste
-                existing_exdate = exdates.dts if hasattr(exdates, 'dts') else [exdates]
-                main_event.pop('EXDATE')
-                for ex in existing_exdate:
-                    main_event.add('EXDATE', ex.dt)
-                main_event.add('EXDATE', recurrence_dt)
+                            # Convertir en datetime si c'est un objet date
+                            if isinstance(vevent_rec_dt, date_type) and not isinstance(vevent_rec_dt, datetime):
+                                vevent_rec_dt = datetime.combine(vevent_rec_dt, datetime.min.time())
+                            if isinstance(recurrence_dt, date_type) and not isinstance(recurrence_dt, datetime):
+                                recurrence_dt = datetime.combine(recurrence_dt, datetime.min.time())
 
-            # Incrémenter SEQUENCE
-            sequence = main_event.get('SEQUENCE', 0)
-            main_event['SEQUENCE'] = int(sequence) + 1
+                            logger.info(f"⚖️ Comparaison:")
+                            logger.info(f"   VEVENT: {vevent_rec_dt} (type: {type(vevent_rec_dt)})")
+                            logger.info(f"   Recherché: {recurrence_dt} (type: {type(recurrence_dt)})")
 
-            # Mettre à jour DTSTAMP
-            main_event['DTSTAMP'] = vDatetime(datetime.now(pytz.UTC))
+                            is_match = False
+
+                            if isinstance(vevent_rec_dt, datetime) and isinstance(recurrence_dt, datetime):
+                                # 1. Comparaison datetime à la minute près
+                                vevent_normalized = vevent_rec_dt.replace(second=0, microsecond=0)
+                                recurrence_normalized = recurrence_dt.replace(second=0, microsecond=0)
+
+                                is_match = vevent_normalized == recurrence_normalized
+                                logger.info(f"   Match exact (minute): {is_match}")
+
+                                # 2. Si pas de match, comparer juste la date (ignorer l'heure)
+                                if not is_match:
+                                    date_match = vevent_rec_dt.date() == recurrence_dt.date()
+                                    logger.info(f"   Match par date seule: {date_match}")
+
+                                    # ✅ Pour les événements toute la journée (00:00:00),
+                                    # accepter le match par date seule
+                                    if date_match and (
+                                        (recurrence_dt.hour == 0 and recurrence_dt.minute == 0) or
+                                        (vevent_rec_dt.hour == 0 and vevent_rec_dt.minute == 0)
+                                    ):
+                                        is_match = True
+                                        logger.info(f"   ✅ Match accepté (événement all-day)")
+                            else:
+                                # Comparaison directe pour autres types
+                                is_match = vevent_rec_dt == recurrence_dt
+                                logger.info(f"   Match direct: {is_match}")
+
+                            if is_match:
+                                occurrence_found = True
+                                logger.info(f"✅ Occurrence trouvée et sera supprimée")
+                                continue  # Ne pas garder ce VEVENT
+
+                        except Exception as e:
+                            logger.error(f"⚠️ Erreur comparaison dates: {e}", exc_info=True)
+
+                # Garder tous les autres VEVENT
+                vevents_to_keep.append(component)
+
+            if not occurrence_found:
+                logger.warning(f"⚠️ Occurrence avec recurrence_id {recurrence_id} non trouvée")
+                return {
+                    'success': False,
+                    'error': f'Occurrence non trouvée: {recurrence_id}',
+                    'event_url': event_url
+                }
+
+            # ✅ Si c'était la dernière occurrence, supprimer tout l'événement
+            if len(vevents_to_keep) == 0:
+                logger.info("🗑️ C'était la dernière occurrence, suppression de l'événement complet")
+                return self.delete_event(event_url)
+
+            # ✅ Reconstruire le fichier .ics avec les VEVENT restants
+            new_cal = iCalendar()
+            new_cal.add('prodid', '-//Baïkal Python Client//FR')
+            new_cal.add('version', '2.0')
+
+            for vevent in vevents_to_keep:
+                new_cal.add_component(vevent)
 
             # Mettre à jour l'événement via PUT
-            ical_content = cal.to_ical()
-
-            # Récupérer l'ETag si disponible
-            etag = get_response.headers.get('ETag')
             headers = {
                 'Content-Type': 'text/calendar; charset=utf-8',
             }
-            if etag:
-                headers['If-Match'] = etag
 
             response = self._session.put(
                 event_url,
-                data=ical_content,
+                data=new_cal.to_ical(),
                 headers=headers
             )
 
             if response.status_code in [200, 201, 204]:
-                logger.info(f"Occurrence supprimée via EXDATE: {event_url} - {recurrence_id}")
+                logger.info(f"✅ Occurrence supprimée: {event_url} - {recurrence_id}")
                 return {
                     'success': True,
-                    'message': 'Occurrence supprimée avec succès',
+                    'message': f'Occurrence supprimée ({len(vevents_to_keep)} restante(s))',
                     'event_url': event_url,
-                    'recurrence_id': recurrence_id
+                    'recurrence_id': recurrence_id,
+                    'remaining_occurrences': len(vevents_to_keep)
                 }
             else:
-                logger.error(f"Erreur suppression occurrence: HTTP {response.status_code} - {response.text}")
+                logger.error(f"❌ Erreur HTTP {response.status_code}: {response.text}")
                 return {
                     'success': False,
                     'error': f'Erreur HTTP {response.status_code}: {response.text}',
@@ -526,7 +709,7 @@ END:VCALENDAR"""
                 }
 
         except Exception as e:
-            logger.error(f"Erreur suppression occurrence: {e}", exc_info=True)
+            logger.error(f"❌ Erreur suppression occurrence: {e}", exc_info=True)
             return {
                 'success': False,
                 'error': str(e),
@@ -598,14 +781,14 @@ END:VCALENDAR"""
                     # Gérer les dates avec et sans timezone
                     if 'Z' in start_date or '+' in start_date:
                         start_date = datetime.fromisoformat(start_date.replace('Z', '+00:00'))
-                        # Enlever le timezone mais garder l'heure
-                        start_date = start_date.replace(tzinfo=None)
                     else:
                         # Date locale sans timezone
                         start_date = datetime.fromisoformat(start_date)
                 elif isinstance(start_date, (int, float)):
                     start_date = datetime.fromtimestamp(start_date)
-                vevent['dtstart'].dt = start_date
+
+                # ✅ Utiliser format_ical_date pour avoir le format TZID
+                vevent['dtstart'] = self.format_ical_date(start_date, use_timezone=True)
 
             if 'end' in event_data:
                 end_date = event_data['end']
@@ -613,14 +796,14 @@ END:VCALENDAR"""
                     # Gérer les dates avec et sans timezone
                     if 'Z' in end_date or '+' in end_date:
                         end_date = datetime.fromisoformat(end_date.replace('Z', '+00:00'))
-                        # Enlever le timezone mais garder l'heure
-                        end_date = end_date.replace(tzinfo=None)
                     else:
                         # Date locale sans timezone
                         end_date = datetime.fromisoformat(end_date)
                 elif isinstance(end_date, (int, float)):
                     end_date = datetime.fromtimestamp(end_date)
-                vevent['dtend'].dt = end_date
+
+                # ✅ Utiliser format_ical_date pour avoir le format TZID
+                vevent['dtend'] = self.format_ical_date(end_date, use_timezone=True)
 
             # Mettre à jour CLIENT et AFFAIR si fournis
             if 'client_id' in event_data:

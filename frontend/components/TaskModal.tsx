@@ -478,13 +478,19 @@ export default function TaskModal({ isOpen, onClose, onSave, onDelete, task, ini
         console.log('🔄 Création bulk dans:', calendar.displayname || calendar.defined_name);
 
         // Préparer tous les événements pour ce calendrier
+        // ✅ Pour les récurrences, ajouter recurrence_id = date de début de chaque occurrence
+        const isRecurrence = recurrenceDates.length > 1;
         const events = recurrenceDates.map((dateInfo) => ({
           title: formData.title,
           description: formData.description,
           location: formData.location || '',
           start_date: formatLocalISO(dateInfo.start),
           end_date: formatLocalISO(dateInfo.end),
+          // ✅ Ajouter recurrence_id pour chaque occurrence (= date de début)
+          ...(isRecurrence && { recurrence_id: formatLocalISO(dateInfo.start) }),
         }));
+
+        console.log('📅 Événements avec recurrence_id:', events);
 
         // ✅ Envoyer UNE SEULE requête pour tous les événements
         const response = await baikalAPI.bulkCreateEvents({

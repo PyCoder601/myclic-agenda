@@ -411,13 +411,15 @@ class BaikalEventViewSet(viewsets.ViewSet):
                 url = f'https://www.myclic.fr/baikal/html/cal.php/calendars/{self.request.user.email}/{calendar_source_uri}/{uid}.ics'
 
                 recurrence_id_dt = None
+                # ✅ Si un recurrence_id est fourni, le parser et le formater
                 if recurrence_id:
                     if 'Z' in recurrence_id or '+' in recurrence_id:
                         recurrence_id_dt = datetime.fromisoformat(recurrence_id.replace('Z', '+00:00'))
                     else:
                         recurrence_id_dt = datetime.fromisoformat(recurrence_id)
-
-                recurrence_id = client.format_ical_date(recurrence_id_dt)
+                    recurrence_id = client.format_ical_date(recurrence_id_dt)
+                else:
+                    recurrence_id = None
 
                 created_event = {
                     'id': uid,
@@ -450,12 +452,13 @@ class BaikalEventViewSet(viewsets.ViewSet):
                 try:
                     logger.info(f"🔄 Début création arrière-plan de {len(events_data)} événements")
 
+                    # ✅ Parser toutes les occurrences
+                    occurrences = []
                     for event in events_data:
                         start_date = event.get('start_date')
                         end_date = event.get('end_date')
                         recurrence_id = event.get('recurrence_id')
 
-                        # Parser les dates
                         try:
                             if 'Z' in start_date or '+' in start_date:
                                 start_dt = datetime.fromisoformat(start_date.replace('Z', '+00:00'))
@@ -474,32 +477,49 @@ class BaikalEventViewSet(viewsets.ViewSet):
                                 else:
                                     recurrence_id_dt = datetime.fromisoformat(recurrence_id)
 
+                            occurrences.append({
+                                'title': event.get('title'),
+                                'description': event.get('description'),
+                                'location': event.get('location', ''),
+                                'start': start_dt,
+                                'end': end_dt,
+                                'recurrence_id': recurrence_id_dt,
+                                'client_id': client_id,
+                                'affair_id': affair_id,
+                                'sequence': sequence,
+                            })
+
                         except (ValueError, AttributeError) as e:
                             logger.error(f"❌ Erreur parsing date en arrière-plan: {e}")
                             continue
 
-                        # Créer l'événement via CalDAV
+                    # ✅ Créer UN SEUL fichier .ics avec TOUS les VEVENT
+                    result = None
+                    if len(occurrences) > 1:
+                        # Récurrence : créer un fichier avec plusieurs VEVENT
+                        result = client.create_recurring_event(calendar_source_name, uid, occurrences)
+                    elif len(occurrences) == 1:
+                        # Événement unique
+                        occ = occurrences[0]
                         event_data = {
                             'uid': uid,
-                            'title': event.get('title'),
-                            'description': event.get('description'),
-                            'client_id': client_id,
-                            'affair_id': affair_id,
-                            'location': event.get('location', ''),
-                            'start': start_dt,
-                            'end': end_dt,
-                            'sequence': sequence,
+                            'title': occ['title'],
+                            'description': occ['description'],
+                            'client_id': occ['client_id'],
+                            'affair_id': occ['affair_id'],
+                            'location': occ['location'],
+                            'start': occ['start'],
+                            'end': occ['end'],
+                            'sequence': occ['sequence'],
                         }
-
-                        if recurrence_id_dt:
-                            event_data['recurrence-id'] = recurrence_id_dt
-
+                        if occ['recurrence_id']:
+                            event_data['recurrence-id'] = occ['recurrence_id']
                         result = client.create_event(calendar_source_name, event_data)
 
-                        if result.get('id'):
-                            logger.info(f"✅ Événement créé en arrière-plan: {event.get('title')} - {start_date}")
-                        else:
-                            logger.error(f"❌ Échec création arrière-plan: {result.get('error')}")
+                    if result and (result.get('id') or result.get('success')):
+                        logger.info(f"✅ {len(occurrences)} événement(s) créé(s) en arrière-plan")
+                    else:
+                        logger.error(f"❌ Échec création arrière-plan: {result.get('error') if result else 'Aucun événement'}")
 
                     logger.info(f"✅ Fin création arrière-plan de {len(events_data)} événements")
 

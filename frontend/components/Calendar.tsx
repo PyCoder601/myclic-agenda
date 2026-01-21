@@ -31,6 +31,7 @@ import {
 } from "@dnd-kit/core";
 import {CalendarSource, Task, ViewMode} from "@/lib/types";
 import {baikalAPI} from "@/lib/api";
+import QuickEventModal from "@/components/QuickEventModal";
 
 // Helper pour parser les dates ISO locales sans conversion timezone
 const parseLocalDate = (dateString: string | Date | undefined | null): Date => {
@@ -95,6 +96,7 @@ interface CalendarProps {
   onDateChange: (date: Date) => void;
   onTaskClick: (task: Task) => void;
   onAddTask: (date: Date, hour?: number) => void;
+  onQuickCreate?: (title: string, startDate: Date, endDate: Date) => void;
   onTaskDrop: (taskId: string, newDate: Date) => void;
   onTaskResize?: (taskId: string, newEndDate: Date) => void;
   onTaskDelete?: (task: Task) => void;
@@ -911,6 +913,7 @@ export default function Calendar({
   onDateChange,
   onTaskClick,
   onAddTask,
+  onQuickCreate,
   onTaskDrop,
   onTaskResize,
   onTaskDelete,
@@ -923,6 +926,12 @@ export default function Calendar({
   const dayViewRef = useRef<HTMLDivElement>(null);
   const [dayTasksModalDate, setDayTasksModalDate] = useState<Date | null>(null);
   const [activeTask, setActiveTask] = useState<Task | null>(null);
+
+  // États pour le QuickEventModal
+  const [showQuickModal, setShowQuickModal] = useState(false);
+  const [quickModalPosition, setQuickModalPosition] = useState<{ x: number; y: number } | undefined>();
+  const [quickModalDate, setQuickModalDate] = useState<Date>(new Date());
+  const [quickModalHour, setQuickModalHour] = useState<number>(9);
 
   // Configurer les sensors pour un drag & drop plus fluide
   const mouseSensor = useSensor(MouseSensor, {
@@ -1332,7 +1341,12 @@ export default function Calendar({
                       const newDate = new Date(currentDate.getFullYear(), currentDate.getMonth(), currentDate.getDate(), hour, minute, 0, 0);
 
                       console.log(`➕ Clic pour créer événement: ${hour}:${minute.toString().padStart(2, '0')}`);
-                      onAddTask(newDate);
+
+                      // Ouvrir le QuickEventModal à la position du clic
+                      setQuickModalPosition({ x: e.clientX, y: e.clientY });
+                      setQuickModalDate(newDate);
+                      setQuickModalHour(hour);
+                      setShowQuickModal(true);
                     }}
                   ></div>
                 </DroppableCell>
@@ -1473,7 +1487,12 @@ export default function Calendar({
                           const newDate = new Date(day.getFullYear(), day.getMonth(), day.getDate(), hour, minute, 0, 0);
 
                           console.log(`➕ Clic pour créer événement: ${format(day, 'dd/MM')} ${hour}:${minute.toString().padStart(2, '0')}`);
-                          onAddTask(newDate);
+
+                          // Ouvrir le QuickEventModal à la position du clic
+                          setQuickModalPosition({ x: e.clientX, y: e.clientY });
+                          setQuickModalDate(newDate);
+                          setQuickModalHour(hour);
+                          setShowQuickModal(true);
                         }}
                       ></div>
                     </DroppableCell>
@@ -1559,7 +1578,13 @@ export default function Calendar({
                   date={day}
                   className="h-full"
                 >
-                  <div className="p-1 sm:p-2 h-full flex flex-col" onClick={() => onAddTask(day)}>
+                  <div className="p-1 sm:p-2 h-full flex flex-col" onClick={(e) => {
+                    const rect = e.currentTarget.getBoundingClientRect();
+                    setQuickModalPosition({ x: rect.left + rect.width / 2 - 160, y: rect.top });
+                    setQuickModalDate(day);
+                    setQuickModalHour(9);
+                    setShowQuickModal(true);
+                  }}>
                     {/* Numéro du jour - plus visible */}
                     <div
                       className={`text-xs sm:text-sm font-bold mb-1 sm:mb-2 flex-shrink-0 ${
@@ -1815,6 +1840,8 @@ export default function Calendar({
           ) : null}
         </DragOverlay>
       </DndContext>
+
+      {/* Modal pour afficher tous les événements d'un jour */}
       {dayTasksModalDate && (
         <DayTasksModal
           date={dayTasksModalDate}
@@ -1824,6 +1851,29 @@ export default function Calendar({
           calendars={calendars}
         />
       )}
+
+      {/* Quick Event Modal */}
+      <QuickEventModal
+        isOpen={showQuickModal}
+        onClose={() => setShowQuickModal(false)}
+        onCreateQuick={(title, startDate, endDate) => {
+          setShowQuickModal(false);
+          if (onQuickCreate) {
+            // Créer l'événement directement sans ouvrir TaskModal
+            onQuickCreate(title, startDate, endDate);
+          } else {
+            // Fallback: ouvrir TaskModal
+            onAddTask(startDate);
+          }
+        }}
+        onOpenFullModal={() => {
+          setShowQuickModal(false);
+          onAddTask(quickModalDate, quickModalHour);
+        }}
+        initialDate={quickModalDate}
+        initialHour={quickModalHour}
+        position={quickModalPosition}
+      />
     </>
   );
 }

@@ -421,6 +421,42 @@ export default function DashboardPage() {
     setIsModalOpen(true);
   }, []);
 
+  // Handler pour la création rapide d'événement via QuickEventModal
+  const handleQuickCreate = useCallback(async (title: string, startDate: Date, endDate: Date) => {
+    try {
+      // Formater les dates au format local
+      const formattedStartDate = formatLocalDateTime(startDate);
+      const formattedEndDate = formatLocalDateTime(endDate);
+
+      // Récupérer le calendrier par défaut (le premier calendrier disponible)
+      // Même logique que TaskModal.tsx
+      const defaultCalendar = calendars.length > 0 ? calendars[0] : null;
+
+      if (!defaultCalendar) {
+        console.error('❌ Aucun calendrier disponible');
+        return;
+      }
+
+      const newTask = {
+        title,
+        start_date: formattedStartDate,
+        end_date: formattedEndDate,
+        description: '',
+        location: '',
+        calendar_source_name: defaultCalendar.displayname,
+        calendar_source_id: defaultCalendar.id,
+        calendar_source_uri: defaultCalendar.uri || '',
+        calendar_source_color: defaultCalendar.calendarcolor,
+      };
+
+      console.log('⚡ Création rapide événement:', newTask);
+      await dispatch(createEvent(newTask)).unwrap();
+      console.log('✅ Événement créé avec succès');
+    } catch (error) {
+      console.error('❌ Erreur lors de la création rapide:', error);
+    }
+  }, [dispatch, calendars]);
+
   const handleTaskDrop = useCallback(async (taskId: string, newDate: Date) => {
     console.log('📦 handleTaskDrop:', { taskId, newDate: format(newDate, "dd/MM/yyyy HH:mm") });
 
@@ -1001,6 +1037,7 @@ export default function DashboardPage() {
                 pendingDate={pendingDate}
                 onTaskClick={handleTaskClick}
                 onAddTask={handleAddTask}
+                onQuickCreate={handleQuickCreate}
                 onTaskDrop={handleTaskDrop}
                 onTaskResize={handleTaskResize}
                 onTaskDelete={handleTaskDelete}

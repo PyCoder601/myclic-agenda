@@ -251,10 +251,15 @@ const TaskItem = ({
   const handleDelete = (e: React.MouseEvent, deleteAll?: boolean) => {
     e.stopPropagation();
     if (onDelete) {
-      // TODO: Gérer la suppression de toutes les occurrences si deleteAll est true
-      // Pour l'instant, on supprime juste l'occurrence
-      console.log('Delete task:', task.id, 'deleteAll:', deleteAll);
-      onDelete(task);
+      // Si deleteAll est true, on crée une copie de la tâche SANS recurrence_id
+      // Cela supprimera toutes les occurrences (logique de TaskModal)
+      if (deleteAll) {
+        const taskWithoutRecurrence = { ...task, recurrence_id: undefined };
+        onDelete(taskWithoutRecurrence);
+      } else {
+        // Supprimer uniquement cette occurrence (avec recurrence_id)
+        onDelete(task);
+      }
     }
     setShowDeleteConfirm(false);
   };
@@ -363,8 +368,15 @@ const WeekTaskItem = ({
   const handleDelete = (e: React.MouseEvent, deleteAll?: boolean) => {
     e.stopPropagation();
     if (onDelete) {
-      console.log('Delete task:', task.id, 'deleteAll:', deleteAll);
-      onDelete(task);
+      // Si deleteAll est true, on crée une copie de la tâche SANS recurrence_id
+      // Cela supprimera toutes les occurrences (logique de TaskModal)
+      if (deleteAll) {
+        const taskWithoutRecurrence = { ...task, recurrence_id: undefined };
+        onDelete(taskWithoutRecurrence);
+      } else {
+        // Supprimer uniquement cette occurrence (avec recurrence_id)
+        onDelete(task);
+      }
     }
     setShowDeleteConfirm(false);
   };
@@ -529,8 +541,15 @@ const PositionedEventItem = ({
   const handleDelete = (e: React.MouseEvent, deleteAll?: boolean) => {
     e.stopPropagation();
     if (onDelete) {
-      console.log('Delete task:', event.id, 'deleteAll:', deleteAll);
-      onDelete(event);
+      // Si deleteAll est true, on crée une copie de l'événement SANS recurrence_id
+      // Cela supprimera toutes les occurrences (logique de TaskModal)
+      if (deleteAll) {
+        const eventWithoutRecurrence = { ...event, recurrence_id: undefined };
+        onDelete(eventWithoutRecurrence);
+      } else {
+        // Supprimer uniquement cette occurrence (avec recurrence_id)
+        onDelete(event);
+      }
     }
     setShowDeleteConfirm(false);
   };
@@ -742,8 +761,15 @@ const PositionedWeekEventItem = ({
   const handleDelete = (e: React.MouseEvent, deleteAll?: boolean) => {
     e.stopPropagation();
     if (onDelete) {
-      console.log('Delete task:', event.id, 'deleteAll:', deleteAll);
-      onDelete(event);
+      // Si deleteAll est true, on crée une copie de l'événement SANS recurrence_id
+      // Cela supprimera toutes les occurrences (logique de TaskModal)
+      if (deleteAll) {
+        const eventWithoutRecurrence = { ...event, recurrence_id: undefined };
+        onDelete(eventWithoutRecurrence);
+      } else {
+        // Supprimer uniquement cette occurrence (avec recurrence_id)
+        onDelete(event);
+      }
     }
     setShowDeleteConfirm(false);
   };

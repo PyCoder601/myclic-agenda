@@ -267,7 +267,7 @@ const TaskItem = ({
   return (
     <>
       <div
-        className="text-xs p-1.5 pr-1 text-black flex items-center gap-1 group/item relative"
+        className="text-xs py-0.5 px-1 pr-0.5 text-black flex items-center gap-1 group/item relative"
         style={{
           background: `linear-gradient(to right, ${taskColor}, ${taskColor}dd)`,
           borderLeft: `3px solid ${taskColor}`,
@@ -276,7 +276,7 @@ const TaskItem = ({
         <div
           {...dragListeners}
           {...dragAttributes}
-          className="cursor-grab active:cursor-grabbing shrink-0 opacity-0 group-hover/item:opacity-100 transition-opacity px-2 py-0.5 hover:bg-white/20 rounded"
+          className="cursor-grab active:cursor-grabbing shrink-0 opacity-0 group-hover/item:opacity-100 transition-opacity px-1.5 py-0.5 hover:bg-white/20 rounded"
           onClick={(e) => e.stopPropagation()}
         >
           <GripVertical className="w-4 h-4" />
@@ -1574,7 +1574,7 @@ export default function Calendar({
                     </div>
 
                     {/* Événements - responsive */}
-                    <div className="space-y-0.5 sm:space-y-1 flex-1 overflow-hidden">
+                    <div className="space-y-0 sm:space-y-0.5 flex-1 overflow-hidden">
                       {dayTasks
                         .filter((t) => isSameDay(new Date(t.start_date), day))
                         .slice(0, 2) // Limiter à 2 sur mobile, 3 sur desktop géré par CSS
@@ -1594,7 +1594,7 @@ export default function Calendar({
                       )}
 
                       {/* Sur desktop, afficher les événements et le lien "autres" */}
-                      <div className="hidden sm:block space-y-1">
+                      <div className="hidden sm:block space-y-0.5">
                         {dayTasks
                           .filter((t) => isSameDay(new Date(t.start_date), day))
                           .slice(2, 3)

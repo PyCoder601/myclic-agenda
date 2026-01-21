@@ -394,6 +394,13 @@ export default function DashboardPage() {
     }
   }, [dispatch, currentDate, mainViewMode]);
 
+  // Wrapper pour la suppression depuis le bouton dans Calendar
+  const handleTaskDelete = useCallback((task: Task) => {
+    if (task.url && task.id) {
+      handleDeleteTask(task.url, task.id, task.recurrence_id);
+    }
+  }, [handleDeleteTask]);
+
   const handleTaskClick = useCallback((task: Task) => {
     // ✅ D'abord fermer le modal pour réinitialiser l'état
     setIsModalOpen(false);
@@ -996,6 +1003,7 @@ export default function DashboardPage() {
                 onAddTask={handleAddTask}
                 onTaskDrop={handleTaskDrop}
                 onTaskResize={handleTaskResize}
+                onTaskDelete={handleTaskDelete}
                 calendars={calendars}
               />
             </div>

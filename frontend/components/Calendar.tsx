@@ -97,6 +97,7 @@ interface CalendarProps {
   onAddTask: (date: Date, hour?: number) => void;
   onTaskDrop: (taskId: string, newDate: Date) => void;
   onTaskResize?: (taskId: string, newEndDate: Date) => void;
+  onTaskDelete?: (task: Task) => void;
   calendars: CalendarSource[];
   isNavigating?: boolean;
   pendingDate?: Date | null;
@@ -234,43 +235,110 @@ const TaskItem = ({
   dragListeners,
   dragAttributes,
   calendars,
+  onDelete,
 }: {
   task: Task;
   onTaskClick: (task: Task) => void;
   dragListeners?: DraggableSyntheticListeners;
   dragAttributes?: DraggableAttributes;
   calendars: CalendarSource[];
+  onDelete?: (task: Task) => void;
 }) => {
   const taskColor = getTaskColor(task, calendars);
   const startTime = format(parseLocalDate(task.start_date), "HH:mm");
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+
+  const handleDelete = (e: React.MouseEvent, deleteAll?: boolean) => {
+    e.stopPropagation();
+    if (onDelete) {
+      // TODO: Gérer la suppression de toutes les occurrences si deleteAll est true
+      // Pour l'instant, on supprime juste l'occurrence
+      console.log('Delete task:', task.id, 'deleteAll:', deleteAll);
+      onDelete(task);
+    }
+    setShowDeleteConfirm(false);
+  };
 
   return (
-    <div
-      className="text-xs p-1.5 pr-1 text-black flex items-center gap-1 group/item"
-      style={{
-        background: `linear-gradient(to right, ${taskColor}, ${taskColor}dd)`,
-        borderLeft: `3px solid ${taskColor}`,
-      }}
-    >
+    <>
       <div
-        {...dragListeners}
-        {...dragAttributes}
-        className="cursor-grab active:cursor-grabbing shrink-0 opacity-0 group-hover/item:opacity-100 transition-opacity px-2 py-0.5 hover:bg-white/20 rounded"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <GripVertical className="w-4 h-4" />
-      </div>
-      <div
-        className="truncate flex-1 cursor-pointer min-w-0"
-        onClick={(e) => {
-          e.stopPropagation();
-          onTaskClick(task);
+        className="text-xs p-1.5 pr-1 text-black flex items-center gap-1 group/item relative"
+        style={{
+          background: `linear-gradient(to right, ${taskColor}, ${taskColor}dd)`,
+          borderLeft: `3px solid ${taskColor}`,
         }}
       >
-        <span className="font-bold">{startTime}</span>{" "}
-        <span className="font-semibold">{task.title}</span>
+        <div
+          {...dragListeners}
+          {...dragAttributes}
+          className="cursor-grab active:cursor-grabbing shrink-0 opacity-0 group-hover/item:opacity-100 transition-opacity px-2 py-0.5 hover:bg-white/20 rounded"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <GripVertical className="w-4 h-4" />
+        </div>
+        <div
+          className="truncate flex-1 cursor-pointer min-w-0"
+          onClick={(e) => {
+            e.stopPropagation();
+            onTaskClick(task);
+          }}
+        >
+          <span className="font-bold">{startTime}</span>{" "}
+          <span className="font-semibold">{task.title}</span>
+        </div>
+        {/* Bouton de suppression subtil */}
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            if (task.recurrence_id) {
+              setShowDeleteConfirm(true);
+            } else {
+              handleDelete(e);
+            }
+          }}
+          className="opacity-0 group-hover/item:opacity-100 transition-opacity shrink-0 p-0.5 hover:bg-red-500/20 rounded"
+          title="Supprimer"
+        >
+          <X className="w-3 h-3 text-red-600" />
+        </button>
       </div>
-    </div>
+
+      {/* Modal de confirmation pour événements récurrents */}
+      {showDeleteConfirm && (
+        <div
+          className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[200]"
+          onClick={() => setShowDeleteConfirm(false)}
+        >
+          <div
+            className="bg-white rounded-lg shadow-xl p-4 max-w-sm mx-4"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 className="font-semibold text-sm mb-3">Supprimer l&apos;événement récurrent ?</h3>
+            <p className="text-xs text-gray-600 mb-4">Voulez-vous supprimer uniquement cette occurrence ou toutes les occurrences ?</p>
+            <div className="flex gap-2">
+              <button
+                onClick={(e) => handleDelete(e, false)}
+                className="flex-1 px-3 py-2 text-xs bg-gray-100 hover:bg-gray-200 rounded transition-colors"
+              >
+                Cette occurrence
+              </button>
+              <button
+                onClick={(e) => handleDelete(e, true)}
+                className="flex-1 px-3 py-2 text-xs bg-red-500 hover:bg-red-600 text-white rounded transition-colors"
+              >
+                Toutes
+              </button>
+              <button
+                onClick={() => setShowDeleteConfirm(false)}
+                className="px-3 py-2 text-xs border border-gray-300 hover:bg-gray-50 rounded transition-colors"
+              >
+                Annuler
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
   );
 };
 
@@ -280,43 +348,109 @@ const WeekTaskItem = ({
   dragListeners,
   dragAttributes,
   calendars,
+  onDelete,
 }: {
   task: Task;
   onTaskClick: (task: Task) => void;
   dragListeners?: DraggableSyntheticListeners;
   dragAttributes?: DraggableAttributes;
   calendars: CalendarSource[];
+  onDelete?: (task: Task) => void;
 }) => {
   const taskColor = getTaskColor(task, calendars);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+
+  const handleDelete = (e: React.MouseEvent, deleteAll?: boolean) => {
+    e.stopPropagation();
+    if (onDelete) {
+      console.log('Delete task:', task.id, 'deleteAll:', deleteAll);
+      onDelete(task);
+    }
+    setShowDeleteConfirm(false);
+  };
+
   return (
-    <div
-      className="text-xs p-1.5 pr-1 text-black flex items-center gap-1 group/item"
-      style={{
-        background: `linear-gradient(to right, ${taskColor}, ${taskColor}dd)`,
-        borderLeft: `3px solid ${taskColor}`,
-      }}
-    >
+    <>
       <div
-        {...dragListeners}
-        {...dragAttributes}
-        className="cursor-grab active:cursor-grabbing shrink-0 opacity-0 group-hover/item:opacity-100 transition-opacity px-1.5 py-0.5 hover:bg-white/20 rounded mt-0.5"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <GripVertical className="w-3 h-3 text-white" />
-      </div>
-      <div
-        className="flex-1 cursor-pointer min-w-0"
-        onClick={(e) => {
-          e.stopPropagation();
-          onTaskClick(task);
+        className="text-xs p-1.5 pr-1 text-black flex items-center gap-1 group/item relative"
+        style={{
+          background: `linear-gradient(to right, ${taskColor}, ${taskColor}dd)`,
+          borderLeft: `3px solid ${taskColor}`,
         }}
       >
-        <div className="font-semibold truncate">{task.title}</div>
-        <div className="font-medium mt-0.5">
-          {format(parseLocalDate(task.start_date), "HH:mm")} - {format(parseLocalDate(task.end_date), "HH:mm")}
+        <div
+          {...dragListeners}
+          {...dragAttributes}
+          className="cursor-grab active:cursor-grabbing shrink-0 opacity-0 group-hover/item:opacity-100 transition-opacity px-1.5 py-0.5 hover:bg-white/20 rounded mt-0.5"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <GripVertical className="w-3 h-3 text-white" />
         </div>
+        <div
+          className="flex-1 cursor-pointer min-w-0"
+          onClick={(e) => {
+            e.stopPropagation();
+            onTaskClick(task);
+          }}
+        >
+          <div className="font-semibold truncate">{task.title}</div>
+          <div className="font-medium mt-0.5">
+            {format(parseLocalDate(task.start_date), "HH:mm")} - {format(parseLocalDate(task.end_date), "HH:mm")}
+          </div>
+        </div>
+        {/* Bouton de suppression subtil */}
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            if (task.recurrence_id) {
+              setShowDeleteConfirm(true);
+            } else {
+              handleDelete(e);
+            }
+          }}
+          className="opacity-0 group-hover/item:opacity-100 transition-opacity shrink-0 p-0.5 hover:bg-red-500/20 rounded"
+          title="Supprimer"
+        >
+          <X className="w-3 h-3 text-red-600" />
+        </button>
       </div>
-    </div>
+
+      {/* Modal de confirmation pour événements récurrents */}
+      {showDeleteConfirm && (
+        <div
+          className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[200]"
+          onClick={() => setShowDeleteConfirm(false)}
+        >
+          <div
+            className="bg-white rounded-lg shadow-xl p-4 max-w-sm mx-4"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 className="font-semibold text-sm mb-3">Supprimer l&apos;événement récurrent ?</h3>
+            <p className="text-xs text-gray-600 mb-4">Voulez-vous supprimer uniquement cette occurrence ou toutes les occurrences ?</p>
+            <div className="flex gap-2">
+              <button
+                onClick={(e) => handleDelete(e, false)}
+                className="flex-1 px-3 py-2 text-xs bg-gray-100 hover:bg-gray-200 rounded transition-colors"
+              >
+                Cette occurrence
+              </button>
+              <button
+                onClick={(e) => handleDelete(e, true)}
+                className="flex-1 px-3 py-2 text-xs bg-red-500 hover:bg-red-600 text-white rounded transition-colors"
+              >
+                Toutes
+              </button>
+              <button
+                onClick={() => setShowDeleteConfirm(false)}
+                className="px-3 py-2 text-xs border border-gray-300 hover:bg-gray-50 rounded transition-colors"
+              >
+                Annuler
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
   );
 };
 
@@ -328,6 +462,7 @@ const PositionedEventItem = ({
   top,
   height,
   onResize,
+  onDelete,
 }: {
   event: Task;
   onTaskClick: (task: Task) => void;
@@ -335,6 +470,7 @@ const PositionedEventItem = ({
   top: number;
   height: number;
   onResize?: (eventId: string, newHeight: number) => void;
+  onDelete?: (task: Task) => void;
 }) => {
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
     id: event.id,
@@ -344,6 +480,7 @@ const PositionedEventItem = ({
   const [resizeHeight, setResizeHeight] = useState(height);
   const resizeStartY = useRef(0);
   const originalHeight = useRef(height);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   const taskColor = getTaskColor(event, calendars);
 
@@ -389,79 +526,144 @@ const PositionedEventItem = ({
     document.addEventListener('mouseup', handleMouseUp);
   };
 
+  const handleDelete = (e: React.MouseEvent, deleteAll?: boolean) => {
+    e.stopPropagation();
+    if (onDelete) {
+      console.log('Delete task:', event.id, 'deleteAll:', deleteAll);
+      onDelete(event);
+    }
+    setShowDeleteConfirm(false);
+  };
+
   return (
-    <div
-      ref={setNodeRef}
-      className="absolute left-1 right-1 pointer-events-auto"
-      style={{
-        top: `${top}px`,
-        height: `${resizeHeight}px`,
-        zIndex: isDragging || isResizing ? 50 : 10,
-        opacity: isDragging ? 0 : 1, // ✅ Cacher complètement pendant le drag
-      }}
-    >
+    <>
       <div
-        className="h-full shadow-md hover:shadow-lg transition-shadow cursor-pointer p-2 overflow-hidden group relative"
+        ref={setNodeRef}
+        className="absolute left-1 right-1 pointer-events-auto"
         style={{
-          background: `linear-gradient(135deg, ${taskColor} 0%, ${taskColor}dd 100%)`,
-          borderLeft: `4px solid ${taskColor}`,
-        }}
-        onClick={(e) => {
-          if (!isResizing) {
-            e.stopPropagation();
-            onTaskClick(event);
-          }
+          top: `${top}px`,
+          height: `${resizeHeight}px`,
+          zIndex: isDragging || isResizing ? 50 : 10,
+          opacity: isDragging ? 0 : 1, // ✅ Cacher complètement pendant le drag
         }}
       >
-        <div className="flex items-start gap-1 h-full">
+        <div
+          className="h-full shadow-md hover:shadow-lg transition-shadow cursor-pointer p-2 overflow-hidden group relative"
+          style={{
+            background: `linear-gradient(135deg, ${taskColor} 0%, ${taskColor}dd 100%)`,
+            borderLeft: `4px solid ${taskColor}`,
+          }}
+          onClick={(e) => {
+            if (!isResizing) {
+              e.stopPropagation();
+              onTaskClick(event);
+            }
+          }}
+        >
+          <div className="flex items-start gap-1 h-full">
+            <div
+              {...listeners}
+              {...attributes}
+              className="cursor-grab active:cursor-grabbing shrink-0 opacity-0 group-hover:opacity-100 transition-all duration-200 px-1.5 hover:bg-white/30 rounded flex items-center"
+              style={{ height: `${resizeHeight}px` }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <GripVertical className="w-3 text-white drop-shadow-sm" style={{ height: '100%' }} />
+            </div>
+            <div className="flex-1 min-w-0 text-black">
+              <div className="font-semibold text-sm truncate">{event.title}</div>
+              <div className={`text-xs opacity-90 mt-0.5 font-medium transition-all duration-150 ${isResizing ? 'scale-105 text-white font-bold' : ''}`}>
+                {format(parseLocalDate(event.start_date), "HH:mm")} - {getDisplayEndTime()}
+              </div>
+              {event.location && resizeHeight > 35 && (
+                <div className="flex items-center gap-1 text-xs opacity-80 mt-0.5">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-2.5 w-2.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                  </svg>
+                  <span className="truncate">{event.location}</span>
+                </div>
+              )}
+              {resizeHeight > 50 && event.description && (
+                <div className="text-xs opacity-80 mt-1 line-clamp-2">
+                  {event.description.replace(/<[^>]*>/g, '')}
+                </div>
+              )}
+            </div>
+
+            {/* Bouton de suppression subtil */}
+            {resizeHeight > 30 && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (event.recurrence_id) {
+                    setShowDeleteConfirm(true);
+                  } else {
+                    handleDelete(e);
+                  }
+                }}
+                className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0 p-0.5 hover:bg-red-500/30 rounded bg-white/80"
+                title="Supprimer"
+              >
+                <X className="w-3 h-3 text-red-600" />
+              </button>
+            )}
+          </div>
+
+          {/* Badge de durée pendant le redimensionnement */}
+          {isResizing && (
+            <div className="absolute top-2 right-2 bg-white/95 backdrop-blur-sm text-black px-2 py-1 rounded-lg shadow-lg text-xs font-bold animate-pulse border-2 border-white">
+              {Math.floor(resizeHeight / 60)}h{String(resizeHeight % 60).padStart(2, '0')}
+            </div>
+          )}
+
+          {/* Poignée de redimensionnement */}
           <div
-            {...listeners}
-            {...attributes}
-            className="cursor-grab active:cursor-grabbing shrink-0 opacity-0 group-hover:opacity-100 transition-all duration-200 px-1.5 hover:bg-white/30 rounded flex items-center"
-            style={{ height: `${resizeHeight}px` }}
+            className="absolute bottom-0 left-0 right-0 h-2 cursor-ns-resize opacity-0 group-hover:opacity-100 transition-all duration-200 flex items-center justify-center"
+            onMouseDown={handleResizeStart}
             onClick={(e) => e.stopPropagation()}
           >
-            <GripVertical className="w-3 text-white drop-shadow-sm" style={{ height: '100%' }} />
+            <div className="w-12 h-1 bg-white/60 rounded-full shadow-sm"></div>
           </div>
-          <div className="flex-1 min-w-0 text-black">
-            <div className="font-semibold text-sm truncate">{event.title}</div>
-            <div className={`text-xs opacity-90 mt-0.5 font-medium transition-all duration-150 ${isResizing ? 'scale-105 text-white font-bold' : ''}`}>
-              {format(parseLocalDate(event.start_date), "HH:mm")} - {getDisplayEndTime()}
-            </div>
-            {event.location && resizeHeight > 35 && (
-              <div className="flex items-center gap-1 text-xs opacity-80 mt-0.5">
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-2.5 w-2.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                </svg>
-                <span className="truncate">{event.location}</span>
-              </div>
-            )}
-            {resizeHeight > 50 && event.description && (
-              <div className="text-xs opacity-80 mt-1 line-clamp-2">
-                {event.description.replace(/<[^>]*>/g, '')}
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Badge de durée pendant le redimensionnement */}
-        {isResizing && (
-          <div className="absolute top-2 right-2 bg-white/95 backdrop-blur-sm text-black px-2 py-1 rounded-lg shadow-lg text-xs font-bold animate-pulse border-2 border-white">
-            {Math.floor(resizeHeight / 60)}h{String(resizeHeight % 60).padStart(2, '0')}
-          </div>
-        )}
-
-        {/* Poignée de redimensionnement */}
-        <div
-          className="absolute bottom-0 left-0 right-0 h-2 cursor-ns-resize opacity-0 group-hover:opacity-100 transition-all duration-200 flex items-center justify-center"
-          onMouseDown={handleResizeStart}
-          onClick={(e) => e.stopPropagation()}
-        >
-          <div className="w-12 h-1 bg-white/60 rounded-full shadow-sm"></div>
         </div>
       </div>
-    </div>
+
+      {/* Modal de confirmation pour événements récurrents */}
+      {showDeleteConfirm && (
+        <div
+          className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[200]"
+          onClick={() => setShowDeleteConfirm(false)}
+        >
+          <div
+            className="bg-white rounded-lg shadow-xl p-4 max-w-sm mx-4"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 className="font-semibold text-sm mb-3">Supprimer l&apos;événement récurrent ?</h3>
+            <p className="text-xs text-gray-600 mb-4">Voulez-vous supprimer uniquement cette occurrence ou toutes les occurrences ?</p>
+            <div className="flex gap-2">
+              <button
+                onClick={(e) => handleDelete(e, false)}
+                className="flex-1 px-3 py-2 text-xs bg-gray-100 hover:bg-gray-200 rounded transition-colors"
+              >
+                Cette occurrence
+              </button>
+              <button
+                onClick={(e) => handleDelete(e, true)}
+                className="flex-1 px-3 py-2 text-xs bg-red-500 hover:bg-red-600 text-white rounded transition-colors"
+              >
+                Toutes
+              </button>
+              <button
+                onClick={() => setShowDeleteConfirm(false)}
+                className="px-3 py-2 text-xs border border-gray-300 hover:bg-gray-50 rounded transition-colors"
+              >
+                Annuler
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
   );
 };
 
@@ -473,6 +675,7 @@ const PositionedWeekEventItem = ({
   top,
   height,
   onResize,
+  onDelete,
 }: {
   event: Task;
   onTaskClick: (task: Task) => void;
@@ -480,6 +683,7 @@ const PositionedWeekEventItem = ({
   top: number;
   height: number;
   onResize?: (eventId: string, newHeight: number) => void;
+  onDelete?: (task: Task) => void;
 }) => {
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
     id: event.id,
@@ -489,6 +693,7 @@ const PositionedWeekEventItem = ({
   const [resizeHeight, setResizeHeight] = useState(height);
   const resizeStartY = useRef(0);
   const originalHeight = useRef(height);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   const taskColor = getTaskColor(event, calendars);
 
@@ -534,76 +739,141 @@ const PositionedWeekEventItem = ({
     document.addEventListener('mouseup', handleMouseUp);
   };
 
+  const handleDelete = (e: React.MouseEvent, deleteAll?: boolean) => {
+    e.stopPropagation();
+    if (onDelete) {
+      console.log('Delete task:', event.id, 'deleteAll:', deleteAll);
+      onDelete(event);
+    }
+    setShowDeleteConfirm(false);
+  };
+
   return (
-    <div
-      ref={setNodeRef}
-      className="absolute left-1 right-1 pointer-events-auto"
-      style={{
-        top: `${top}px`,
-        height: `${resizeHeight}px`,
-        zIndex: isDragging || isResizing ? 50 : 10,
-        opacity: isDragging ? 0 : 1, // ✅ Cacher complètement pendant le drag
-      }}
-    >
+    <>
       <div
-        className="h-full shadow-sm hover:shadow-md transition-shadow cursor-pointer p-1 overflow-hidden group text-black text-[10px] relative"
+        ref={setNodeRef}
+        className="absolute left-1 right-1 pointer-events-auto"
         style={{
-          background: `linear-gradient(135deg, ${taskColor} 0%, ${taskColor}dd 100%)`,
-          borderLeft: `3px solid ${taskColor}`,
-        }}
-        onClick={(e) => {
-          if (!isResizing) {
-            e.stopPropagation();
-            onTaskClick(event);
-          }
+          top: `${top}px`,
+          height: `${resizeHeight}px`,
+          zIndex: isDragging || isResizing ? 50 : 10,
+          opacity: isDragging ? 0 : 1, // ✅ Cacher complètement pendant le drag
         }}
       >
-        <div className="flex items-start gap-0.5 h-full">
+        <div
+          className="h-full shadow-sm hover:shadow-md transition-shadow cursor-pointer p-1 overflow-hidden group text-black text-[10px] relative"
+          style={{
+            background: `linear-gradient(135deg, ${taskColor} 0%, ${taskColor}dd 100%)`,
+            borderLeft: `3px solid ${taskColor}`,
+          }}
+          onClick={(e) => {
+            if (!isResizing) {
+              e.stopPropagation();
+              onTaskClick(event);
+            }
+          }}
+        >
+          <div className="flex items-start gap-0.5 h-full">
+            <div
+              {...listeners}
+              {...attributes}
+              className="cursor-grab active:cursor-grabbing shrink-0 opacity-0 group-hover:opacity-100 transition-all duration-200 px-1.5 hover:bg-white/30 rounded flex items-center"
+              style={{ height: `${resizeHeight}px` }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <GripVertical className="w-2.5 text-white drop-shadow-sm" style={{ height: '100%' }} />
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="font-semibold truncate leading-tight">{event.title}</div>
+              {resizeHeight > 25 && (
+                <div className={`opacity-90 mt-0.5 leading-tight font-medium transition-all duration-150 ${isResizing ? 'scale-105 text-white font-bold opacity-100' : ''}`}>
+                  {format(parseLocalDate(event.start_date), "HH:mm")} - {getDisplayEndTime()}
+                </div>
+              )}
+              {event.location && resizeHeight > 40 && (
+                <div className="flex items-center gap-0.5 opacity-80 mt-0.5 leading-tight truncate">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-2 w-2 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                  </svg>
+                  <span className="truncate">{event.location}</span>
+                </div>
+              )}
+            </div>
+
+            {/* Bouton de suppression subtil */}
+            {resizeHeight > 25 && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (event.recurrence_id) {
+                    setShowDeleteConfirm(true);
+                  } else {
+                    handleDelete(e);
+                  }
+                }}
+                className="absolute top-0.5 right-0.5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0 p-0.5 hover:bg-red-500/30 rounded bg-white/80"
+                title="Supprimer"
+              >
+                <X className="w-2.5 h-2.5 text-red-600" />
+              </button>
+            )}
+          </div>
+
+          {/* Badge de durée pendant le redimensionnement */}
+          {isResizing && (
+            <div className="absolute top-1 right-1 bg-white/95 backdrop-blur-sm text-black px-1.5 py-0.5 rounded shadow-lg text-[10px] font-bold animate-pulse border border-white">
+              {Math.floor(resizeHeight / 60)}h{String(resizeHeight % 60).padStart(2, '0')}
+            </div>
+          )}
+
+          {/* Poignée de redimensionnement */}
           <div
-            {...listeners}
-            {...attributes}
-            className="cursor-grab active:cursor-grabbing shrink-0 opacity-0 group-hover:opacity-100 transition-all duration-200 px-1.5 hover:bg-white/30 rounded flex items-center"
-            style={{ height: `${resizeHeight}px` }}
+            className="absolute bottom-0 left-0 right-0 h-1.5 cursor-ns-resize opacity-0 group-hover:opacity-100 transition-all duration-200 flex items-center justify-center"
+            onMouseDown={handleResizeStart}
             onClick={(e) => e.stopPropagation()}
           >
-            <GripVertical className="w-2.5 text-white drop-shadow-sm" style={{ height: '100%' }} />
+            <div className="w-8 h-0.5 bg-white/60 rounded-full shadow-sm"></div>
           </div>
-          <div className="flex-1 min-w-0">
-            <div className="font-semibold truncate leading-tight">{event.title}</div>
-            {resizeHeight > 25 && (
-              <div className={`opacity-90 mt-0.5 leading-tight font-medium transition-all duration-150 ${isResizing ? 'scale-105 text-white font-bold opacity-100' : ''}`}>
-                {format(parseLocalDate(event.start_date), "HH:mm")} - {getDisplayEndTime()}
-              </div>
-            )}
-            {event.location && resizeHeight > 40 && (
-              <div className="flex items-center gap-0.5 opacity-80 mt-0.5 leading-tight truncate">
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-2 w-2 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                </svg>
-                <span className="truncate">{event.location}</span>
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Badge de durée pendant le redimensionnement */}
-        {isResizing && (
-          <div className="absolute top-1 right-1 bg-white/95 backdrop-blur-sm text-black px-1.5 py-0.5 rounded shadow-lg text-[10px] font-bold animate-pulse border border-white">
-            {Math.floor(resizeHeight / 60)}h{String(resizeHeight % 60).padStart(2, '0')}
-          </div>
-        )}
-
-        {/* Poignée de redimensionnement */}
-        <div
-          className="absolute bottom-0 left-0 right-0 h-1.5 cursor-ns-resize opacity-0 group-hover:opacity-100 transition-all duration-200 flex items-center justify-center"
-          onMouseDown={handleResizeStart}
-          onClick={(e) => e.stopPropagation()}
-        >
-          <div className="w-8 h-0.5 bg-white/60 rounded-full shadow-sm"></div>
         </div>
       </div>
-    </div>
+
+      {/* Modal de confirmation pour événements récurrents */}
+      {showDeleteConfirm && (
+        <div
+          className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[200]"
+          onClick={() => setShowDeleteConfirm(false)}
+        >
+          <div
+            className="bg-white rounded-lg shadow-xl p-4 max-w-sm mx-4"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 className="font-semibold text-sm mb-3">Supprimer l&apos;événement récurrent ?</h3>
+            <p className="text-xs text-gray-600 mb-4">Voulez-vous supprimer uniquement cette occurrence ou toutes les occurrences ?</p>
+            <div className="flex gap-2">
+              <button
+                onClick={(e) => handleDelete(e, false)}
+                className="flex-1 px-3 py-2 text-xs bg-gray-100 hover:bg-gray-200 rounded transition-colors"
+              >
+                Cette occurrence
+              </button>
+              <button
+                onClick={(e) => handleDelete(e, true)}
+                className="flex-1 px-3 py-2 text-xs bg-red-500 hover:bg-red-600 text-white rounded transition-colors"
+              >
+                Toutes
+              </button>
+              <button
+                onClick={() => setShowDeleteConfirm(false)}
+                className="px-3 py-2 text-xs border border-gray-300 hover:bg-gray-50 rounded transition-colors"
+              >
+                Annuler
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
   );
 };
 
@@ -617,6 +887,7 @@ export default function Calendar({
   onAddTask,
   onTaskDrop,
   onTaskResize,
+  onTaskDelete,
   calendars = [],
   isNavigating = false,
   pendingDate = null,
@@ -932,6 +1203,7 @@ export default function Calendar({
             dragListeners={listeners}
             dragAttributes={attributes}
             calendars={calendars}
+            onDelete={onTaskDelete}
           />
         ) : (
           <WeekTaskItem
@@ -940,6 +1212,7 @@ export default function Calendar({
             dragListeners={listeners}
             dragAttributes={attributes}
             calendars={calendars}
+            onDelete={onTaskDelete}
           />
         )}
       </div>
@@ -1068,6 +1341,7 @@ export default function Calendar({
                     top={topOffset}
                     height={event.height}
                     onResize={handleEventResize}
+                    onDelete={onTaskDelete}
                   />
                 );
               })}
@@ -1212,6 +1486,7 @@ export default function Calendar({
                         top={topOffset}
                         height={displayHeight}
                         onResize={handleEventResize}
+                        onDelete={onTaskDelete}
                       />
                     );
                   })}

@@ -242,6 +242,8 @@ const TaskItem = ({
   calendars: CalendarSource[];
 }) => {
   const taskColor = getTaskColor(task, calendars);
+  const startTime = format(parseLocalDate(task.start_date), "HH:mm");
+
   return (
     <div
       className="text-xs p-1.5 pr-1 text-black flex items-center gap-1 group/item"
@@ -253,19 +255,20 @@ const TaskItem = ({
       <div
         {...dragListeners}
         {...dragAttributes}
-        className="cursor-grab active:cursor-grabbing shrink-0 opacity-0 group-hover/item:opacity-100 transition-opacity px-1.5 py-0.5 hover:bg-white/20 rounded"
+        className="cursor-grab active:cursor-grabbing shrink-0 opacity-0 group-hover/item:opacity-100 transition-opacity px-2 py-0.5 hover:bg-white/20 rounded"
         onClick={(e) => e.stopPropagation()}
       >
-        <GripVertical className="w-3 h-3" />
+        <GripVertical className="w-4 h-4" />
       </div>
       <div
-        className="font-semibold truncate flex-1 cursor-pointer min-w-0"
+        className="truncate flex-1 cursor-pointer min-w-0"
         onClick={(e) => {
           e.stopPropagation();
           onTaskClick(task);
         }}
       >
-        {task.title}
+        <span className="font-bold">{startTime}</span>{" "}
+        <span className="font-semibold">{task.title}</span>
       </div>
     </div>
   );

@@ -728,8 +728,12 @@ class BaikalCalDAVClient:
             Résultat de la mise à jour avec ancien et nouvel état
         """
         try:
+            logger.info(f"🔄 Début update_event pour: {event_url}")
+            logger.info(f"📝 Données à mettre à jour: {event_data}")
+
             # Récupérer l'événement existant
             response = self._session.get(event_url)
+            logger.info(f"📥 GET response status: {response.status_code}")
 
             if response.status_code != 200:
                 return {
@@ -740,6 +744,7 @@ class BaikalCalDAVClient:
 
             # Parser l'iCalendar existant
             from icalendar import Calendar as iCalendar
+            logger.info("📄 Parsing du calendrier iCal...")
             cal = iCalendar.from_ical(response.content)
 
             # Trouver le VEVENT
@@ -750,11 +755,14 @@ class BaikalCalDAVClient:
                     break
 
             if not vevent:
+                logger.error("❌ Composant VEVENT non trouvé")
                 return {
                     'success': False,
                     'error': 'Composant VEVENT non trouvé',
                     'event_url': event_url
                 }
+
+            logger.info("✅ VEVENT trouvé")
 
             # Sauvegarder l'ancien état
             old_state = {
@@ -764,18 +772,23 @@ class BaikalCalDAVClient:
                 'start': self._parse_ical_date(vevent.get('dtstart')) if vevent.get('dtstart') else None,
                 'end': self._parse_ical_date(vevent.get('dtend')) if vevent.get('dtend') else None
             }
+            logger.info(f"📊 Ancien état: {old_state}")
 
             # Appliquer les modifications
             if 'summary' in event_data:
+                logger.info(f"📝 Mise à jour summary: {event_data['summary']}")
                 vevent['summary'] = event_data['summary']
 
             if 'description' in event_data:
+                logger.info(f"📝 Mise à jour description: {event_data['description']}")
                 vevent['description'] = event_data['description']
 
             if 'location' in event_data:
+                logger.info(f"📍 Mise à jour location: {event_data['location']}")
                 vevent['location'] = event_data['location']
 
             if 'start' in event_data:
+                logger.info(f"📅 Mise à jour start: {event_data['start']}")
                 start_date = event_data['start']
                 if isinstance(start_date, str):
                     # Gérer les dates avec et sans timezone
@@ -787,10 +800,25 @@ class BaikalCalDAVClient:
                 elif isinstance(start_date, (int, float)):
                     start_date = datetime.fromtimestamp(start_date)
 
-                # ✅ Utiliser format_ical_date pour avoir le format TZID
-                vevent['dtstart'] = self.format_ical_date(start_date, use_timezone=True)
+                # ✅ Convertir en datetime avec timezone Europe/Paris puis retirer le tzinfo
+                logger.info(f"🔄 Formatage date start: {start_date}")
+                paris_tz = pytz.timezone('Europe/Paris')
+                if start_date.tzinfo is None:
+                    start_date = paris_tz.localize(start_date)
+                else:
+                    start_date = start_date.astimezone(paris_tz)
+
+                # Retirer le tzinfo pour avoir un datetime "naive" (sans timezone)
+                start_date_naive = start_date.replace(tzinfo=None)
+
+                # Créer un vDatetime avec le paramètre TZID
+                from icalendar import vDatetime
+                vevent['dtstart'] = vDatetime(start_date_naive)
+                vevent['dtstart'].params['TZID'] = 'Europe/Paris'
+                logger.info(f"✅ Date start formatée: {vevent['dtstart']}")
 
             if 'end' in event_data:
+                logger.info(f"📅 Mise à jour end: {event_data['end']}")
                 end_date = event_data['end']
                 if isinstance(end_date, str):
                     # Gérer les dates avec et sans timezone
@@ -802,8 +830,22 @@ class BaikalCalDAVClient:
                 elif isinstance(end_date, (int, float)):
                     end_date = datetime.fromtimestamp(end_date)
 
-                # ✅ Utiliser format_ical_date pour avoir le format TZID
-                vevent['dtend'] = self.format_ical_date(end_date, use_timezone=True)
+                # ✅ Convertir en datetime avec timezone Europe/Paris puis retirer le tzinfo
+                logger.info(f"🔄 Formatage date end: {end_date}")
+                paris_tz = pytz.timezone('Europe/Paris')
+                if end_date.tzinfo is None:
+                    end_date = paris_tz.localize(end_date)
+                else:
+                    end_date = end_date.astimezone(paris_tz)
+
+                # Retirer le tzinfo pour avoir un datetime "naive" (sans timezone)
+                end_date_naive = end_date.replace(tzinfo=None)
+
+                # Créer un vDatetime avec le paramètre TZID
+                from icalendar import vDatetime
+                vevent['dtend'] = vDatetime(end_date_naive)
+                vevent['dtend'].params['TZID'] = 'Europe/Paris'
+                logger.info(f"✅ Date end formatée: {vevent['dtend']}")
 
             # Mettre à jour CLIENT et AFFAIR si fournis
             if 'client_id' in event_data:
@@ -832,13 +874,19 @@ class BaikalCalDAVClient:
                 'start': self._parse_ical_date(vevent.get('dtstart')) if vevent.get('dtstart') else None,
                 'end': self._parse_ical_date(vevent.get('dtend')) if vevent.get('dtend') else None
             }
+            logger.info(f"📊 Nouvel état: {new_state}")
 
             # Envoyer la mise à jour via PUT
+            logger.info("📤 Envoi de la mise à jour via PUT...")
             headers = {'Content-Type': 'text/calendar; charset=utf-8'}
-            put_response = self._session.put(event_url, data=cal.to_ical(), headers=headers)
+            ical_data = cal.to_ical()
+            logger.info(f"📄 Taille des données iCal: {len(ical_data)} bytes")
+
+            put_response = self._session.put(event_url, data=ical_data, headers=headers)
+            logger.info(f"📥 PUT response status: {put_response.status_code}")
 
             if put_response.status_code in [200, 204]:
-                logger.info(f"Événement mis à jour: {event_url}")
+                logger.info(f"✅ Événement mis à jour avec succès: {event_url}")
                 return {
                     'success': True,
                     'message': 'Événement mis à jour avec succès',
@@ -847,6 +895,8 @@ class BaikalCalDAVClient:
                     'new_state': new_state
                 }
             else:
+                logger.error(f"❌ Erreur HTTP lors de la mise à jour: {put_response.status_code}")
+                logger.error(f"❌ Response body: {put_response.text}")
                 return {
                     'success': False,
                     'error': f'Erreur HTTP {put_response.status_code}',

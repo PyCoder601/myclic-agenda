@@ -1259,9 +1259,24 @@ export default function Calendar({
         ref={dayViewRef}
         className="flex-1 bg-linear-to-br from-slate-50/30 to-blue-50/20"
       >
+        {/* En-tête avec la date - sticky collé sous le header principal */}
+        <div className="flex border-b border-slate-300 sticky top-[46px] z-20 bg-white">
+          <div className="w-14 shrink-0 border-r border-slate-300"></div>
+          <div className="flex-1 py-2 px-3 text-center">
+            <div className={`font-medium text-xs ${isToday ? "text-[#005f82]" : "text-slate-600"}`}>
+              {format(currentDate, "EEEE", { locale: fr })}
+            </div>
+            <div className={`text-base font-bold mt-0.5 ${
+              isToday ? "text-[#005f82]" : "text-slate-800"
+            }`}>
+              {format(currentDate, "d MMMM yyyy", { locale: fr })}
+            </div>
+          </div>
+        </div>
+
         <div className="min-h-full flex relative">
           {/* Colonne des heures - version compacte */}
-          <div className="w-14 shrink-0 bg-linear-to-r from-slate-50 to-blue-50/50 border-r border-slate-300">
+          <div className="w-14 shrink-0 bg-linear-to-r from-slate-50 to-blue-50/50 border-r border-slate-300 sticky left-0 z-10">
             {hours.map((hour) => {
               const isCurrentHour = isToday && hour === currentHour;
 
@@ -1372,7 +1387,7 @@ export default function Calendar({
     return (
       <div ref={dayViewRef} className="flex-1 bg-white">
         {/* En-tête avec les jours de la semaine - version compacte */}
-        <div className="flex border-b border-slate-300 sticky top-0 z-20 bg-gradient-to-r from-slate-50 to-blue-50">
+        <div className="flex border-b border-slate-300 sticky top-[46px] z-20 bg-white">
           <div className="w-14 shrink-0 border-r border-slate-300"></div>
           {weekDays.map((day) => (
             <div
@@ -1521,7 +1536,7 @@ export default function Calendar({
     return (
       <div className="flex-1 flex flex-col bg-white">
         {/* En-tête des jours de la semaine - responsive */}
-        <div className="grid grid-cols-7 border-b border-slate-200 bg-gradient-to-r from-slate-50 to-blue-50 sticky top-0 z-10">
+        <div className="grid grid-cols-7 border-b border-slate-200 bg-white sticky top-[46px] z-10">
           {weekDayLabels.map((day) => (
             <div
               key={day}
@@ -1639,8 +1654,8 @@ export default function Calendar({
       <div className="flex-1 bg-white overflow-x-auto min-h-[calc(100vh-250px)]">
         <div className="inline-flex min-w-full h-full">
           <div className="flex-1 flex flex-col h-full">
-            <div className="flex border-b border-slate-200 sticky top-0 z-10 bg-linear-to-r from-slate-50 to-blue-50">
-              <div className="w-48 shrink-0 border-r border-slate-200 py-1 px-2 text-left font-semibold text-slate-700 text-xs sticky left-0 bg-slate-50 z-20">
+            <div className="flex border-b border-slate-200 sticky top-[46px] z-10 bg-white">
+              <div className="w-48 shrink-0 border-r border-slate-200 py-1 px-2 text-left font-semibold text-slate-700 text-xs sticky left-0 bg-white z-20">
                 Collaborateur / Calendrier
               </div>
               {daysToDisplay.map((day) => (
@@ -1750,9 +1765,9 @@ export default function Calendar({
         onDragStart={handleDragStart}
         onDragEnd={handleDragEnd}
       >
-        <div className="flex flex-col bg-white rounded-lg sm:rounded-2xl shadow-xl border border-slate-200/50 animate-fadeIn">
-          {/* Calendar Header - Version compacte */}
-          <div className="flex items-center justify-between p-1.5 sm:p-2.5 border-b border-slate-200/50 bg-gradient-to-r from-white via-blue-50/40 to-white backdrop-blur-sm">
+        <div className="flex flex-col bg-white rounded-b-lg sm:rounded-b-2xl shadow-xl border border-slate-200/50 animate-fadeIn">
+          {/* Calendar Header - Version compacte - STICKY sous le header principal */}
+          <div className="flex items-center justify-between p-1.5 sm:p-2.5 border-b border-slate-200/50 bg-white sticky top-0 z-30">
             <div className="flex items-center gap-1 sm:gap-2 flex-1 justify-center">
               <button
                 onClick={navigatePrevious}

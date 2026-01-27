@@ -699,7 +699,7 @@ export default function DashboardPage() {
             {/* Logo et Titre */}
             <div className="flex items-center gap-2 group cursor-pointer">
               <div className="relative">
-                <div className="relative bg-gradient-to-br from-[#005f82] to-[#007ba8] p-1.5 rounded-md shadow-sm">
+                <div className="relative bg-linear-to-br from-[#005f82] to-[#007ba8] p-1.5 rounded-md shadow-sm">
                   <CalendarIcon className="w-3.5 h-3.5 text-white" />
                 </div>
               </div>
@@ -712,7 +712,7 @@ export default function DashboardPage() {
             <div className="flex items-center gap-1.5 flex-1 justify-center">
               {/* Main View Mode Selector (Personal / Group) avec dropdown intégré */}
               <div className="relative calendar-dropdown-container">
-                <div className="flex gap-1 bg-gradient-to-r from-white/90 to-white/80 backdrop-blur-sm p-1 rounded-lg shadow-sm border border-slate-200/80">
+                <div className="flex gap-1 bg-linear-to-r from-white/90 to-white/80 backdrop-blur-sm p-1 rounded-lg shadow-sm border border-slate-200/80">
                   <button
                     onClick={() => {
                       setMainViewMode('personal');
@@ -1020,12 +1020,12 @@ export default function DashboardPage() {
         </div>
       </header>
 
-      <div className="max-w-[1920px] mx-auto px-1 sm:px-2 py-1 pb-4">
-        <div className="flex gap-2">
+      <div className="max-w-[1920px] mx-auto">
+        <div className="flex">
           {/* Main Calendar */}
           <div className="flex-1 flex flex-col min-w-0">
             {/* Mobile View Mode Selector (Day/Week/Month) - Visible seulement sur mobile */}
-            <div className="sm:hidden mb-1.5 flex justify-center">
+            <div className="sm:hidden flex justify-center">
               <div className="flex gap-1 bg-white p-1 rounded-lg shadow-sm border border-slate-200/80">
                 <button
                   onClick={() => mainViewMode === 'personal' ? setViewMode('day') : setGroupViewMode('day')}
@@ -1070,7 +1070,7 @@ export default function DashboardPage() {
             </div>
 
             {/* Calendar */}
-            <div className="flex-1 relative bg-white/60 backdrop-blur-sm rounded-2xl shadow-xl border border-slate-200/50 p-2">
+            <div className="flex-1 relative bg-white/60 backdrop-blur-sm rounded-b-2xl shadow-xl border border-slate-200/50">
 
               <Calendar
                 tasks={filteredTasks}

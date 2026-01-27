@@ -32,6 +32,7 @@ import {
 import {CalendarSource, Task, ViewMode} from "@/lib/types";
 import {baikalAPI} from "@/lib/api";
 import QuickEventModal from "@/components/QuickEventModal";
+import ConfirmDialog, { RecurrenceConfirmDialog } from "@/components/ConfirmDialog";
 
 // Helper pour parser les dates ISO locales sans conversion timezone
 const parseLocalDate = (dateString: string | Date | undefined | null): Date => {
@@ -249,6 +250,7 @@ const TaskItem = ({
   const taskColor = getTaskColor(task, calendars);
   const startTime = format(parseLocalDate(task.start_date), "HH:mm");
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [showSimpleConfirm, setShowSimpleConfirm] = useState(false);
 
   const handleDelete = (e: React.MouseEvent, deleteAll?: boolean) => {
     e.stopPropagation();
@@ -264,6 +266,7 @@ const TaskItem = ({
       }
     }
     setShowDeleteConfirm(false);
+    setShowSimpleConfirm(false);
   };
 
   return (
@@ -300,7 +303,7 @@ const TaskItem = ({
             if (task.recurrence_id) {
               setShowDeleteConfirm(true);
             } else {
-              handleDelete(e);
+              setShowSimpleConfirm(true);
             }
           }}
           className="opacity-0 group-hover/item:opacity-100 transition-opacity shrink-0 p-0.5 hover:bg-red-500/20 rounded"
@@ -310,41 +313,23 @@ const TaskItem = ({
         </button>
       </div>
 
-      {/* Modal de confirmation pour événements récurrents */}
-      {showDeleteConfirm && (
-        <div
-          className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[200]"
-          onClick={() => setShowDeleteConfirm(false)}
-        >
-          <div
-            className="bg-white rounded-lg shadow-xl p-4 max-w-sm mx-4"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <h3 className="font-semibold text-sm mb-3">Supprimer l&apos;événement récurrent ?</h3>
-            <p className="text-xs text-gray-600 mb-4">Voulez-vous supprimer uniquement cette occurrence ou toutes les occurrences ?</p>
-            <div className="flex gap-2">
-              <button
-                onClick={(e) => handleDelete(e, false)}
-                className="flex-1 px-3 py-2 text-xs bg-gray-100 hover:bg-gray-200 rounded transition-colors"
-              >
-                Cette occurrence
-              </button>
-              <button
-                onClick={(e) => handleDelete(e, true)}
-                className="flex-1 px-3 py-2 text-xs bg-red-500 hover:bg-red-600 text-white rounded transition-colors"
-              >
-                Toutes
-              </button>
-              <button
-                onClick={() => setShowDeleteConfirm(false)}
-                className="px-3 py-2 text-xs border border-gray-300 hover:bg-gray-50 rounded transition-colors"
-              >
-                Annuler
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <ConfirmDialog
+        isOpen={showSimpleConfirm}
+        onClose={() => setShowSimpleConfirm(false)}
+        onConfirm={handleDelete}
+        title="Supprimer l'événement ?"
+        message="Cette action est irréversible"
+        confirmLabel="Supprimer"
+        itemName={task.title}
+        itemDetails={format(parseLocalDate(task.start_date), "d MMMM yyyy 'à' HH:mm", { locale: fr })}
+      />
+
+      <RecurrenceConfirmDialog
+        isOpen={showDeleteConfirm}
+        onClose={() => setShowDeleteConfirm(false)}
+        onConfirmSingle={(e) => handleDelete(e as any, false)}
+        onConfirmAll={(e) => handleDelete(e as any, true)}
+      />
     </>
   );
 };
@@ -366,6 +351,7 @@ const WeekTaskItem = ({
 }) => {
   const taskColor = getTaskColor(task, calendars);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [showSimpleConfirm, setShowSimpleConfirm] = useState(false);
 
   const handleDelete = (e: React.MouseEvent, deleteAll?: boolean) => {
     e.stopPropagation();
@@ -381,6 +367,7 @@ const WeekTaskItem = ({
       }
     }
     setShowDeleteConfirm(false);
+    setShowSimpleConfirm(false);
   };
 
   return (
@@ -395,7 +382,7 @@ const WeekTaskItem = ({
         <div
           {...dragListeners}
           {...dragAttributes}
-          className="cursor-grab active:cursor-grabbing shrink-0 opacity-0 group-hover/item:opacity-100 transition-opacity px-1.5 py-0.5 hover:bg-white/20 rounded mt-0.5"
+          className="cursor-grab active:cursor-grabbing shrink-0 opacity-0 group-hover:item:opacity-100 transition-opacity px-1.5 py-0.5 hover:bg-white/20 rounded mt-0.5"
           onClick={(e) => e.stopPropagation()}
         >
           <GripVertical className="w-3 h-3 text-white" />
@@ -419,51 +406,33 @@ const WeekTaskItem = ({
             if (task.recurrence_id) {
               setShowDeleteConfirm(true);
             } else {
-              handleDelete(e);
+              setShowSimpleConfirm(true);
             }
           }}
-          className="opacity-0 group-hover/item:opacity-100 transition-opacity shrink-0 p-0.5 hover:bg-red-500/20 rounded"
+          className="opacity-0 group-hover:item:opacity-100 transition-opacity shrink-0 p-0.5 hover:bg-red-500/20 rounded"
           title="Supprimer"
         >
           <X className="w-3 h-3 text-red-600" />
         </button>
       </div>
 
-      {/* Modal de confirmation pour événements récurrents */}
-      {showDeleteConfirm && (
-        <div
-          className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[200]"
-          onClick={() => setShowDeleteConfirm(false)}
-        >
-          <div
-            className="bg-white rounded-lg shadow-xl p-4 max-w-sm mx-4"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <h3 className="font-semibold text-sm mb-3">Supprimer l&apos;événement récurrent ?</h3>
-            <p className="text-xs text-gray-600 mb-4">Voulez-vous supprimer uniquement cette occurrence ou toutes les occurrences ?</p>
-            <div className="flex gap-2">
-              <button
-                onClick={(e) => handleDelete(e, false)}
-                className="flex-1 px-3 py-2 text-xs bg-gray-100 hover:bg-gray-200 rounded transition-colors"
-              >
-                Cette occurrence
-              </button>
-              <button
-                onClick={(e) => handleDelete(e, true)}
-                className="flex-1 px-3 py-2 text-xs bg-red-500 hover:bg-red-600 text-white rounded transition-colors"
-              >
-                Toutes
-              </button>
-              <button
-                onClick={() => setShowDeleteConfirm(false)}
-                className="px-3 py-2 text-xs border border-gray-300 hover:bg-gray-50 rounded transition-colors"
-              >
-                Annuler
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <ConfirmDialog
+        isOpen={showSimpleConfirm}
+        onClose={() => setShowSimpleConfirm(false)}
+        onConfirm={handleDelete}
+        title="Supprimer l'événement ?"
+        message="Cette action est irréversible"
+        confirmLabel="Supprimer"
+        itemName={task.title}
+        itemDetails={format(parseLocalDate(task.start_date), "d MMMM yyyy 'à' HH:mm", { locale: fr })}
+      />
+
+      <RecurrenceConfirmDialog
+        isOpen={showDeleteConfirm}
+        onClose={() => setShowDeleteConfirm(false)}
+        onConfirmSingle={(e) => handleDelete(e as any, false)}
+        onConfirmAll={(e) => handleDelete(e as any, true)}
+      />
     </>
   );
 };
@@ -495,6 +464,7 @@ const PositionedEventItem = ({
   const resizeStartY = useRef(0);
   const originalHeight = useRef(height);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [showSimpleConfirm, setShowSimpleConfirm] = useState(false);
 
   const taskColor = getTaskColor(event, calendars);
 
@@ -540,7 +510,7 @@ const PositionedEventItem = ({
     document.addEventListener('mouseup', handleMouseUp);
   };
 
-  const handleDelete = (e: React.MouseEvent, deleteAll?: boolean) => {
+    const handleDelete = (e: React.MouseEvent, deleteAll?: boolean) => {
     e.stopPropagation();
     if (onDelete) {
       // Si deleteAll est true, on crée une copie de l'événement SANS recurrence_id
@@ -554,7 +524,8 @@ const PositionedEventItem = ({
       }
     }
     setShowDeleteConfirm(false);
-  };
+    setShowSimpleConfirm(false);
+    };
 
   return (
     <>
@@ -613,77 +584,59 @@ const PositionedEventItem = ({
             </div>
 
             {/* Bouton de suppression subtil */}
-            {resizeHeight > 30 && (
+            {resizeHeight > 25 && (
               <button
                 onClick={(e) => {
                   e.stopPropagation();
                   if (event.recurrence_id) {
                     setShowDeleteConfirm(true);
                   } else {
-                    handleDelete(e);
+                    setShowSimpleConfirm(true);
                   }
                 }}
-                className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0 p-0.5 hover:bg-red-500/30 rounded bg-white/80"
+                className="absolute top-0.5 right-0.5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0 p-0.5 hover:bg-red-500/30 rounded bg-white/80"
                 title="Supprimer"
               >
-                <X className="w-3 h-3 text-red-600" />
+                <X className="w-2.5 h-2.5 text-red-600" />
               </button>
             )}
           </div>
 
           {/* Badge de durée pendant le redimensionnement */}
           {isResizing && (
-            <div className="absolute top-2 right-2 bg-white/95 backdrop-blur-sm text-black px-2 py-1 rounded-lg shadow-lg text-xs font-bold animate-pulse border-2 border-white">
+            <div className="absolute top-1 right-1 bg-white/95 backdrop-blur-sm text-black px-1.5 py-0.5 rounded shadow-lg text-[10px] font-bold animate-pulse border border-white">
               {Math.floor(resizeHeight / 60)}h{String(resizeHeight % 60).padStart(2, '0')}
             </div>
           )}
 
           {/* Poignée de redimensionnement */}
           <div
-            className="absolute bottom-0 left-0 right-0 h-2 cursor-ns-resize opacity-0 group-hover:opacity-100 transition-all duration-200 flex items-center justify-center"
+            className="absolute bottom-0 left-0 right-0 h-1.5 cursor-ns-resize opacity-0 group-hover:opacity-100 transition-all duration-200 flex items-center justify-center"
             onMouseDown={handleResizeStart}
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="w-12 h-1 bg-white/60 rounded-full shadow-sm"></div>
+            <div className="w-8 h-0.5 bg-white/60 rounded-full shadow-sm"></div>
           </div>
         </div>
       </div>
 
-      {/* Modal de confirmation pour événements récurrents */}
-      {showDeleteConfirm && (
-        <div
-          className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[200]"
-          onClick={() => setShowDeleteConfirm(false)}
-        >
-          <div
-            className="bg-white rounded-lg shadow-xl p-4 max-w-sm mx-4"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <h3 className="font-semibold text-sm mb-3">Supprimer l&apos;événement récurrent ?</h3>
-            <p className="text-xs text-gray-600 mb-4">Voulez-vous supprimer uniquement cette occurrence ou toutes les occurrences ?</p>
-            <div className="flex gap-2">
-              <button
-                onClick={(e) => handleDelete(e, false)}
-                className="flex-1 px-3 py-2 text-xs bg-gray-100 hover:bg-gray-200 rounded transition-colors"
-              >
-                Cette occurrence
-              </button>
-              <button
-                onClick={(e) => handleDelete(e, true)}
-                className="flex-1 px-3 py-2 text-xs bg-red-500 hover:bg-red-600 text-white rounded transition-colors"
-              >
-                Toutes
-              </button>
-              <button
-                onClick={() => setShowDeleteConfirm(false)}
-                className="px-3 py-2 text-xs border border-gray-300 hover:bg-gray-50 rounded transition-colors"
-              >
-                Annuler
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <ConfirmDialog
+        isOpen={showSimpleConfirm}
+        onClose={() => setShowSimpleConfirm(false)}
+        onConfirm={handleDelete}
+        title="Supprimer l'événement ?"
+        message="Cette action est irréversible"
+        confirmLabel="Supprimer"
+        itemName={event.title}
+        itemDetails={format(parseLocalDate(event.start_date), "d MMMM yyyy 'à' HH:mm", { locale: fr })}
+      />
+
+      <RecurrenceConfirmDialog
+        isOpen={showDeleteConfirm}
+        onClose={() => setShowDeleteConfirm(false)}
+        onConfirmSingle={(e) => handleDelete(e as any, false)}
+        onConfirmAll={(e) => handleDelete(e as any, true)}
+      />
     </>
   );
 };
@@ -715,6 +668,7 @@ const PositionedWeekEventItem = ({
   const resizeStartY = useRef(0);
   const originalHeight = useRef(height);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [showSimpleConfirm, setShowSimpleConfirm] = useState(false);
 
   const taskColor = getTaskColor(event, calendars);
 
@@ -760,7 +714,7 @@ const PositionedWeekEventItem = ({
     document.addEventListener('mouseup', handleMouseUp);
   };
 
-  const handleDelete = (e: React.MouseEvent, deleteAll?: boolean) => {
+    const handleDelete = (e: React.MouseEvent, deleteAll?: boolean) => {
     e.stopPropagation();
     if (onDelete) {
       // Si deleteAll est true, on crée une copie de l'événement SANS recurrence_id
@@ -774,7 +728,8 @@ const PositionedWeekEventItem = ({
       }
     }
     setShowDeleteConfirm(false);
-  };
+    setShowSimpleConfirm(false);
+    };
 
   return (
     <>
@@ -805,7 +760,7 @@ const PositionedWeekEventItem = ({
             <div
               {...listeners}
               {...attributes}
-              className="cursor-grab active:cursor-grabbing shrink-0 opacity-0 group-hover:opacity-100 transition-all duration-200 px-1.5 hover:bg-white/30 rounded flex items-center"
+              className="cursor-grab active:cursor-grabbing shrink-0 opacity-0 group-hover:item:opacity-100 transition-all duration-200 px-1.5 hover:bg-white/30 rounded flex items-center"
               style={{ height: `${resizeHeight}px` }}
               onClick={(e) => e.stopPropagation()}
             >
@@ -837,7 +792,7 @@ const PositionedWeekEventItem = ({
                   if (event.recurrence_id) {
                     setShowDeleteConfirm(true);
                   } else {
-                    handleDelete(e);
+                    setShowSimpleConfirm(true);
                   }
                 }}
                 className="absolute top-0.5 right-0.5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0 p-0.5 hover:bg-red-500/30 rounded bg-white/80"
@@ -866,44 +821,27 @@ const PositionedWeekEventItem = ({
         </div>
       </div>
 
-      {/* Modal de confirmation pour événements récurrents */}
-      {showDeleteConfirm && (
-        <div
-          className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[200]"
-          onClick={() => setShowDeleteConfirm(false)}
-        >
-          <div
-            className="bg-white rounded-lg shadow-xl p-4 max-w-sm mx-4"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <h3 className="font-semibold text-sm mb-3">Supprimer l&apos;événement récurrent ?</h3>
-            <p className="text-xs text-gray-600 mb-4">Voulez-vous supprimer uniquement cette occurrence ou toutes les occurrences ?</p>
-            <div className="flex gap-2">
-              <button
-                onClick={(e) => handleDelete(e, false)}
-                className="flex-1 px-3 py-2 text-xs bg-gray-100 hover:bg-gray-200 rounded transition-colors"
-              >
-                Cette occurrence
-              </button>
-              <button
-                onClick={(e) => handleDelete(e, true)}
-                className="flex-1 px-3 py-2 text-xs bg-red-500 hover:bg-red-600 text-white rounded transition-colors"
-              >
-                Toutes
-              </button>
-              <button
-                onClick={() => setShowDeleteConfirm(false)}
-                className="px-3 py-2 text-xs border border-gray-300 hover:bg-gray-50 rounded transition-colors"
-              >
-                Annuler
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <ConfirmDialog
+        isOpen={showSimpleConfirm}
+        onClose={() => setShowSimpleConfirm(false)}
+        onConfirm={handleDelete}
+        title="Supprimer l'événement ?"
+        message="Cette action est irréversible"
+        confirmLabel="Supprimer"
+        itemName={event.title}
+        itemDetails={format(parseLocalDate(event.start_date), "d MMMM yyyy 'à' HH:mm", { locale: fr })}
+      />
+
+      <RecurrenceConfirmDialog
+        isOpen={showDeleteConfirm}
+        onClose={() => setShowDeleteConfirm(false)}
+        onConfirmSingle={(e) => handleDelete(e as any, false)}
+        onConfirmAll={(e) => handleDelete(e as any, true)}
+      />
     </>
   );
 };
+
 
 export default function Calendar({
   tasks,

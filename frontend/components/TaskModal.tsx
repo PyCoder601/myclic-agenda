@@ -7,6 +7,7 @@ import RichTextEditor from './RichTextEditor';
 import { useAppSelector, useAppDispatch } from '@/store/hooks';
 import { fetchCalendars, addBulkEvents } from '@/store/calendarSlice';
 import { baikalAPI } from '@/lib/api';
+import { RecurrenceConfirmDialog } from './ConfirmDialog';
 
 interface TaskModalProps {
   isOpen: boolean;
@@ -91,6 +92,7 @@ export default function TaskModal({ isOpen, onClose, onSave, onDelete, task, ini
 
   // État pour la boîte de dialogue de confirmation de suppression
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [showSimpleConfirm, setShowSimpleConfirm] = useState(false);
   const [deleteOption, setDeleteOption] = useState<'all' | 'single'>('single');
 
   // Filtrer les calendriers (non-ressources) selon la recherche
@@ -598,30 +600,34 @@ export default function TaskModal({ isOpen, onClose, onSave, onDelete, task, ini
 
   const handleDelete = () => {
     if (task) {
-      // Si l'événement a un recurrence_id, c'est un événement récurrent
+      // Toujours afficher la confirmation, que l'événement soit récurrent ou non
       if (task.recurrence_id) {
-        // Afficher la boîte de dialogue de confirmation
         setShowDeleteConfirm(true);
       } else {
-        // Suppression directe pour les événements non récurrents
-        if (onDelete) {
-          onDelete(task.url || '', task.id);
-          onClose();
-        }
+        setShowSimpleConfirm(true);
       }
     }
   };
 
-  const handleConfirmDelete = () => {
+  const handleConfirmDeleteSingle = () => {
     if (task && onDelete) {
-      if (deleteOption === 'single' && task.recurrence_id) {
+      if (task.recurrence_id) {
         // Supprimer uniquement cette occurrence
-        // ✅ Passer l'ID de l'événement principal, puis le recurrence_id
         onDelete(task.url || '', task.id, task.recurrence_id);
       } else {
-        // Supprimer toutes les occurrences
+        // Supprimer l'événement non récurrent
         onDelete(task.url || '', task.id);
       }
+      setShowDeleteConfirm(false);
+      setShowSimpleConfirm(false);
+      onClose();
+    }
+  };
+
+  const handleConfirmDeleteAll = () => {
+    if (task && onDelete) {
+      // Supprimer toutes les occurrences
+      onDelete(task.url || '', task.id);
       setShowDeleteConfirm(false);
       onClose();
     }
@@ -629,59 +635,38 @@ export default function TaskModal({ isOpen, onClose, onSave, onDelete, task, ini
 
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-2 sm:p-3 animate-fadeIn">
-      {/* Boîte de dialogue de confirmation de suppression */}
-      {showDeleteConfirm && (
-        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-60">
-          <div className="bg-white rounded-lg shadow-2xl max-w-md w-full mx-4 p-6">
-            <h3 className="text-xl font-bold text-[#005f82] mb-4">
-              Supprimer l&apos;événement récurrent
-            </h3>
-            <p className="text-slate-600 mb-6">
-              Cet événement fait partie d&apos;une série récurrente. Que souhaitez-vous supprimer ?
-            </p>
-
-            <div className="space-y-3 mb-6">
-              <label className="flex items-center space-x-3 cursor-pointer p-3 border border-slate-300 rounded-lg hover:bg-slate-50 transition-colors">
-                <input
-                  type="radio"
-                  name="deleteOption"
-                  value="single"
-                  checked={deleteOption === 'single'}
-                  onChange={(e) => setDeleteOption(e.target.value as 'all' | 'single')}
-                  className="w-4 h-4 text-[#005f82] focus:ring-[#005f82]"
-                />
-                <div>
-                  <div className="font-semibold text-slate-800">Cet événement uniquement</div>
-                  <div className="text-sm text-slate-500">Les autres occurrences seront conservées</div>
-                </div>
-              </label>
-
-              <label className="flex items-center space-x-3 cursor-pointer p-3 border border-slate-300 rounded-lg hover:bg-slate-50 transition-colors">
-                <input
-                  type="radio"
-                  name="deleteOption"
-                  value="all"
-                  checked={deleteOption === 'all'}
-                  onChange={(e) => setDeleteOption(e.target.value as 'all' | 'single')}
-                  className="w-4 h-4 text-[#005f82] focus:ring-[#005f82]"
-                />
-                <div>
-                  <div className="font-semibold text-slate-800">Toutes les occurrences</div>
-                  <div className="text-sm text-slate-500">Supprime l&apos;événement récurrent complet</div>
-                </div>
-              </label>
+      {/* Popup de confirmation simple pour événements non récurrents */}
+      {showSimpleConfirm && (
+        <div
+          className="fixed inset-0 flex items-center justify-center z-[60]"
+          onClick={() => setShowSimpleConfirm(false)}
+        >
+          <div
+            className="bg-white rounded-xl shadow-2xl p-5 max-w-sm mx-4 border border-gray-200 animate-in fade-in zoom-in duration-200"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex flex-col items-center text-center mb-4">
+              <div className="w-12 h-12 rounded-full bg-red-50 flex items-center justify-center mb-3">
+                <X className="w-6 h-6 text-red-500" />
+              </div>
+              <h3 className="font-semibold text-lg text-gray-900">Supprimer l&apos;événement ?</h3>
+              <p className="text-sm text-gray-500 mt-1">Cette action est irréversible</p>
             </div>
-
-            <div className="flex justify-end space-x-3">
+            {task && (
+              <div className="bg-gray-50 rounded-lg p-3 mb-4 text-center">
+                <p className="text-sm font-medium text-gray-900">{task.title}</p>
+              </div>
+            )}
+            <div className="flex gap-2">
               <button
-                onClick={() => setShowDeleteConfirm(false)}
-                className="px-4 py-2 text-sm font-semibold text-slate-700 bg-white border border-slate-300 rounded hover:bg-slate-100 transition-colors"
+                onClick={() => setShowSimpleConfirm(false)}
+                className="flex-1 px-4 py-2 text-sm font-medium bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-all"
               >
                 Annuler
               </button>
               <button
-                onClick={handleConfirmDelete}
-                className="px-4 py-2 text-sm font-semibold text-white bg-red-600 rounded hover:bg-red-700 transition-colors"
+                onClick={handleConfirmDeleteSingle}
+                className="flex-1 px-4 py-2 text-sm font-medium bg-red-500 hover:bg-red-600 text-white rounded-lg transition-all shadow-sm"
               >
                 Supprimer
               </button>
@@ -689,6 +674,14 @@ export default function TaskModal({ isOpen, onClose, onSave, onDelete, task, ini
           </div>
         </div>
       )}
+
+      {/* Popup de confirmation pour événements récurrents */}
+      <RecurrenceConfirmDialog
+        isOpen={showDeleteConfirm}
+        onClose={() => setShowDeleteConfirm(false)}
+        onConfirmSingle={handleConfirmDeleteSingle}
+        onConfirmAll={handleConfirmDeleteAll}
+      />
 
       <div className="bg-white max-w-4xl w-full max-h-[90vh] overflow-hidden shadow-xl border border-slate-200/80 flex flex-col rounded-xl">
         {/* Header compact */}

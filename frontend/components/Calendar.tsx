@@ -1766,39 +1766,54 @@ export default function Calendar({
         onDragEnd={handleDragEnd}
       >
         <div className="flex flex-col bg-white rounded-b-lg sm:rounded-b-2xl shadow-xl border border-slate-200/50 animate-fadeIn">
-          {/* Calendar Header - Version compacte - STICKY sous le header principal */}
-          <div className="flex items-center justify-between p-1.5 sm:p-2.5 border-b border-slate-200/50 bg-white sticky top-0 z-30">
-            <div className="flex items-center gap-1 sm:gap-2 flex-1 justify-center">
+          {/* Calendar Header - Boutons de navigation élégants - STICKY sous le header principal */}
+          <div className="flex items-center justify-center p-2 sm:p-2.5 border-b border-slate-200/50 bg-gradient-to-r from-white via-slate-50/50 to-white sticky top-0 z-30">
+            <div className="flex items-center gap-2 sm:gap-3">
+              {/* Bouton Précédent */}
               <button
                 onClick={navigatePrevious}
                 disabled={isNavigating}
-                className={`group p-1 sm:p-1.5 hover:bg-gradient-to-r hover:from-blue-50 hover:to-indigo-50 rounded-lg transition-all duration-300 text-slate-700 hover:shadow-md border border-transparent hover:border-[#005f82]/20 ${isNavigating ? 'opacity-50 cursor-not-allowed' : ''}`}
+                className={`group relative flex items-center justify-center w-7 h-7 sm:w-8 sm:h-8 rounded-lg transition-all duration-300 ${
+                  isNavigating 
+                    ? 'opacity-50 cursor-not-allowed bg-slate-100' 
+                    : 'bg-white hover:bg-gradient-to-br hover:from-[#005f82] hover:to-[#007ba8] border border-slate-200 hover:border-[#005f82] shadow-sm hover:shadow-md hover:scale-105'
+                }`}
                 title="Période précédente"
               >
                 {isNavigating ? (
-                  <div className="w-4 h-4 border-2 border-slate-300 border-t-[#005f82] rounded-full animate-spin" />
+                  <div className="w-3.5 h-3.5 border-2 border-slate-300 border-t-[#005f82] rounded-full animate-spin" />
                 ) : (
-                  <ChevronLeft className="w-4 h-4 text-slate-600 group-hover:text-[#005f82] transition-all duration-300 group-hover:-translate-x-1" />
+                  <ChevronLeft className="w-4 h-4 text-slate-600 group-hover:text-white transition-all duration-300 group-hover:-translate-x-0.5" />
                 )}
               </button>
-              <div className="text-center flex-1 px-1">
-                <h2 className="text-xs sm:text-base font-bold bg-gradient-to-r from-[#005f82] to-[#007ba8] bg-clip-text text-transparent capitalize">
+
+              {/* Titre de la date */}
+              <div className="text-center px-2 sm:px-4 min-w-[160px] sm:min-w-[240px]">
+                <h2 className="text-sm sm:text-base font-bold bg-gradient-to-r from-[#005f82] via-[#007ba8] to-[#005f82] bg-clip-text text-transparent capitalize tracking-tight">
                   {getDateRange}
-                  {isNavigating && (
-                    <span className="ml-1 text-[10px] text-slate-500 font-normal">Chargement...</span>
-                  )}
                 </h2>
+                {isNavigating && (
+                  <p className="text-[9px] text-slate-500 font-medium mt-0.5 animate-pulse">
+                    Chargement...
+                  </p>
+                )}
               </div>
+
+              {/* Bouton Suivant */}
               <button
                 onClick={navigateNext}
                 disabled={isNavigating}
-                className={`group p-1 sm:p-1.5 hover:bg-gradient-to-r hover:from-blue-50 hover:to-indigo-50 rounded-lg transition-all duration-300 text-slate-700 hover:shadow-md border border-transparent hover:border-[#005f82]/20 ${isNavigating ? 'opacity-50 cursor-not-allowed' : ''}`}
+                className={`group relative flex items-center justify-center w-7 h-7 sm:w-8 sm:h-8 rounded-lg transition-all duration-300 ${
+                  isNavigating 
+                    ? 'opacity-50 cursor-not-allowed bg-slate-100' 
+                    : 'bg-white hover:bg-gradient-to-br hover:from-[#005f82] hover:to-[#007ba8] border border-slate-200 hover:border-[#005f82] shadow-sm hover:shadow-md hover:scale-105'
+                }`}
                 title="Période suivante"
               >
                 {isNavigating ? (
-                  <div className="w-4 h-4 border-2 border-slate-300 border-t-[#005f82] rounded-full animate-spin" />
+                  <div className="w-3.5 h-3.5 border-2 border-slate-300 border-t-[#005f82] rounded-full animate-spin" />
                 ) : (
-                  <ChevronRight className="w-4 h-4 text-slate-600 group-hover:text-[#005f82] transition-all duration-300 group-hover:translate-x-1" />
+                  <ChevronRight className="w-4 h-4 text-slate-600 group-hover:text-white transition-all duration-300 group-hover:translate-x-0.5" />
                 )}
               </button>
             </div>

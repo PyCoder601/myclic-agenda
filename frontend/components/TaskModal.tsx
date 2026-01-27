@@ -659,6 +659,20 @@ export default function TaskModal({ isOpen, onClose, onSave, onDelete, task, ini
       return;
     }
 
+    // ✅ Filtrer la date originale pour ne pas créer de duplicata sur la même date
+    const originalEventDate = task?.start_date ? new Date(task.start_date) : null;
+    const datesToDuplicate = selectedDates.filter(date => {
+      if (!originalEventDate) return true;
+      return date.toDateString() !== originalEventDate.toDateString();
+    });
+
+    if (datesToDuplicate.length === 0) {
+      alert('Veuillez sélectionner au moins une nouvelle date (différente de la date originale).');
+      return;
+    }
+
+    console.log('📅 Dates à dupliquer (hors date originale):', datesToDuplicate.length);
+
     setIsCreating(true);
     try {
       // Extraire les heures de début et fin depuis l'événement existant
@@ -677,7 +691,7 @@ export default function TaskModal({ isOpen, onClose, onSave, onDelete, task, ini
           location: formData.location || '',
           start_time: startTime,
           end_time: endTime,
-          dates: selectedDates.map(date => {
+          dates: datesToDuplicate.map(date => {
             const year = date.getFullYear();
             const month = String(date.getMonth() + 1).padStart(2, '0');
             const day = String(date.getDate()).padStart(2, '0');
@@ -691,7 +705,7 @@ export default function TaskModal({ isOpen, onClose, onSave, onDelete, task, ini
           affair_id: selectedAffair?.id,
         })).unwrap();
 
-        console.log(`✅ ${selectedDates.length} nouveaux événements créés (duplication) pour ${calendar.displayname}`);
+        console.log(`✅ ${datesToDuplicate.length} nouveaux événements créés (duplication) pour ${calendar.displayname}`);
       }
 
       setIsCreating(false);

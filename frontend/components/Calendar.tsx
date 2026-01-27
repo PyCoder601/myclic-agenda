@@ -239,6 +239,7 @@ const TaskItem = ({
   dragAttributes,
   calendars,
   onDelete,
+  onContextMenu,
 }: {
   task: Task;
   onTaskClick: (task: Task) => void;
@@ -246,6 +247,7 @@ const TaskItem = ({
   dragAttributes?: DraggableAttributes;
   calendars: CalendarSource[];
   onDelete?: (task: Task) => void;
+  onContextMenu?: (e: React.MouseEvent, task: Task) => void;
 }) => {
   const taskColor = getTaskColor(task, calendars);
   const startTime = format(parseLocalDate(task.start_date), "HH:mm");
@@ -277,6 +279,7 @@ const TaskItem = ({
           background: `linear-gradient(to right, ${taskColor}, ${taskColor}dd)`,
           borderLeft: `3px solid ${taskColor}`,
         }}
+        onContextMenu={(e) => onContextMenu && onContextMenu(e, task)}
       >
         <div
           {...dragListeners}
@@ -341,6 +344,7 @@ const WeekTaskItem = ({
   dragAttributes,
   calendars,
   onDelete,
+  onContextMenu,
 }: {
   task: Task;
   onTaskClick: (task: Task) => void;
@@ -348,6 +352,7 @@ const WeekTaskItem = ({
   dragAttributes?: DraggableAttributes;
   calendars: CalendarSource[];
   onDelete?: (task: Task) => void;
+  onContextMenu?: (e: React.MouseEvent, task: Task) => void;
 }) => {
   const taskColor = getTaskColor(task, calendars);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
@@ -378,6 +383,7 @@ const WeekTaskItem = ({
           background: `linear-gradient(to right, ${taskColor}, ${taskColor}dd)`,
           borderLeft: `3px solid ${taskColor}`,
         }}
+        onContextMenu={(e) => onContextMenu && onContextMenu(e, task)}
       >
         <div
           {...dragListeners}
@@ -446,6 +452,7 @@ const PositionedEventItem = ({
   height,
   onResize,
   onDelete,
+  onContextMenu,
 }: {
   event: Task;
   onTaskClick: (task: Task) => void;
@@ -454,6 +461,7 @@ const PositionedEventItem = ({
   height: number;
   onResize?: (eventId: string, newHeight: number) => void;
   onDelete?: (task: Task) => void;
+  onContextMenu?: (e: React.MouseEvent, task: Task) => void;
 }) => {
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
     id: event.id,
@@ -551,6 +559,7 @@ const PositionedEventItem = ({
               onTaskClick(event);
             }
           }}
+          onContextMenu={(e) => onContextMenu && onContextMenu(e, event)}
         >
           <div className="flex items-start gap-1 h-full">
             <div
@@ -594,7 +603,7 @@ const PositionedEventItem = ({
                     setShowSimpleConfirm(true);
                   }
                 }}
-                className="absolute top-0.5 right-0.5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0 p-0.5 hover:bg-red-500/30 rounded bg-white/80"
+                className="absolute top-0.5 right-0.5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0 p-0.5 hover:bg-red-500/30 rounded"
                 title="Supprimer"
               >
                 <X className="w-2.5 h-2.5 text-red-600" />
@@ -650,6 +659,7 @@ const PositionedWeekEventItem = ({
   height,
   onResize,
   onDelete,
+  onContextMenu,
 }: {
   event: Task;
   onTaskClick: (task: Task) => void;
@@ -658,6 +668,7 @@ const PositionedWeekEventItem = ({
   height: number;
   onResize?: (eventId: string, newHeight: number) => void;
   onDelete?: (task: Task) => void;
+  onContextMenu?: (e: React.MouseEvent, task: Task) => void;
 }) => {
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
     id: event.id,
@@ -755,6 +766,7 @@ const PositionedWeekEventItem = ({
               onTaskClick(event);
             }
           }}
+          onContextMenu={(e) => onContextMenu && onContextMenu(e, event)}
         >
           <div className="flex items-start gap-0.5 h-full">
             <div
@@ -855,6 +867,7 @@ export default function Calendar({
   onTaskDrop,
   onTaskResize,
   onTaskDelete,
+  onTaskDuplicate,
   calendars = [],
   isNavigating = false,
   pendingDate = null,
@@ -871,6 +884,10 @@ export default function Calendar({
   const [quickModalDate, setQuickModalDate] = useState<Date>(new Date());
   const [quickModalHour, setQuickModalHour] = useState<number>(9);
 
+  // États pour la duplication (clic droit)
+  const [showDuplicateConfirm, setShowDuplicateConfirm] = useState(false);
+  const [taskToDuplicate, setTaskToDuplicate] = useState<Task | null>(null);
+
   // Configurer les sensors pour un drag & drop plus fluide
   const mouseSensor = useSensor(MouseSensor, {
     activationConstraint: {
@@ -886,6 +903,23 @@ export default function Calendar({
   });
 
   const sensors = useSensors(mouseSensor, touchSensor);
+
+  // Handler pour le clic droit - duplication directe
+  const handleContextMenu = useCallback((e: React.MouseEvent, task: Task) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setTaskToDuplicate(task);
+    setShowDuplicateConfirm(true);
+  }, []);
+
+  // Confirmation de la duplication
+  const confirmDuplicateTask = useCallback(() => {
+    if (taskToDuplicate && onTaskDuplicate) {
+      onTaskDuplicate(taskToDuplicate);
+    }
+    setShowDuplicateConfirm(false);
+    setTaskToDuplicate(null);
+  }, [taskToDuplicate, onTaskDuplicate]);
 
   // Handler pour le redimensionnement des événements
   const handleEventResize = useCallback((eventId: string, newHeight: number) => {
@@ -1177,6 +1211,7 @@ export default function Calendar({
             dragAttributes={attributes}
             calendars={calendars}
             onDelete={onTaskDelete}
+            onContextMenu={handleContextMenu}
           />
         ) : (
           <WeekTaskItem
@@ -1186,6 +1221,7 @@ export default function Calendar({
             dragAttributes={attributes}
             calendars={calendars}
             onDelete={onTaskDelete}
+            onContextMenu={handleContextMenu}
           />
         )}
       </div>
@@ -1320,6 +1356,7 @@ export default function Calendar({
                     height={event.height}
                     onResize={handleEventResize}
                     onDelete={onTaskDelete}
+                    onContextMenu={handleContextMenu}
                   />
                 );
               })}
@@ -1470,6 +1507,7 @@ export default function Calendar({
                         height={displayHeight}
                         onResize={handleEventResize}
                         onDelete={onTaskDelete}
+                        onContextMenu={handleContextMenu}
                       />
                     );
                   })}
@@ -1811,6 +1849,22 @@ export default function Calendar({
         initialDate={quickModalDate}
         initialHour={quickModalHour}
         position={quickModalPosition}
+      />
+
+      {/* Confirmation de duplication (clic droit) */}
+      <ConfirmDialog
+        isOpen={showDuplicateConfirm}
+        onClose={() => {
+          setShowDuplicateConfirm(false);
+          setTaskToDuplicate(null);
+        }}
+        onConfirm={confirmDuplicateTask}
+        title="Dupliquer l'événement ?"
+        message="Une copie de cet événement sera créée"
+        confirmLabel="Dupliquer"
+        variant="success"
+        itemName={taskToDuplicate?.title || ''}
+        itemDetails={taskToDuplicate ? format(parseLocalDate(taskToDuplicate.start_date), "d MMMM yyyy 'à' HH:mm", { locale: fr }) : ''}
       />
     </>
   );

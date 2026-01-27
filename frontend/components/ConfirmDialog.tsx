@@ -1,6 +1,6 @@
 'use client';
 
-import { X } from 'lucide-react';
+import { X, Copy, Trash2, AlertTriangle } from 'lucide-react';
 
 interface ConfirmDialogProps {
   isOpen: boolean;
@@ -10,7 +10,7 @@ interface ConfirmDialogProps {
   message: string;
   confirmLabel?: string;
   cancelLabel?: string;
-  variant?: 'danger' | 'warning';
+  variant?: 'danger' | 'warning' | 'success' | 'info';
   itemName?: string;
   itemDetails?: string;
 }
@@ -29,9 +29,40 @@ export default function ConfirmDialog({
 }: ConfirmDialogProps) {
   if (!isOpen) return null;
 
-  const buttonClasses = variant === 'danger'
-    ? 'bg-red-500 hover:bg-red-600'
-    : 'bg-orange-500 hover:bg-orange-600';
+  const getVariantStyles = () => {
+    switch (variant) {
+      case 'danger':
+        return {
+          iconBg: 'bg-red-50',
+          iconColor: 'text-red-500',
+          buttonClass: 'bg-red-500 hover:bg-red-600',
+          Icon: Trash2,
+        };
+      case 'warning':
+        return {
+          iconBg: 'bg-orange-50',
+          iconColor: 'text-orange-500',
+          buttonClass: 'bg-orange-500 hover:bg-orange-600',
+          Icon: AlertTriangle,
+        };
+      case 'success':
+        return {
+          iconBg: 'bg-green-50',
+          iconColor: 'text-green-500',
+          buttonClass: 'bg-green-500 hover:bg-green-600',
+          Icon: Copy,
+        };
+      case 'info':
+        return {
+          iconBg: 'bg-blue-50',
+          iconColor: 'text-blue-500',
+          buttonClass: 'bg-blue-500 hover:bg-blue-600',
+          Icon: Copy,
+        };
+    }
+  };
+
+  const { iconBg, iconColor, buttonClass, Icon } = getVariantStyles();
 
   return (
     <div
@@ -43,6 +74,9 @@ export default function ConfirmDialog({
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex flex-col items-center text-center mb-4">
+          <div className={`w-12 h-12 rounded-full ${iconBg} flex items-center justify-center mb-3`}>
+            <Icon className={`w-6 h-6 ${iconColor}`} />
+          </div>
           <h3 className="font-semibold text-lg text-gray-900">{title}</h3>
           <p className="text-sm text-gray-500 mt-1">{message}</p>
         </div>
@@ -66,7 +100,7 @@ export default function ConfirmDialog({
               onConfirm();
               onClose();
             }}
-            className={`flex-1 px-4 py-2 text-sm font-medium text-white rounded-lg transition-all shadow-sm ${buttonClasses}`}
+            className={`flex-1 px-4 py-2 text-sm font-medium text-white rounded-lg transition-all shadow-sm ${buttonClass}`}
           >
             {confirmLabel}
           </button>

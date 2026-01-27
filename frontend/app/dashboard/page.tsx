@@ -457,6 +457,32 @@ export default function DashboardPage() {
     }
   }, [dispatch, calendars]);
 
+  // Handler pour dupliquer un événement
+  const handleTaskDuplicate = useCallback(async (task: Task) => {
+    try {
+      console.log('📋 Duplication de l\'événement:', task.title);
+
+      // Créer une copie de l'événement sans l'id, url, created_at, updated_at et recurrence_id
+      const duplicatedTask = {
+        title: `${task.title} (copie)`,
+        start_date: task.start_date,
+        end_date: task.end_date,
+        description: task.description || '',
+        location: task.location || '',
+        calendar_source_name: task.calendar_source_name,
+        calendar_source_id: task.calendar_source_id,
+        calendar_source_uri: task.calendar_source_uri || '',
+        calendar_source_color: task.calendar_source_color,
+        // Ne pas inclure: id, url, created_at, updated_at, recurrence_id
+      };
+
+      await dispatch(createEvent(duplicatedTask)).unwrap();
+      console.log('✅ Événement dupliqué avec succès');
+    } catch (error) {
+      console.error('❌ Erreur lors de la duplication:', error);
+    }
+  }, [dispatch]);
+
   const handleTaskDrop = useCallback(async (taskId: string, newDate: Date) => {
     console.log('📦 handleTaskDrop:', { taskId, newDate: format(newDate, "dd/MM/yyyy HH:mm") });
 
@@ -1041,6 +1067,7 @@ export default function DashboardPage() {
                 onTaskDrop={handleTaskDrop}
                 onTaskResize={handleTaskResize}
                 onTaskDelete={handleTaskDelete}
+                onTaskDuplicate={handleTaskDuplicate}
                 calendars={calendars}
               />
             </div>

@@ -462,11 +462,30 @@ export default function DashboardPage() {
     try {
       console.log('📋 Duplication de l\'événement:', task.title);
 
+      // Parser les dates de l'événement original
+      const originalStartDate = parseLocalDate(task.start_date);
+      const originalEndDate = parseLocalDate(task.end_date);
+
+      // Calculer la durée de l'événement
+      const durationMs = originalEndDate.getTime() - originalStartDate.getTime();
+
+      // Créer les nouvelles dates à J+1
+      const newStartDate = new Date(originalStartDate);
+      newStartDate.setDate(newStartDate.getDate() + 1); // Ajouter 1 jour
+
+      const newEndDate = new Date(newStartDate.getTime() + durationMs); // Conserver la même durée
+
+      console.log('📅 Dates de duplication:', {
+        original: format(originalStartDate, "dd/MM/yyyy HH:mm"),
+        nouveau: format(newStartDate, "dd/MM/yyyy HH:mm"),
+        durée: `${Math.floor(durationMs / 60000)} minutes`
+      });
+
       // Créer une copie de l'événement sans l'id, url, created_at, updated_at et recurrence_id
       const duplicatedTask = {
         title: `${task.title} (copie)`,
-        start_date: task.start_date,
-        end_date: task.end_date,
+        start_date: formatLocalDateTime(newStartDate), // J+1
+        end_date: formatLocalDateTime(newEndDate),     // J+1 + durée
         description: task.description || '',
         location: task.location || '',
         calendar_source_name: task.calendar_source_name,
@@ -477,7 +496,7 @@ export default function DashboardPage() {
       };
 
       await dispatch(createEvent(duplicatedTask)).unwrap();
-      console.log('✅ Événement dupliqué avec succès');
+      console.log('✅ Événement dupliqué avec succès à J+1');
     } catch (error) {
       console.error('❌ Erreur lors de la duplication:', error);
     }

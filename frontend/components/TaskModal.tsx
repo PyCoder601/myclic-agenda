@@ -7,7 +7,7 @@ import RichTextEditor from './RichTextEditor';
 import { useAppSelector, useAppDispatch } from '@/store/hooks';
 import { fetchCalendars, addBulkEvents } from '@/store/calendarSlice';
 import { baikalAPI } from '@/lib/api';
-import { RecurrenceConfirmDialog } from './ConfirmDialog';
+import ConfirmDialog, { RecurrenceConfirmDialog } from './ConfirmDialog';
 
 interface TaskModalProps {
   isOpen: boolean;
@@ -93,7 +93,6 @@ export default function TaskModal({ isOpen, onClose, onSave, onDelete, task, ini
   // État pour la boîte de dialogue de confirmation de suppression
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [showSimpleConfirm, setShowSimpleConfirm] = useState(false);
-  const [deleteOption, setDeleteOption] = useState<'all' | 'single'>('single');
 
   // Filtrer les calendriers (non-ressources) selon la recherche
   const filteredCalendars = calendars.filter(cal => {
@@ -636,44 +635,15 @@ export default function TaskModal({ isOpen, onClose, onSave, onDelete, task, ini
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-2 sm:p-3 animate-fadeIn">
       {/* Popup de confirmation simple pour événements non récurrents */}
-      {showSimpleConfirm && (
-        <div
-          className="fixed inset-0 flex items-center justify-center z-[60]"
-          onClick={() => setShowSimpleConfirm(false)}
-        >
-          <div
-            className="bg-white rounded-xl shadow-2xl p-5 max-w-sm mx-4 border border-gray-200 animate-in fade-in zoom-in duration-200"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="flex flex-col items-center text-center mb-4">
-              <div className="w-12 h-12 rounded-full bg-red-50 flex items-center justify-center mb-3">
-                <X className="w-6 h-6 text-red-500" />
-              </div>
-              <h3 className="font-semibold text-lg text-gray-900">Supprimer l&apos;événement ?</h3>
-              <p className="text-sm text-gray-500 mt-1">Cette action est irréversible</p>
-            </div>
-            {task && (
-              <div className="bg-gray-50 rounded-lg p-3 mb-4 text-center">
-                <p className="text-sm font-medium text-gray-900">{task.title}</p>
-              </div>
-            )}
-            <div className="flex gap-2">
-              <button
-                onClick={() => setShowSimpleConfirm(false)}
-                className="flex-1 px-4 py-2 text-sm font-medium bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-all"
-              >
-                Annuler
-              </button>
-              <button
-                onClick={handleConfirmDeleteSingle}
-                className="flex-1 px-4 py-2 text-sm font-medium bg-red-500 hover:bg-red-600 text-white rounded-lg transition-all shadow-sm"
-              >
-                Supprimer
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <ConfirmDialog
+        isOpen={showSimpleConfirm}
+        onClose={() => setShowSimpleConfirm(false)}
+        onConfirm={handleConfirmDeleteSingle}
+        title="Supprimer l'événement ?"
+        message="Cette action est irréversible"
+        confirmLabel="Supprimer"
+        itemName={task?.title || ''}
+      />
 
       {/* Popup de confirmation pour événements récurrents */}
       <RecurrenceConfirmDialog

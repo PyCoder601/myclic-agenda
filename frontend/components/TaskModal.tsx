@@ -402,7 +402,14 @@ export default function TaskModal({ isOpen, onClose, onSave, onDelete, task, ini
       defined_name: cal.defined_name,
     })));
 
-    // Si c'est une modification, on garde un seul calendrier (le premier)
+    // ✅ CAS SPÉCIAL : Dates multiples en mode édition = Duplication aux nouvelles dates
+    if (task && activeTab === 'multipleDates' && selectedDates.length > 0) {
+      console.log('📅 Mode duplication : création de nouveaux événements aux dates sélectionnées');
+      submitDuplicateToMultipleDates(selectedCalendars);
+      return;
+    }
+
+    // Si c'est une modification normale (pas dates multiples)
     if (task) {
       submitWithCalendar(selectedCalendars[0]);
     } else {
@@ -452,6 +459,61 @@ export default function TaskModal({ isOpen, onClose, onSave, onDelete, task, ini
       ...(selectedAffair && { affair_id: selectedAffair.id }),
     });
     onClose();
+  };
+
+  const submitDuplicateToMultipleDates = async (selectedCalendars: CalendarSource[]) => {
+    console.log('=== TaskModal Duplicate to Multiple Dates ===');
+    console.log('Événement source:', task?.title);
+    console.log('Dates sélectionnées:', selectedDates.length);
+
+    if (selectedDates.length === 0) {
+      alert('Veuillez sélectionner au moins une date.');
+      return;
+    }
+
+    setIsCreating(true);
+    try {
+      // Extraire les heures de début et fin depuis l'événement existant
+      const startDate = new Date(formData.start_date);
+      const endDate = new Date(formData.end_date);
+      const startTime = `${String(startDate.getHours()).padStart(2, '0')}:${String(startDate.getMinutes()).padStart(2, '0')}`;
+      const endTime = `${String(endDate.getHours()).padStart(2, '0')}:${String(endDate.getMinutes()).padStart(2, '0')}`;
+
+      for (const calendar of selectedCalendars) {
+        console.log('🔄 Duplication vers dates multiples dans:', calendar.displayname || calendar.defined_name);
+
+        // Utiliser l'action Redux optimisée avec création optimiste
+        await dispatch(createMultipleDateEvents({
+          title: formData.title,
+          description: formData.description,
+          location: formData.location || '',
+          start_time: startTime,
+          end_time: endTime,
+          dates: selectedDates.map(date => {
+            const year = date.getFullYear();
+            const month = String(date.getMonth() + 1).padStart(2, '0');
+            const day = String(date.getDate()).padStart(2, '0');
+            return `${year}-${month}-${day}`;
+          }),
+          calendar_source_id: calendar.id,
+          calendar_source_name: calendar.displayname || calendar.defined_name || '',
+          calendar_source_color: calendar.calendarcolor || '#005f82',
+          calendar_source_uri: calendar.uri || '',
+          client_id: selectedClient?.id,
+          affair_id: selectedAffair?.id,
+        })).unwrap();
+
+        console.log(`✅ ${selectedDates.length} nouveaux événements créés (duplication) pour ${calendar.displayname}`);
+      }
+
+      setIsCreating(false);
+      onClose();
+
+    } catch (error) {
+      console.error('❌ Erreur lors de la duplication vers dates multiples:', error);
+      setIsCreating(false);
+      alert(`Erreur lors de la création des événements.\n${error instanceof Error ? error.message : 'Erreur inconnue'}`);
+    }
   };
 
   const submitWithMultipleCalendars = async (selectedCalendars: CalendarSource[]) => {
@@ -1719,20 +1781,18 @@ export default function TaskModal({ isOpen, onClose, onSave, onDelete, task, ini
             {/* Contenu de l'onglet Dates multiples */}
             {activeTab === 'multipleDates' && (
               <div className="space-y-6">
-                <div className="bg-blue-50 border-l-4 border-blue-500 p-4 rounded-r-lg">
-                  <div className="flex">
-                    <div className="flex-shrink-0">
-                      <svg className="h-5 w-5 text-blue-500" fill="currentColor" viewBox="0 0 20 20">
-                        <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd"/>
-                      </svg>
-                    </div>
-                    <div className="ml-3">
-                      <p className="text-sm text-blue-700">
-                        Sélectionnez plusieurs dates pour créer le même événement à différentes dates. Les heures de début et de fin définies dans l'onglet <strong>Détails</strong> seront appliquées à toutes les dates.
-                      </p>
-                    </div>
+                {/* Info box subtil - adapté selon le mode */}
+                {task ? (
+                  // Mode édition = Duplication - Version discrète
+                  <div className="bg-purple-50/50 border border-purple-200/60 rounded-lg p-3 text-xs text-purple-700">
+                    <span className="font-medium">Mode duplication :</span> Les nouveaux événements seront créés aux dates sélectionnées. L'événement original ne sera pas modifié.
                   </div>
-                </div>
+                ) : (
+                  // Mode création - Version discrète
+                  <div className="bg-blue-50/50 border border-blue-200/60 rounded-lg p-3 text-xs text-blue-700">
+                    <span className="font-medium">Info :</span> Les horaires et détails de l'onglet Détails seront appliqués à toutes les dates.
+                  </div>
+                )}
 
                 {/* Sélection des dates avec style amélioré */}
                 <div>
@@ -1861,7 +1921,13 @@ export default function TaskModal({ isOpen, onClose, onSave, onDelete, task, ini
                   <span>Création en cours...</span>
                 </>
               ) : (
-                <span>{task ? 'Mettre à jour' : 'Créer l\'événement'}</span>
+                <span>
+                  {task && activeTab === 'multipleDates' && selectedDates.length > 0
+                    ? `📋 Dupliquer (${selectedDates.length})`
+                    : task
+                    ? 'Mettre à jour'
+                    : 'Créer l\'événement'}
+                </span>
               )}
             </button>
             {task && onDelete && (

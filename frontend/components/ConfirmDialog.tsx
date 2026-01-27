@@ -66,11 +66,10 @@ export default function ConfirmDialog({
 
   return (
     <div
-      className="fixed inset-0 flex items-center justify-center z-[200]"
-      onClick={onClose}
+      className="fixed inset-0 flex items-center justify-center z-[200] pointer-events-none"
     >
       <div
-        className="bg-white rounded-xl shadow-2xl p-5 max-w-sm mx-4 border border-gray-200 animate-in fade-in zoom-in duration-200"
+        className="bg-white rounded-xl shadow-2xl p-5 max-w-sm mx-4 border border-gray-200 animate-in fade-in zoom-in duration-200 pointer-events-auto"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex flex-col items-center text-center mb-4">
@@ -127,11 +126,10 @@ export function RecurrenceConfirmDialog({
 
   return (
     <div
-      className="fixed inset-0 flex items-center justify-center z-[200]"
-      onClick={onClose}
+      className="fixed inset-0 flex items-center justify-center z-[200] pointer-events-none"
     >
       <div
-        className="bg-white rounded-xl shadow-2xl p-5 max-w-sm mx-4 border border-gray-200 animate-in fade-in zoom-in duration-200"
+        className="bg-white rounded-xl shadow-2xl p-5 max-w-sm mx-4 border border-gray-200 animate-in fade-in zoom-in duration-200 pointer-events-auto"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex flex-col items-center text-center mb-4">

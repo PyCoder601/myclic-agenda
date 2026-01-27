@@ -375,7 +375,9 @@ class BaikalEventViewSet(viewsets.ViewSet):
     @action(detail=False, methods=['post'])
     def bulk_create(self, request):
         """
-        Crée plusieurs événements en une seule requête (pour les récurrences)
+        Crée plusieurs événements en une seule requête
+        - Pour les récurrences : même UID, avec recurrence_id
+        - Pour les dates multiples : UIDs différents, pas de recurrence_id
         ⚡ Optimisé : Retourne immédiatement les données, création en arrière-plan
         """
         client = self._get_caldav_client()
@@ -397,7 +399,13 @@ class BaikalEventViewSet(viewsets.ViewSet):
             calendar_source_uri = isinstance(calendar_source_uri, tuple) and calendar_source_uri[0] or calendar_source_uri
             calendar_source_id = isinstance(calendar_source_id, tuple) and calendar_source_id[0] or calendar_source_id
 
-            uid = str(uuid.uuid4())
+            # ✅ Détecter si c'est une récurrence ou des événements indépendants
+            # Si au moins un événement a un recurrence_id, c'est une série récurrente
+            has_recurrence_id = any(event.get('recurrence_id') for event in events_data)
+
+            # Pour les récurrences : un seul UID partagé
+            # Pour les dates multiples : un UID par événement
+            shared_uid = str(uuid.uuid4()) if has_recurrence_id else None
 
             # ⚡ Préparer la réponse immédiate avec les données optimistes
             results = []
@@ -407,8 +415,11 @@ class BaikalEventViewSet(viewsets.ViewSet):
                 end_date = event.get('end_date')
                 recurrence_id = event.get('recurrence_id')
 
+                # ✅ Générer un UID unique pour chaque événement indépendant
+                event_uid = shared_uid if has_recurrence_id else str(uuid.uuid4())
+
                 # Générer l'URL de l'événement
-                url = f'https://www.myclic.fr/baikal/html/cal.php/calendars/{self.request.user.email}/{calendar_source_uri}/{uid}.ics'
+                url = f'https://www.myclic.fr/baikal/html/cal.php/calendars/{self.request.user.email}/{calendar_source_uri}/{event_uid}.ics'
 
                 recurrence_id_dt = None
                 # ✅ Si un recurrence_id est fourni, le parser et le formater
@@ -422,7 +433,7 @@ class BaikalEventViewSet(viewsets.ViewSet):
                     recurrence_id = None
 
                 created_event = {
-                    'id': uid,
+                    'id': event_uid,  # ✅ UID unique pour chaque événement
                     'title': event.get('title'),
                     'description': event.get('description'),
                     'location': event.get('location', ''),
@@ -452,74 +463,118 @@ class BaikalEventViewSet(viewsets.ViewSet):
                 try:
                     logger.info(f"🔄 Début création arrière-plan de {len(events_data)} événements")
 
-                    # ✅ Parser toutes les occurrences
-                    occurrences = []
-                    for event in events_data:
-                        start_date = event.get('start_date')
-                        end_date = event.get('end_date')
-                        recurrence_id = event.get('recurrence_id')
+                    # ✅ Déterminer le type : récurrence ou dates multiples
+                    if has_recurrence_id:
+                        # 🔁 CAS RÉCURRENCE : même UID, plusieurs VEVENT dans un seul fichier
+                        logger.info(f"🔁 Mode récurrence détecté (UID partagé: {shared_uid})")
 
-                        try:
-                            if 'Z' in start_date or '+' in start_date:
-                                start_dt = datetime.fromisoformat(start_date.replace('Z', '+00:00'))
-                            else:
-                                start_dt = datetime.fromisoformat(start_date)
+                        occurrences = []
+                        for event in events_data:
+                            start_date = event.get('start_date')
+                            end_date = event.get('end_date')
+                            recurrence_id = event.get('recurrence_id')
 
-                            if 'Z' in end_date or '+' in end_date:
-                                end_dt = datetime.fromisoformat(end_date.replace('Z', '+00:00'))
-                            else:
-                                end_dt = datetime.fromisoformat(end_date)
-
-                            recurrence_id_dt = None
-                            if recurrence_id:
-                                if 'Z' in recurrence_id or '+' in recurrence_id:
-                                    recurrence_id_dt = datetime.fromisoformat(recurrence_id.replace('Z', '+00:00'))
+                            try:
+                                if 'Z' in start_date or '+' in start_date:
+                                    start_dt = datetime.fromisoformat(start_date.replace('Z', '+00:00'))
                                 else:
-                                    recurrence_id_dt = datetime.fromisoformat(recurrence_id)
+                                    start_dt = datetime.fromisoformat(start_date)
 
-                            occurrences.append({
-                                'title': event.get('title'),
-                                'description': event.get('description'),
-                                'location': event.get('location', ''),
-                                'start': start_dt,
-                                'end': end_dt,
-                                'recurrence_id': recurrence_id_dt,
-                                'client_id': client_id,
-                                'affair_id': affair_id,
-                                'sequence': sequence,
-                            })
+                                if 'Z' in end_date or '+' in end_date:
+                                    end_dt = datetime.fromisoformat(end_date.replace('Z', '+00:00'))
+                                else:
+                                    end_dt = datetime.fromisoformat(end_date)
 
-                        except (ValueError, AttributeError) as e:
-                            logger.error(f"❌ Erreur parsing date en arrière-plan: {e}")
-                            continue
+                                recurrence_id_dt = None
+                                if recurrence_id:
+                                    if 'Z' in recurrence_id or '+' in recurrence_id:
+                                        recurrence_id_dt = datetime.fromisoformat(recurrence_id.replace('Z', '+00:00'))
+                                    else:
+                                        recurrence_id_dt = datetime.fromisoformat(recurrence_id)
 
-                    # ✅ Créer UN SEUL fichier .ics avec TOUS les VEVENT
-                    result = None
-                    if len(occurrences) > 1:
-                        # Récurrence : créer un fichier avec plusieurs VEVENT
-                        result = client.create_recurring_event(calendar_source_name, uid, occurrences)
-                    elif len(occurrences) == 1:
-                        # Événement unique
-                        occ = occurrences[0]
-                        event_data = {
-                            'uid': uid,
-                            'title': occ['title'],
-                            'description': occ['description'],
-                            'client_id': occ['client_id'],
-                            'affair_id': occ['affair_id'],
-                            'location': occ['location'],
-                            'start': occ['start'],
-                            'end': occ['end'],
-                            'sequence': occ['sequence'],
-                        }
-                        if occ['recurrence_id']:
-                            event_data['recurrence-id'] = occ['recurrence_id']
-                        result = client.create_event(calendar_source_name, event_data)
+                                occurrences.append({
+                                    'title': event.get('title'),
+                                    'description': event.get('description'),
+                                    'location': event.get('location', ''),
+                                    'start': start_dt,
+                                    'end': end_dt,
+                                    'recurrence_id': recurrence_id_dt,
+                                    'client_id': client_id,
+                                    'affair_id': affair_id,
+                                    'sequence': sequence,
+                                })
 
-                    if result and (result.get('id') or result.get('success')):
-                        logger.info(f"✅ {len(occurrences)} événement(s) créé(s) en arrière-plan")
+                            except (ValueError, AttributeError) as e:
+                                logger.error(f"❌ Erreur parsing date en arrière-plan: {e}")
+                                continue
+
+                        # Créer UN SEUL fichier .ics avec TOUS les VEVENT (même UID)
+                        if len(occurrences) > 1:
+                            result = client.create_recurring_event(calendar_source_name, shared_uid, occurrences)
+                            if result and (result.get('id') or result.get('success')):
+                                logger.info(f"✅ Événement récurrent créé avec {len(occurrences)} occurrences (UID: {shared_uid})")
+                        elif len(occurrences) == 1:
+                            occ = occurrences[0]
+                            event_data = {
+                                'uid': shared_uid,
+                                'title': occ['title'],
+                                'description': occ['description'],
+                                'client_id': occ['client_id'],
+                                'affair_id': occ['affair_id'],
+                                'location': occ['location'],
+                                'start': occ['start'],
+                                'end': occ['end'],
+                                'sequence': occ['sequence'],
+                            }
+                            if occ['recurrence_id']:
+                                event_data['recurrence-id'] = occ['recurrence_id']
+                            result = client.create_event(calendar_source_name, event_data)
+                            if result and (result.get('id') or result.get('success')):
+                                logger.info(f"✅ Événement unique créé (UID: {shared_uid})")
+
                     else:
-                        logger.error(f"❌ Échec création arrière-plan: {result.get('error') if result else 'Aucun événement'}")
+                        # 📅 CAS DATES MULTIPLES : UIDs différents, fichiers séparés
+                        logger.info(f"📅 Mode dates multiples détecté ({len(results)} événements indépendants)")
+
+                        created_count = 0
+                        for idx, (event, result_event) in enumerate(zip(events_data, results)):
+                            event_uid = result_event['id']  # UID unique généré précédemment
+                            start_date = event.get('start_date')
+                            end_date = event.get('end_date')
+
+                            try:
+                                if 'Z' in start_date or '+' in start_date:
+                                    start_dt = datetime.fromisoformat(start_date.replace('Z', '+00:00'))
+                                else:
+                                    start_dt = datetime.fromisoformat(start_date)
+
+                                if 'Z' in end_date or '+' in end_date:
+                                    end_dt = datetime.fromisoformat(end_date.replace('Z', '+00:00'))
+                                else:
+                                    end_dt = datetime.fromisoformat(end_date)
+
+                                # Créer un événement indépendant avec son propre UID
+                                event_data = {
+                                    'uid': event_uid,  # ✅ UID unique
+                                    'title': event.get('title'),
+                                    'description': event.get('description'),
+                                    'client_id': client_id,
+                                    'affair_id': affair_id,
+                                    'location': event.get('location', ''),
+                                    'start': start_dt,
+                                    'end': end_dt,
+                                }
+
+                                result = client.create_event(calendar_source_name, event_data)
+                                if result and (result.get('id') or result.get('success')):
+                                    created_count += 1
+                                    logger.debug(f"✅ Événement {idx+1}/{len(events_data)} créé (UID: {event_uid})")
+
+                            except (ValueError, AttributeError) as e:
+                                logger.error(f"❌ Erreur création événement {idx+1}: {e}")
+                                continue
+
+                        logger.info(f"✅ {created_count}/{len(events_data)} événements indépendants créés")
 
                     logger.info(f"✅ Fin création arrière-plan de {len(events_data)} événements")
 

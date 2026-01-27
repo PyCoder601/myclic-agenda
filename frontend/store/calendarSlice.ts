@@ -231,6 +231,67 @@ export const createEvent = createAsyncThunk(
     }
 );
 
+// Créer des événements à des dates multiples (optimisé avec bulk)
+export const createMultipleDateEvents = createAsyncThunk(
+    'calendar/createMultipleDateEvents',
+    async (params: {
+        title: string;
+        description: string;
+        location: string;
+        start_time: string; // Format HH:mm
+        end_time: string;   // Format HH:mm
+        dates: string[];    // Array de dates ISO (YYYY-MM-DD)
+        calendar_source_id: number;
+        calendar_source_name: string;
+        calendar_source_color: string;
+        calendar_source_uri: string;
+        client_id?: number;
+        affair_id?: number;
+    }, {rejectWithValue, dispatch}) => {
+        try {
+            // Créer des événements optimistes immédiatement
+            const optimisticEvents: Task[] = params.dates.map(date => {
+                const tempId = `temp_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+                const startDateTime = `${date}T${params.start_time}:00`;
+                const endDateTime = `${date}T${params.end_time}:00`;
+
+                return {
+                    id: tempId,
+                    title: params.title,
+                    description: params.description,
+                    location: params.location,
+                    start_date: startDateTime,
+                    end_date: endDateTime,
+                    calendar_source_id: params.calendar_source_id,
+                    calendar_source_uri: params.calendar_source_uri,
+                    calendar_source_name: params.calendar_source_name,
+                    calendar_source_color: params.calendar_source_color,
+                    lastmodified: Date.now(),
+                    client_id: params.client_id,
+                    affair_id: params.affair_id,
+                };
+            });
+
+            // Ajouter immédiatement les événements optimistes
+            dispatch(addBulkEvents(optimisticEvents));
+
+            // Envoyer la requête au backend
+            const response = await baikalAPI.createMultipleDateEvents(params);
+
+            // Retourner les événements réels du serveur
+            return {
+                tempIds: optimisticEvents.map(e => e.id),
+                serverEvents: response.data
+            };
+        } catch (error: unknown) {
+            // En cas d'erreur, on peut laisser les événements optimistes (ils seront remplacés au prochain fetch)
+            // ou les supprimer si on veut être plus strict
+            const err = error as { response?: { data?: unknown } };
+            return rejectWithValue(err.response?.data || 'Erreur lors de la création des événements');
+        }
+    }
+);
+
 // Mettre à jour un événement
 export const updateEvent = createAsyncThunk(
     'calendar/updateEvent',
@@ -592,6 +653,28 @@ const calendarSlice = createSlice({
             }
         });
         builder.addCase(updateCalendar.rejected, (state, action) => {
+            state.error = action.payload as string;
+        });
+
+        // Créer des événements à dates multiples
+        builder.addCase(createMultipleDateEvents.pending, (state) => {
+            state.eventsLoading = true;
+        });
+        builder.addCase(createMultipleDateEvents.fulfilled, (state, action) => {
+            state.eventsLoading = false;
+            const { tempIds, serverEvents } = action.payload;
+
+            // Remplacer les événements optimistes par les événements réels du serveur
+            if (serverEvents && Array.isArray(serverEvents)) {
+                // Supprimer les événements optimistes
+                state.events = state.events.filter(e => !tempIds.includes(e.id));
+
+                // Ajouter les événements réels du serveur
+                state.events.push(...serverEvents);
+            }
+        });
+        builder.addCase(createMultipleDateEvents.rejected, (state, action) => {
+            state.eventsLoading = false;
             state.error = action.payload as string;
         });
     },

@@ -106,6 +106,48 @@ export const baikalAPI = {
         sequence: number;
     }) => api.post('/baikal/events/bulk_create/', data),
 
+    // Créer des événements à des dates multiples (optimisé)
+    createMultipleDateEvents: (baseEvent: {
+        title: string;
+        description: string;
+        location: string;
+        start_time: string; // Format HH:mm
+        end_time: string;   // Format HH:mm
+        dates: string[];    // Array de dates ISO (YYYY-MM-DD)
+        calendar_source_id: number;
+        calendar_source_name: string;
+        calendar_source_color: string;
+        calendar_source_uri: string;
+        client_id?: number;
+        affair_id?: number;
+    }) => {
+        // Transformer les dates en événements individuels
+        const events = baseEvent.dates.map(date => {
+            const startDateTime = `${date}T${baseEvent.start_time}:00`;
+            const endDateTime = `${date}T${baseEvent.end_time}:00`;
+
+            return {
+                title: baseEvent.title,
+                description: baseEvent.description,
+                location: baseEvent.location,
+                start_date: startDateTime,
+                end_date: endDateTime,
+            };
+        });
+
+        // Utiliser bulk_create pour créer tous les événements
+        return api.post('/baikal/events/bulk_create/', {
+            events,
+            calendar_source_id: baseEvent.calendar_source_id,
+            calendar_source_name: baseEvent.calendar_source_name,
+            calendar_source_color: baseEvent.calendar_source_color,
+            calendar_source_uri: baseEvent.calendar_source_uri,
+            client_id: baseEvent.client_id,
+            affair_id: baseEvent.affair_id,
+            sequence: 1,
+        });
+    },
+
     // Mettre à jour un événement
     updateEvent: (eventId: string, data: Partial<Task>) => {
         console.log('📝 baikalAPI.updateEvent appelé:', { eventId, data });

@@ -5,7 +5,7 @@ import { X } from 'lucide-react';
 import { Task, CalendarSource, Client, Affaire } from '@/lib/types';
 import RichTextEditor from './RichTextEditor';
 import { useAppSelector, useAppDispatch } from '@/store/hooks';
-import { fetchCalendars, addBulkEvents } from '@/store/calendarSlice';
+import { fetchCalendars, addBulkEvents, createMultipleDateEvents } from '@/store/calendarSlice';
 import { baikalAPI } from '@/lib/api';
 import ConfirmDialog, { RecurrenceConfirmDialog } from './ConfirmDialog';
 
@@ -57,7 +57,11 @@ export default function TaskModal({ isOpen, onClose, onSave, onDelete, task, ini
   const [showResourceDropdown, setShowResourceDropdown] = useState(false);
 
   // État pour les onglets
-  const [activeTab, setActiveTab] = useState<'details' | 'recurrence'>('details');
+  const [activeTab, setActiveTab] = useState<'details' | 'recurrence' | 'multipleDates'>('details');
+
+  // États pour les dates multiples
+  const [selectedDates, setSelectedDates] = useState<Date[]>([]);
+  const [showDatePicker, setShowDatePicker] = useState(false);
 
   // États pour la récurrence
   const [recurrenceType, setRecurrenceType] = useState<'none' | 'daily' | 'weekly' | 'monthly' | 'biweekly' | 'triweekly' | 'yearly' | 'custom'>('none');
@@ -361,6 +365,12 @@ export default function TaskModal({ isOpen, onClose, onSave, onDelete, task, ini
       return;
     }
 
+    // ✅ Vérification spécifique pour l'onglet dates multiples
+    if (activeTab === 'multipleDates' && selectedDates.length === 0) {
+      alert('Veuillez sélectionner au moins une date.');
+      return;
+    }
+
     // ✅ Trouver tous les calendriers sélectionnés
     const selectedCalendars = calendars.filter(
       cal => formData.calendar_sources?.includes(String(cal.id))
@@ -472,6 +482,53 @@ export default function TaskModal({ isOpen, onClose, onSave, onDelete, task, ini
       return;
     }
 
+    // ✅ Pour les dates multiples (onglet spécifique), utiliser l'action optimisée
+    if (activeTab === 'multipleDates') {
+      setIsCreating(true);
+      try {
+        // Extraire l'heure de début et fin depuis formData
+        const startDate = new Date(formData.start_date);
+        const endDate = new Date(formData.end_date);
+        const startTime = `${String(startDate.getHours()).padStart(2, '0')}:${String(startDate.getMinutes()).padStart(2, '0')}`;
+        const endTime = `${String(endDate.getHours()).padStart(2, '0')}:${String(endDate.getMinutes()).padStart(2, '0')}`;
+
+        for (const calendar of selectedCalendars) {
+          console.log('🔄 Création optimisée dates multiples dans:', calendar.displayname || calendar.defined_name);
+
+          // Utiliser l'action Redux optimisée avec création optimiste
+          await dispatch(createMultipleDateEvents({
+            title: formData.title,
+            description: formData.description,
+            location: formData.location || '',
+            start_time: startTime,
+            end_time: endTime,
+            dates: selectedDates.map(date => {
+              const year = date.getFullYear();
+              const month = String(date.getMonth() + 1).padStart(2, '0');
+              const day = String(date.getDate()).padStart(2, '0');
+              return `${year}-${month}-${day}`;
+            }),
+            calendar_source_id: calendar.id,
+            calendar_source_name: calendar.displayname || calendar.defined_name || '',
+            calendar_source_color: calendar.calendarcolor || '#005f82',
+            calendar_source_uri: calendar.uri || '',
+            client_id: selectedClient?.id,
+            affair_id: selectedAffair?.id,
+          })).unwrap();
+
+          console.log(`✅ ${selectedDates.length} événements créés de manière optimiste pour ${calendar.displayname}`);
+        }
+
+        setIsCreating(false);
+        onClose();
+      } catch (error) {
+        console.error('❌ Erreur lors de la création dates multiples:', error);
+        setIsCreating(false);
+        alert(`Erreur lors de la création des événements.\n${error instanceof Error ? error.message : 'Erreur inconnue'}`);
+      }
+      return;
+    }
+
     // ✅ Pour les récurrences multiples, utiliser bulk_create
     setIsCreating(true); // Activer le loading
     try {
@@ -531,6 +588,20 @@ export default function TaskModal({ isOpen, onClose, onSave, onDelete, task, ini
     const startDateTime = new Date(formData.start_date);
     const endDateTime = new Date(formData.end_date);
     const duration = endDateTime.getTime() - startDateTime.getTime();
+
+    // ✅ Si on est dans l'onglet dates multiples, générer les événements pour chaque date sélectionnée
+    if (activeTab === 'multipleDates' && selectedDates.length > 0) {
+      selectedDates.forEach(selectedDate => {
+        // Créer une nouvelle date avec la date sélectionnée et les heures du formulaire
+        const start = new Date(selectedDate);
+        start.setHours(startDateTime.getHours(), startDateTime.getMinutes(), startDateTime.getSeconds());
+
+        const end = new Date(start.getTime() + duration);
+
+        dates.push({ start, end });
+      });
+      return dates;
+    }
 
     // Si pas de récurrence, retourner juste la date initiale
     if (recurrenceType === 'none') {
@@ -694,6 +765,17 @@ export default function TaskModal({ isOpen, onClose, onSave, onDelete, task, ini
               }`}
             >
               Récurrence
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveTab('multipleDates')}
+              className={`px-4 py-2.5 font-semibold text-base border-b-2 transition-colors ${
+                activeTab === 'multipleDates'
+                  ? 'border-[#005f82] text-[#005f82]'
+                  : 'border-transparent text-slate-500 hover:text-slate-700'
+              }`}
+            >
+              📅 Dates multiples
             </button>
           </div>
         </div>
@@ -1618,6 +1700,130 @@ export default function TaskModal({ isOpen, onClose, onSave, onDelete, task, ini
                     </div>
                   </div>
                 )}
+              </div>
+            )}
+
+            {/* Contenu de l'onglet Dates multiples */}
+            {activeTab === 'multipleDates' && (
+              <div className="space-y-6">
+                <div className="bg-blue-50 border-l-4 border-blue-500 p-4 rounded-r-lg">
+                  <div className="flex">
+                    <div className="flex-shrink-0">
+                      <svg className="h-5 w-5 text-blue-500" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd"/>
+                      </svg>
+                    </div>
+                    <div className="ml-3">
+                      <p className="text-sm text-blue-700">
+                        Sélectionnez plusieurs dates pour créer le même événement à différentes dates. Les heures de début et de fin définies dans l'onglet <strong>Détails</strong> seront appliquées à toutes les dates.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Sélection des dates */}
+                <div>
+                  <label className="block text-base font-semibold text-slate-700 mb-3">
+                    📅 Sélectionner des dates
+                  </label>
+
+                  <div className="space-y-3">
+                    {/* Input pour ajouter une date */}
+                    <div className="flex gap-2">
+                      <input
+                        type="date"
+                        onChange={(e) => {
+                          if (e.target.value) {
+                            const newDate = new Date(e.target.value + 'T12:00:00');
+                            // Vérifier que la date n'est pas déjà sélectionnée
+                            const dateExists = selectedDates.some(d =>
+                              d.toDateString() === newDate.toDateString()
+                            );
+                            if (!dateExists) {
+                              setSelectedDates([...selectedDates, newDate].sort((a, b) => a.getTime() - b.getTime()));
+                            }
+                            e.target.value = '';
+                          }
+                        }}
+                        className="flex-1 px-4 py-2.5 text-base bg-white border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#005f82] focus:border-[#005f82] transition-all hover:border-slate-400"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setSelectedDates([])}
+                        className="px-4 py-2.5 bg-red-50 text-red-600 hover:bg-red-100 border border-red-200 rounded-lg font-medium text-sm transition-colors"
+                      >
+                        Effacer tout
+                      </button>
+                    </div>
+
+                    {/* Liste des dates sélectionnées */}
+                    {selectedDates.length > 0 && (
+                      <div className="border-2 border-slate-200 rounded-xl p-4 bg-slate-50">
+                        <h4 className="text-sm font-bold text-slate-700 mb-3 flex items-center gap-2">
+                          <span>Dates sélectionnées ({selectedDates.length})</span>
+                        </h4>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 max-h-[300px] overflow-y-auto">
+                          {selectedDates.map((date, index) => (
+                            <div
+                              key={index}
+                              className="flex items-center justify-between bg-white border border-slate-300 rounded-lg px-3 py-2 hover:border-[#005f82] transition-colors group"
+                            >
+                              <span className="text-sm font-medium text-slate-700">
+                                {date.toLocaleDateString('fr-FR', {
+                                  weekday: 'short',
+                                  day: 'numeric',
+                                  month: 'short',
+                                  year: 'numeric'
+                                })}
+                              </span>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setSelectedDates(selectedDates.filter((_, i) => i !== index));
+                                }}
+                                className="text-red-500 hover:text-red-700 opacity-0 group-hover:opacity-100 transition-opacity"
+                              >
+                                <X className="w-4 h-4" />
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {selectedDates.length === 0 && (
+                      <div className="text-center py-8 text-slate-400">
+                        <svg className="w-16 h-16 mx-auto mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                        </svg>
+                        <p className="text-sm">Aucune date sélectionnée</p>
+                      </div>
+                    )}
+
+                    {/* Résumé des heures */}
+                    {selectedDates.length > 0 && formData.start_date && formData.end_date && (
+                      <div className="bg-gradient-to-br from-green-50 to-emerald-50 border-2 border-green-200 rounded-xl p-4">
+                        <div className="flex items-start gap-3">
+                          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-green-500 to-emerald-600 flex items-center justify-center shrink-0 shadow-lg">
+                            <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                          </div>
+                          <div className="flex-1">
+                            <h4 className="text-base font-bold text-slate-900 mb-2">Résumé</h4>
+                            <p className="text-sm text-slate-700 leading-relaxed">
+                              <span className="font-semibold text-green-700">
+                                {selectedDates.length} événement{selectedDates.length > 1 ? 's' : ''} {selectedDates.length > 1 ? 'seront créés' : 'sera créé'}
+                              </span>
+                              <br />
+                              🕐 Horaire : {new Date(formData.start_date).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })} - {new Date(formData.end_date).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
               </div>
             )}
           </div>

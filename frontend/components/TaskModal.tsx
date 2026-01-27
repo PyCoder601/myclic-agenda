@@ -24,9 +24,10 @@ interface MultiDatePickerProps {
   selectedDates: Date[];
   onDateToggle: (date: Date) => void;
   onClear: () => void;
+  originalDate?: Date | null; // Date de l'événement existant (non effaçable)
 }
 
-const MultiDatePicker = ({ selectedDates, onDateToggle, onClear }: MultiDatePickerProps) => {
+const MultiDatePicker = ({ selectedDates, onDateToggle, onClear, originalDate }: MultiDatePickerProps) => {
   const [currentMonth, setCurrentMonth] = useState(new Date());
 
   const year = currentMonth.getFullYear();
@@ -65,7 +66,19 @@ const MultiDatePicker = ({ selectedDates, onDateToggle, onClear }: MultiDatePick
     );
   };
 
+  const isOriginalDate = (day: number): boolean => {
+    if (!originalDate) return false;
+    const date = new Date(year, month, day);
+    return originalDate.getDate() === date.getDate() &&
+           originalDate.getMonth() === date.getMonth() &&
+           originalDate.getFullYear() === date.getFullYear();
+  };
+
   const handleDateClick = (day: number) => {
+    // Ne pas permettre de désélectionner la date originale
+    if (isOriginalDate(day)) {
+      return;
+    }
     const date = new Date(year, month, day, 12, 0, 0);
     onDateToggle(date);
   };
@@ -143,6 +156,7 @@ const MultiDatePicker = ({ selectedDates, onDateToggle, onClear }: MultiDatePick
           }
 
           const isSelected = isDateSelected(day);
+          const isOriginal = isOriginalDate(day);
           const isToday = new Date().getDate() === day &&
                          new Date().getMonth() === month &&
                          new Date().getFullYear() === year;
@@ -152,15 +166,22 @@ const MultiDatePicker = ({ selectedDates, onDateToggle, onClear }: MultiDatePick
               key={day}
               type="button"
               onClick={() => handleDateClick(day)}
-              className={`w-9 h-9 rounded-lg text-sm font-medium transition-all ${
-                isSelected
+              disabled={isOriginal}
+              className={`w-9 h-9 rounded-lg text-sm font-medium transition-all relative ${
+                isOriginal
+                  ? 'bg-gradient-to-br from-amber-500 to-orange-500 text-white shadow-md cursor-not-allowed ring-2 ring-amber-300'
+                  : isSelected
                   ? 'bg-[#005f82] text-white shadow-sm hover:bg-[#004a65]'
                   : isToday
                   ? 'bg-blue-100 text-blue-700 hover:bg-blue-200'
                   : 'hover:bg-slate-100 text-slate-700'
               }`}
+              title={isOriginal ? "Date de l'événement existant (non effaçable)" : undefined}
             >
               {day}
+              {isOriginal && (
+                <span className="absolute -top-0.5 -right-0.5 w-2 h-2 bg-yellow-400 rounded-full border border-white"></span>
+              )}
             </button>
           );
         })}
@@ -375,8 +396,17 @@ export default function TaskModal({ isOpen, onClose, onSave, onDelete, task, ini
       setCustomRecurrenceInterval(1);
       setCustomRecurrenceUnit('weeks');
 
-      // ✅ Réinitialiser les dates multiples (uniquement pour création)
+      // ✅ Initialiser les dates multiples
       if (!task) {
+        // Mode création : vider les dates
+        setSelectedDates([]);
+      } else if (task.start_date) {
+        // Mode édition : pré-sélectionner la date de l'événement existant
+        const eventDate = new Date(task.start_date);
+        // S'assurer que l'heure est fixée à midi pour éviter les problèmes de timezone
+        const normalizedDate = new Date(eventDate.getFullYear(), eventDate.getMonth(), eventDate.getDate(), 12, 0, 0);
+        setSelectedDates([normalizedDate]);
+      } else {
         setSelectedDates([]);
       }
 
@@ -1943,7 +1973,7 @@ export default function TaskModal({ isOpen, onClose, onSave, onDelete, task, ini
                 {task ? (
                   // Mode édition = Duplication - Version discrète
                   <div className="bg-purple-50/50 border border-purple-200/60 rounded-lg p-3 text-xs text-purple-700">
-                    <span className="font-medium">Mode duplication :</span> Les nouveaux événements seront créés aux dates sélectionnées. L'événement original ne sera pas modifié.
+                    <span className="font-medium">Mode duplication :</span> La date originale de l'événement 📌 est pré-sélectionnée et ne peut pas être retirée. Ajoutez d'autres dates pour créer des duplicatas.
                   </div>
                 ) : (
                   // Mode création - Version discrète
@@ -1962,6 +1992,7 @@ export default function TaskModal({ isOpen, onClose, onSave, onDelete, task, ini
                     {/* Calendrier personnalisé pour sélection multiple */}
                     <MultiDatePicker
                       selectedDates={selectedDates}
+                      originalDate={task?.start_date ? new Date(task.start_date) : null}
                       onDateToggle={(date) => {
                         const dateIndex = selectedDates.findIndex(d =>
                           d.toDateString() === date.toDateString()
@@ -1975,7 +2006,16 @@ export default function TaskModal({ isOpen, onClose, onSave, onDelete, task, ini
                           setSelectedDates([...selectedDates, date].sort((a, b) => a.getTime() - b.getTime()));
                         }
                       }}
-                      onClear={() => setSelectedDates([])}
+                      onClear={() => {
+                        // En mode édition, garder la date originale
+                        if (task?.start_date) {
+                          const eventDate = new Date(task.start_date);
+                          const normalizedDate = new Date(eventDate.getFullYear(), eventDate.getMonth(), eventDate.getDate(), 12, 0, 0);
+                          setSelectedDates([normalizedDate]);
+                        } else {
+                          setSelectedDates([]);
+                        }
+                      }}
                     />
 
                     {/* Liste des dates sélectionnées avec badges */}
@@ -1988,30 +2028,46 @@ export default function TaskModal({ isOpen, onClose, onSave, onDelete, task, ini
                           <span>Date{selectedDates.length > 1 ? 's' : ''} sélectionnée{selectedDates.length > 1 ? 's' : ''}</span>
                         </h4>
                         <div className="flex flex-wrap gap-1.5 max-h-[140px] overflow-y-auto pr-1">
-                          {selectedDates.map((date, index) => (
-                            <div
-                              key={index}
-                              className="inline-flex items-center gap-1.5 bg-white border border-[#005f82]/40 rounded-lg px-2.5 py-1.5 hover:border-[#005f82] hover:shadow transition-all"
-                            >
-                              <span className="text-xs font-medium text-slate-700">
-                                {date.toLocaleDateString('fr-FR', {
-                                  weekday: 'short',
-                                  day: 'numeric',
-                                  month: 'short'
-                                })}
-                              </span>
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  setSelectedDates(selectedDates.filter((_, i) => i !== index));
-                                }}
-                                className="text-red-500 hover:text-red-700 hover:bg-red-50 rounded-full p-0.5 transition-all"
-                                title="Retirer cette date"
+                          {selectedDates.map((date, index) => {
+                            const isOriginal = task?.start_date &&
+                              new Date(task.start_date).toDateString() === date.toDateString();
+
+                            return (
+                              <div
+                                key={index}
+                                className={`inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 hover:shadow transition-all ${
+                                  isOriginal
+                                    ? 'bg-gradient-to-r from-amber-100 to-orange-100 border-2 border-amber-400 ring-1 ring-amber-200'
+                                    : 'bg-white border border-[#005f82]/40 hover:border-[#005f82]'
+                                }`}
                               >
-                                <X className="w-3 h-3" />
-                              </button>
-                            </div>
-                          ))}
+                                {isOriginal && (
+                                  <span className="text-xs">📌</span>
+                                )}
+                                <span className={`text-xs font-medium ${
+                                  isOriginal ? 'text-amber-800 font-bold' : 'text-slate-700'
+                                }`}>
+                                  {date.toLocaleDateString('fr-FR', {
+                                    weekday: 'short',
+                                    day: 'numeric',
+                                    month: 'short'
+                                  })}
+                                </span>
+                                {!isOriginal && (
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setSelectedDates(selectedDates.filter((_, i) => i !== index));
+                                    }}
+                                    className="text-red-500 hover:text-red-700 hover:bg-red-50 rounded-full p-0.5 transition-all"
+                                    title="Retirer cette date"
+                                  >
+                                    <X className="w-3 h-3" />
+                                  </button>
+                                )}
+                              </div>
+                            );
+                          })}
                         </div>
                       </div>
                     )}

@@ -29,10 +29,6 @@ export default function ConfirmDialog({
 }: ConfirmDialogProps) {
   if (!isOpen) return null;
 
-  const colorClasses = variant === 'danger'
-    ? 'bg-red-50 text-red-500'
-    : 'bg-orange-50 text-orange-500';
-
   const buttonClasses = variant === 'danger'
     ? 'bg-red-500 hover:bg-red-600'
     : 'bg-orange-500 hover:bg-orange-600';

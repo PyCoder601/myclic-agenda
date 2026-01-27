@@ -217,6 +217,19 @@ export default function TaskModal({ isOpen, onClose, onSave, onDelete, task, ini
       setCustomRecurrenceInterval(1);
       setCustomRecurrenceUnit('weeks');
 
+      // ✅ Réinitialiser les dates multiples (uniquement pour création)
+      if (!task) {
+        setSelectedDates([]);
+      }
+
+      // ✅ Réinitialiser les clients et affaires (uniquement pour création)
+      if (!task) {
+        setSelectedClient(null);
+        setSelectedAffair(null);
+        setClientSearchQuery('');
+        setAffairSearchQuery('');
+      }
+
       console.log('📋 Initialisation du modal avec:', {
         isEdit: !!task,
         taskId: task?.id,
@@ -1721,7 +1734,7 @@ export default function TaskModal({ isOpen, onClose, onSave, onDelete, task, ini
                   </div>
                 </div>
 
-                {/* Sélection des dates */}
+                {/* Sélection des dates avec style amélioré */}
                 <div>
                   <label className="block text-base font-semibold text-slate-700 mb-3">
                     📅 Sélectionner des dates
@@ -1800,7 +1813,7 @@ export default function TaskModal({ isOpen, onClose, onSave, onDelete, task, ini
                       </div>
                     )}
 
-                    {/* Résumé des heures */}
+                    {/* Résumé des heures - Design amélioré */}
                     {selectedDates.length > 0 && formData.start_date && formData.end_date && (
                       <div className="bg-gradient-to-br from-green-50 to-emerald-50 border-2 border-green-200 rounded-xl p-4">
                         <div className="flex items-start gap-3">

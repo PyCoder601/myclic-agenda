@@ -19,6 +19,164 @@ interface TaskModalProps {
   initialHour?: number;
 }
 
+// Composant de calendrier personnalisé pour sélection multiple
+interface MultiDatePickerProps {
+  selectedDates: Date[];
+  onDateToggle: (date: Date) => void;
+  onClear: () => void;
+}
+
+const MultiDatePicker = ({ selectedDates, onDateToggle, onClear }: MultiDatePickerProps) => {
+  const [currentMonth, setCurrentMonth] = useState(new Date());
+
+  const year = currentMonth.getFullYear();
+  const month = currentMonth.getMonth();
+
+  // Premier jour du mois
+  const firstDay = new Date(year, month, 1);
+  const lastDay = new Date(year, month + 1, 0);
+
+  // Jour de la semaine du premier jour (0 = dimanche, 1 = lundi, etc.)
+  const startingDayOfWeek = firstDay.getDay();
+  const daysInMonth = lastDay.getDate();
+
+  // Jours à afficher (incluant les jours vides du début)
+  const days: (number | null)[] = [];
+
+  // Ajuster pour commencer le lundi (1) au lieu de dimanche (0)
+  const adjustedStart = startingDayOfWeek === 0 ? 6 : startingDayOfWeek - 1;
+
+  // Ajouter les jours vides
+  for (let i = 0; i < adjustedStart; i++) {
+    days.push(null);
+  }
+
+  // Ajouter les jours du mois
+  for (let i = 1; i <= daysInMonth; i++) {
+    days.push(i);
+  }
+
+  const isDateSelected = (day: number): boolean => {
+    const date = new Date(year, month, day);
+    return selectedDates.some(d =>
+      d.getDate() === date.getDate() &&
+      d.getMonth() === date.getMonth() &&
+      d.getFullYear() === date.getFullYear()
+    );
+  };
+
+  const handleDateClick = (day: number) => {
+    const date = new Date(year, month, day, 12, 0, 0);
+    onDateToggle(date);
+  };
+
+  const goToPreviousMonth = () => {
+    setCurrentMonth(new Date(year, month - 1, 1));
+  };
+
+  const goToNextMonth = () => {
+    setCurrentMonth(new Date(year, month + 1, 1));
+  };
+
+  const monthNames = ['Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin',
+                      'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre'];
+
+  const dayNames = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'];
+
+  return (
+    <div className="border-2 border-[#005f82]/30 rounded-xl bg-white p-3.5 shadow-sm">
+      {/* Header avec navigation */}
+      <div className="flex items-center justify-between mb-3">
+        <button
+          type="button"
+          onClick={goToPreviousMonth}
+          className="p-1.5 hover:bg-slate-100 rounded-lg transition-colors"
+        >
+          <svg className="w-4 h-4 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+          </svg>
+        </button>
+
+        <div className="flex items-center gap-2.5">
+          <h3 className="text-sm font-bold text-slate-700">
+            {monthNames[month]} {year}
+          </h3>
+          <button
+            type="button"
+            onClick={onClear}
+            disabled={selectedDates.length === 0}
+            className={`px-2.5 py-1 rounded-lg font-medium text-xs transition-all ${
+              selectedDates.length === 0
+                ? 'bg-slate-100 text-slate-400 cursor-not-allowed'
+                : 'bg-red-50 text-red-600 hover:bg-red-100 border border-red-200'
+            }`}
+          >
+            Effacer
+          </button>
+        </div>
+
+        <button
+          type="button"
+          onClick={goToNextMonth}
+          className="p-1.5 hover:bg-slate-100 rounded-lg transition-colors"
+        >
+          <svg className="w-4 h-4 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+          </svg>
+        </button>
+      </div>
+
+      {/* Jours de la semaine */}
+      <div className="grid grid-cols-7 gap-1 mb-1.5">
+        {dayNames.map(day => (
+          <div key={day} className="text-center text-[11px] font-semibold text-slate-500 py-1">
+            {day}
+          </div>
+        ))}
+      </div>
+
+      {/* Grille des jours */}
+      <div className="grid grid-cols-7 gap-1">
+        {days.map((day, index) => {
+          if (day === null) {
+            return <div key={`empty-${index}`} className="w-9 h-9" />;
+          }
+
+          const isSelected = isDateSelected(day);
+          const isToday = new Date().getDate() === day &&
+                         new Date().getMonth() === month &&
+                         new Date().getFullYear() === year;
+
+          return (
+            <button
+              key={day}
+              type="button"
+              onClick={() => handleDateClick(day)}
+              className={`w-9 h-9 rounded-lg text-sm font-medium transition-all ${
+                isSelected
+                  ? 'bg-[#005f82] text-white shadow-sm hover:bg-[#004a65]'
+                  : isToday
+                  ? 'bg-blue-100 text-blue-700 hover:bg-blue-200'
+                  : 'hover:bg-slate-100 text-slate-700'
+              }`}
+            >
+              {day}
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Info tooltip */}
+      <p className="text-[11px] text-slate-500 mt-2.5 flex items-center gap-1">
+        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+        </svg>
+        Cliquez sur les dates pour les sélectionner/désélectionner
+      </p>
+    </div>
+  );
+};
+
 // Fonction helper pour formater la date en heure locale pour datetime-local input
 const formatDateTimeLocal = (date: Date): string => {
   const year = date.getFullYear();
@@ -850,7 +1008,7 @@ export default function TaskModal({ isOpen, onClose, onSave, onDelete, task, ini
                   : 'border-transparent text-slate-500 hover:text-slate-700'
               }`}
             >
-              📅 Dates multiples
+              📅 Programmation multiple
             </button>
           </div>
         </div>
@@ -1801,52 +1959,45 @@ export default function TaskModal({ isOpen, onClose, onSave, onDelete, task, ini
                   </label>
 
                   <div className="space-y-3">
-                    {/* Input pour ajouter une date */}
-                    <div className="flex gap-2">
-                      <input
-                        type="date"
-                        onChange={(e) => {
-                          if (e.target.value) {
-                            const newDate = new Date(e.target.value + 'T12:00:00');
-                            // Vérifier que la date n'est pas déjà sélectionnée
-                            const dateExists = selectedDates.some(d =>
-                              d.toDateString() === newDate.toDateString()
-                            );
-                            if (!dateExists) {
-                              setSelectedDates([...selectedDates, newDate].sort((a, b) => a.getTime() - b.getTime()));
-                            }
-                            e.target.value = '';
-                          }
-                        }}
-                        className="flex-1 px-4 py-2.5 text-base bg-white border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#005f82] focus:border-[#005f82] transition-all hover:border-slate-400"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setSelectedDates([])}
-                        className="px-4 py-2.5 bg-red-50 text-red-600 hover:bg-red-100 border border-red-200 rounded-lg font-medium text-sm transition-colors"
-                      >
-                        Effacer tout
-                      </button>
-                    </div>
+                    {/* Calendrier personnalisé pour sélection multiple */}
+                    <MultiDatePicker
+                      selectedDates={selectedDates}
+                      onDateToggle={(date) => {
+                        const dateIndex = selectedDates.findIndex(d =>
+                          d.toDateString() === date.toDateString()
+                        );
 
-                    {/* Liste des dates sélectionnées */}
+                        if (dateIndex !== -1) {
+                          // Retirer la date
+                          setSelectedDates(selectedDates.filter((_, i) => i !== dateIndex));
+                        } else {
+                          // Ajouter la date et trier
+                          setSelectedDates([...selectedDates, date].sort((a, b) => a.getTime() - b.getTime()));
+                        }
+                      }}
+                      onClear={() => setSelectedDates([])}
+                    />
+
+                    {/* Liste des dates sélectionnées avec badges */}
                     {selectedDates.length > 0 && (
-                      <div className="border-2 border-slate-200 rounded-xl p-4 bg-slate-50">
-                        <h4 className="text-sm font-bold text-slate-700 mb-3 flex items-center gap-2">
-                          <span>Dates sélectionnées ({selectedDates.length})</span>
+                      <div className="border-2 border-[#005f82]/20 rounded-xl p-3 bg-gradient-to-br from-blue-50 to-indigo-50 shadow-sm">
+                        <h4 className="text-sm font-bold text-slate-700 mb-2 flex items-center gap-2">
+                          <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-[#005f82] text-white text-xs font-bold">
+                            {selectedDates.length}
+                          </span>
+                          <span>Date{selectedDates.length > 1 ? 's' : ''} sélectionnée{selectedDates.length > 1 ? 's' : ''}</span>
                         </h4>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 max-h-[300px] overflow-y-auto">
+                        <div className="flex flex-wrap gap-1.5 max-h-[140px] overflow-y-auto pr-1">
                           {selectedDates.map((date, index) => (
                             <div
                               key={index}
-                              className="flex items-center justify-between bg-white border border-slate-300 rounded-lg px-3 py-2 hover:border-[#005f82] transition-colors group"
+                              className="inline-flex items-center gap-1.5 bg-white border border-[#005f82]/40 rounded-lg px-2.5 py-1.5 hover:border-[#005f82] hover:shadow transition-all"
                             >
-                              <span className="text-sm font-medium text-slate-700">
+                              <span className="text-xs font-medium text-slate-700">
                                 {date.toLocaleDateString('fr-FR', {
                                   weekday: 'short',
                                   day: 'numeric',
-                                  month: 'short',
-                                  year: 'numeric'
+                                  month: 'short'
                                 })}
                               </span>
                               <button
@@ -1854,9 +2005,10 @@ export default function TaskModal({ isOpen, onClose, onSave, onDelete, task, ini
                                 onClick={() => {
                                   setSelectedDates(selectedDates.filter((_, i) => i !== index));
                                 }}
-                                className="text-red-500 hover:text-red-700 opacity-0 group-hover:opacity-100 transition-opacity"
+                                className="text-red-500 hover:text-red-700 hover:bg-red-50 rounded-full p-0.5 transition-all"
+                                title="Retirer cette date"
                               >
-                                <X className="w-4 h-4" />
+                                <X className="w-3 h-3" />
                               </button>
                             </div>
                           ))}
@@ -1865,31 +2017,31 @@ export default function TaskModal({ isOpen, onClose, onSave, onDelete, task, ini
                     )}
 
                     {selectedDates.length === 0 && (
-                      <div className="text-center py-8 text-slate-400">
-                        <svg className="w-16 h-16 mx-auto mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                      <div className="text-center py-8 text-slate-400 border-2 border-dashed border-slate-200 rounded-xl bg-slate-50/50">
+                        <svg className="w-14 h-14 mx-auto mb-2 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
                         </svg>
-                        <p className="text-sm">Aucune date sélectionnée</p>
+                        <p className="text-sm font-medium text-slate-500">Aucune date sélectionnée</p>
+                        <p className="text-xs text-slate-400 mt-0.5">Cliquez sur les dates du calendrier</p>
                       </div>
                     )}
 
-                    {/* Résumé des heures - Design amélioré */}
+                    {/* Résumé des heures */}
                     {selectedDates.length > 0 && formData.start_date && formData.end_date && (
-                      <div className="bg-gradient-to-br from-green-50 to-emerald-50 border-2 border-green-200 rounded-xl p-4">
-                        <div className="flex items-start gap-3">
-                          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-green-500 to-emerald-600 flex items-center justify-center shrink-0 shadow-lg">
-                            <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <div className="bg-gradient-to-br from-green-50 to-emerald-50 border-2 border-green-200 rounded-xl p-3">
+                        <div className="flex items-center gap-2.5">
+                          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-green-500 to-emerald-600 flex items-center justify-center shrink-0 shadow">
+                            <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                             </svg>
                           </div>
                           <div className="flex-1">
-                            <h4 className="text-base font-bold text-slate-900 mb-2">Résumé</h4>
-                            <p className="text-sm text-slate-700 leading-relaxed">
-                              <span className="font-semibold text-green-700">
+                            <p className="text-xs text-slate-700 leading-relaxed">
+                              <span className="font-bold text-green-700">
                                 {selectedDates.length} événement{selectedDates.length > 1 ? 's' : ''} {selectedDates.length > 1 ? 'seront créés' : 'sera créé'}
                               </span>
                               <br />
-                              🕐 Horaire : {new Date(formData.start_date).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })} - {new Date(formData.end_date).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
+                              🕐 {new Date(formData.start_date).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })} - {new Date(formData.end_date).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
                             </p>
                           </div>
                         </div>

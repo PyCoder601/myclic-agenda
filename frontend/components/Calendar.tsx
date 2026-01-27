@@ -101,6 +101,7 @@ interface CalendarProps {
   onTaskDrop: (taskId: string, newDate: Date) => void;
   onTaskResize?: (taskId: string, newEndDate: Date) => void;
   onTaskDelete?: (task: Task) => void;
+  onTaskDuplicate?: (task: Task) => void;
   calendars: CalendarSource[];
   isNavigating?: boolean;
   pendingDate?: Date | null;
@@ -254,8 +255,7 @@ const TaskItem = ({
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [showSimpleConfirm, setShowSimpleConfirm] = useState(false);
 
-  const handleDelete = (e: React.MouseEvent, deleteAll?: boolean) => {
-    e.stopPropagation();
+  const handleDelete = (deleteAll?: boolean) => {
     if (onDelete) {
       // Si deleteAll est true, on crée une copie de la tâche SANS recurrence_id
       // Cela supprimera toutes les occurrences (logique de TaskModal)
@@ -319,7 +319,7 @@ const TaskItem = ({
       <ConfirmDialog
         isOpen={showSimpleConfirm}
         onClose={() => setShowSimpleConfirm(false)}
-        onConfirm={handleDelete}
+        onConfirm={() => handleDelete(false)}
         title="Supprimer l'événement ?"
         message="Cette action est irréversible"
         confirmLabel="Supprimer"
@@ -330,8 +330,8 @@ const TaskItem = ({
       <RecurrenceConfirmDialog
         isOpen={showDeleteConfirm}
         onClose={() => setShowDeleteConfirm(false)}
-        onConfirmSingle={(e) => handleDelete(e as any, false)}
-        onConfirmAll={(e) => handleDelete(e as any, true)}
+        onConfirmSingle={() => handleDelete(false)}
+        onConfirmAll={() => handleDelete(true)}
       />
     </>
   );
@@ -358,8 +358,7 @@ const WeekTaskItem = ({
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [showSimpleConfirm, setShowSimpleConfirm] = useState(false);
 
-  const handleDelete = (e: React.MouseEvent, deleteAll?: boolean) => {
-    e.stopPropagation();
+  const handleDelete = (deleteAll?: boolean) => {
     if (onDelete) {
       // Si deleteAll est true, on crée une copie de la tâche SANS recurrence_id
       // Cela supprimera toutes les occurrences (logique de TaskModal)
@@ -425,7 +424,7 @@ const WeekTaskItem = ({
       <ConfirmDialog
         isOpen={showSimpleConfirm}
         onClose={() => setShowSimpleConfirm(false)}
-        onConfirm={handleDelete}
+        onConfirm={() => handleDelete(false)}
         title="Supprimer l'événement ?"
         message="Cette action est irréversible"
         confirmLabel="Supprimer"
@@ -436,8 +435,8 @@ const WeekTaskItem = ({
       <RecurrenceConfirmDialog
         isOpen={showDeleteConfirm}
         onClose={() => setShowDeleteConfirm(false)}
-        onConfirmSingle={(e) => handleDelete(e as any, false)}
-        onConfirmAll={(e) => handleDelete(e as any, true)}
+        onConfirmSingle={() => handleDelete(false)}
+        onConfirmAll={() => handleDelete(true)}
       />
     </>
   );
@@ -518,8 +517,7 @@ const PositionedEventItem = ({
     document.addEventListener('mouseup', handleMouseUp);
   };
 
-    const handleDelete = (e: React.MouseEvent, deleteAll?: boolean) => {
-    e.stopPropagation();
+    const handleDelete = (deleteAll?: boolean) => {
     if (onDelete) {
       // Si deleteAll est true, on crée une copie de l'événement SANS recurrence_id
       // Cela supprimera toutes les occurrences (logique de TaskModal)
@@ -632,7 +630,7 @@ const PositionedEventItem = ({
       <ConfirmDialog
         isOpen={showSimpleConfirm}
         onClose={() => setShowSimpleConfirm(false)}
-        onConfirm={handleDelete}
+        onConfirm={() => handleDelete(false)}
         title="Supprimer l'événement ?"
         message="Cette action est irréversible"
         confirmLabel="Supprimer"
@@ -643,8 +641,8 @@ const PositionedEventItem = ({
       <RecurrenceConfirmDialog
         isOpen={showDeleteConfirm}
         onClose={() => setShowDeleteConfirm(false)}
-        onConfirmSingle={(e) => handleDelete(e as any, false)}
-        onConfirmAll={(e) => handleDelete(e as any, true)}
+        onConfirmSingle={() => handleDelete(false)}
+        onConfirmAll={() => handleDelete(true)}
       />
     </>
   );
@@ -725,8 +723,7 @@ const PositionedWeekEventItem = ({
     document.addEventListener('mouseup', handleMouseUp);
   };
 
-    const handleDelete = (e: React.MouseEvent, deleteAll?: boolean) => {
-    e.stopPropagation();
+    const handleDelete = (deleteAll?: boolean) => {
     if (onDelete) {
       // Si deleteAll est true, on crée une copie de l'événement SANS recurrence_id
       // Cela supprimera toutes les occurrences (logique de TaskModal)
@@ -836,7 +833,7 @@ const PositionedWeekEventItem = ({
       <ConfirmDialog
         isOpen={showSimpleConfirm}
         onClose={() => setShowSimpleConfirm(false)}
-        onConfirm={handleDelete}
+        onConfirm={() => handleDelete(false)}
         title="Supprimer l'événement ?"
         message="Cette action est irréversible"
         confirmLabel="Supprimer"
@@ -847,8 +844,8 @@ const PositionedWeekEventItem = ({
       <RecurrenceConfirmDialog
         isOpen={showDeleteConfirm}
         onClose={() => setShowDeleteConfirm(false)}
-        onConfirmSingle={(e) => handleDelete(e as any, false)}
-        onConfirmAll={(e) => handleDelete(e as any, true)}
+        onConfirmSingle={() => handleDelete(false)}
+        onConfirmAll={() => handleDelete(true)}
       />
     </>
   );

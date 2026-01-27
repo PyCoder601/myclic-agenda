@@ -875,6 +875,9 @@ export default function Calendar({
   const [dayTasksModalDate, setDayTasksModalDate] = useState<Date | null>(null);
   const [activeTask, setActiveTask] = useState<Task | null>(null);
 
+  // États pour la navigation - distinguer quel bouton charge
+  const [navigationDirection, setNavigationDirection] = useState<'previous' | 'next' | null>(null);
+
   // États pour le QuickEventModal
   const [showQuickModal, setShowQuickModal] = useState(false);
   const [quickModalPosition, setQuickModalPosition] = useState<{ x: number; y: number } | undefined>();
@@ -900,6 +903,13 @@ export default function Calendar({
   });
 
   const sensors = useSensors(mouseSensor, touchSensor);
+
+  // Réinitialiser la direction de navigation quand le chargement est terminé
+  useEffect(() => {
+    if (!isNavigating) {
+      setNavigationDirection(null);
+    }
+  }, [isNavigating]);
 
   // Handler pour le clic droit - duplication directe
   const handleContextMenu = useCallback((e: React.MouseEvent, task: Task) => {
@@ -1090,6 +1100,7 @@ export default function Calendar({
       return;
     }
 
+    setNavigationDirection('previous');
     const newDate = new Date(currentDate);
     if (viewMode === "day") {
       newDate.setDate(newDate.getDate() - 1);
@@ -1107,6 +1118,7 @@ export default function Calendar({
       return;
     }
 
+    setNavigationDirection('next');
     const newDate = new Date(currentDate);
     if (viewMode === "day") {
       newDate.setDate(newDate.getDate() + 1);
@@ -1780,7 +1792,7 @@ export default function Calendar({
                 }`}
                 title="Période précédente"
               >
-                {isNavigating ? (
+                {isNavigating && navigationDirection === 'previous' ? (
                   <div className="w-3.5 h-3.5 border-2 border-slate-300 border-t-[#005f82] rounded-full animate-spin" />
                 ) : (
                   <ChevronLeft className="w-4 h-4 text-slate-600 group-hover:text-white transition-all duration-300 group-hover:-translate-x-0.5" />
@@ -1810,7 +1822,7 @@ export default function Calendar({
                 }`}
                 title="Période suivante"
               >
-                {isNavigating ? (
+                {isNavigating && navigationDirection === 'next' ? (
                   <div className="w-3.5 h-3.5 border-2 border-slate-300 border-t-[#005f82] rounded-full animate-spin" />
                 ) : (
                   <ChevronRight className="w-4 h-4 text-slate-600 group-hover:text-white transition-all duration-300 group-hover:translate-x-0.5" />

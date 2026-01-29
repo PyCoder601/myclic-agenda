@@ -1779,7 +1779,7 @@ export default function Calendar({
       >
         <div className="flex flex-col bg-white rounded-b-lg sm:rounded-b-2xl shadow-xl border border-slate-200/50 animate-fadeIn">
           {/* Calendar Header - Boutons de navigation élégants - STICKY sous le header principal */}
-          <div className="flex items-center justify-center p-2 sm:p-2.5 border-b border-slate-200/50 bg-gradient-to-r from-white via-slate-50/50 to-white sticky top-0 z-30">
+          <div className="flex items-center justify-center p-2 sm:p-2.5 border-b border-slate-200/50 bg-linear-to-r from-white via-slate-50/50 to-white sticky top-0 z-30">
             <div className="flex items-center gap-2 sm:gap-3">
               {/* Bouton Précédent */}
               <button
@@ -1788,7 +1788,7 @@ export default function Calendar({
                 className={`group relative flex items-center justify-center w-7 h-7 sm:w-8 sm:h-8 rounded-lg transition-all duration-300 ${
                   isNavigating 
                     ? 'opacity-50 cursor-not-allowed bg-slate-100' 
-                    : 'bg-white hover:bg-gradient-to-br hover:from-[#005f82] hover:to-[#007ba8] border border-slate-200 hover:border-[#005f82] shadow-sm hover:shadow-md hover:scale-105'
+                    : 'bg-white hover:bg-linear-to-br hover:from-[#005f82] hover:to-[#007ba8] border border-slate-200 hover:border-[#005f82] shadow-sm hover:shadow-md hover:scale-105'
                 }`}
                 title="Période précédente"
               >
@@ -1801,7 +1801,7 @@ export default function Calendar({
 
               {/* Titre de la date */}
               <div className="text-center px-2 sm:px-4 min-w-[160px] sm:min-w-[240px]">
-                <h2 className="text-sm sm:text-base font-bold bg-gradient-to-r from-[#005f82] via-[#007ba8] to-[#005f82] bg-clip-text text-transparent capitalize tracking-tight">
+                <h2 className="text-sm sm:text-base font-bold bg-linear-to-r from-[#005f82] via-[#007ba8] to-[#005f82] bg-clip-text text-transparent capitalize tracking-tight">
                   {getDateRange}
                 </h2>
                 {isNavigating && (

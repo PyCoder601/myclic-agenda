@@ -1663,93 +1663,91 @@ export default function Calendar({
     const minRowHeight = totalCalendarRows > 0 ? Math.max(60, Math.floor(600 / totalCalendarRows)) : 60;
 
     return (
-      <div className="flex-1 bg-white overflow-x-auto min-h-[calc(100vh-250px)]">
-        <div className="inline-flex min-w-full h-full">
-          <div className="flex-1 flex flex-col h-full">
-            <div className="flex border-b border-slate-200 sticky top-[46px] z-10 bg-white">
-              <div className="w-48 shrink-0 border-r border-slate-200 py-1 px-2 text-left font-semibold text-slate-700 text-xs sticky left-0 bg-white z-20">
-                Collaborateur / Calendrier
-              </div>
-              {daysToDisplay.map((day) => (
-                <div
-                  key={day.toString()}
-                  className={`${cellWidth} shrink-0 py-1 px-1.5 text-center border-r border-slate-200`}
-                >
-                  <div
-                    className={`font-medium text-[10px] leading-tight ${isSameDay(day, new Date()) ? "text-[#005f82]" : "text-slate-600"}`}
-                  >
-                    {format(day, "EEE", { locale: fr })}
-                  </div>
-                  <div
-                    className={`text-sm font-bold mt-0.5 ${
-                      isSameDay(day, new Date())
-                        ? "bg-linear-to-r from-[#005f82] to-[#007ba8] text-white w-6 h-6 rounded-lg flex items-center justify-center mx-auto shadow-sm text-xs"
-                        : "text-slate-800"
-                    }`}
-                  >
-                    {format(day, "d")}
-                  </div>
-                </div>
-              ))}
-            </div>
-            <div className="flex-1 flex flex-col">
-              {Object.entries(calendarsByUser).map(([username, userCalendars]) => (
-                <div key={username} className="flex-1">
-                  <div className="flex border-b border-slate-200 bg-slate-50/50">
-                    <div className="w-48 shrink-0 border-r border-slate-200 p-2 font-bold text-slate-800 text-sm sticky left-0 bg-slate-50/50 z-10">
-                      {/*{username}*/}
-                    </div>
-                    {daysToDisplay.map((day) => (
-                      <div
-                        key={day.toString()}
-                        className={`${cellWidth} shrink-0 p-1 border-r border-slate-200`}
-                      />
-                    ))}
-                  </div>
-                  {userCalendars.map((calendar) => (
-                    <div
-                      key={calendar.id}
-                      className="flex border-b border-slate-200 group hover:bg-blue-50/20 transition-colors duration-200"
-                      style={{ minHeight: `${minRowHeight}px` }}
-                    >
-                      <div className="w-48 shrink-0 border-r border-slate-200 p-2 text-sm text-slate-700 font-medium flex items-center gap-2 sticky left-0 bg-white group-hover:bg-blue-50/20 z-10">
-                        <div
-                          className="w-3 h-3 rounded-full shadow-sm"
-                          style={{ backgroundColor: calendar.calendarcolor }}
-                        ></div>
-                        <span className="truncate">{calendar.defined_name || calendar.share_href || calendar.displayname}</span>
-                      </div>
-                      {daysToDisplay.map((day) => {
-                        const dayTasks = tasks.filter(
-                          (task) =>
-                            task.calendar_source_id === calendar.id &&
-                            isSameDay(new Date(task.start_date), day),
-                        );
-                        const cellDate = new Date(day);
-                        // For group view, tasks are by day, not hour. So we use the start of the day for dropping.
-                        cellDate.setHours(0, 0, 0, 0);
-
-                        return (
-                          <DroppableCell
-                            key={day.toString()}
-                            id={`${format(day, "yyyy-MM-dd")}-${calendar.id}`} // Unique ID for droppable cell
-                            date={cellDate}
-                            className={`${cellWidth} shrink-0 p-1 border-r border-slate-200 cursor-pointer h-full`}
-                          >
-                            <div className="space-y-1">
-                              {dayTasks.map((task) => (
-                                <Draggable key={task.id} task={task} type="week" />
-                              ))}
-                            </div>
-                          </DroppableCell>
-                        );
-                      })}
-                    </div>
-                  ))}
-                </div>
-              ))}
-            </div>
+      <div className="flex-1 bg-white">
+        {/* En-tête avec les jours - sticky (copié de renderWeekView) */}
+        <div className="flex border-b border-slate-200 sticky top-[46px] z-20 bg-white">
+          <div className="w-48 shrink-0 border-r border-slate-200 py-1 px-2 text-left font-semibold text-slate-700 text-xs sticky left-0 bg-white z-20">
+            Collaborateur / Calendrier
           </div>
+          {daysToDisplay.map((day) => (
+            <div
+              key={day.toString()}
+              className={`${cellWidth} shrink-0 py-1 px-1.5 text-center border-r border-slate-200`}
+            >
+              <div
+                className={`font-medium text-[10px] leading-tight ${isSameDay(day, new Date()) ? "text-[#005f82]" : "text-slate-600"}`}
+              >
+                {format(day, "EEE", { locale: fr })}
+              </div>
+              <div
+                className={`text-sm font-bold mt-0.5 ${
+                  isSameDay(day, new Date())
+                    ? "bg-linear-to-r from-[#005f82] to-[#007ba8] text-white w-6 h-6 rounded-lg flex items-center justify-center mx-auto shadow-sm text-xs"
+                    : "text-slate-800"
+                }`}
+              >
+                {format(day, "d")}
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* Contenu (copié de renderWeekView) */}
+        <div className="min-h-full">
+          {Object.entries(calendarsByUser).map(([username, userCalendars]) => (
+            <div key={username}>
+              <div className="flex border-b border-slate-200 bg-slate-50/50">
+                <div className="w-48 shrink-0 border-r border-slate-200 p-2 font-bold text-slate-800 text-sm sticky left-0 bg-slate-50/50 z-10">
+                  {/*{username}*/}
+                </div>
+                {daysToDisplay.map((day) => (
+                  <div
+                    key={day.toString()}
+                    className={`${cellWidth} shrink-0 p-1 border-r border-slate-200`}
+                  />
+                ))}
+              </div>
+              {userCalendars.map((calendar) => (
+                <div
+                  key={calendar.id}
+                  className="flex border-b border-slate-200 group hover:bg-blue-50/20 transition-colors duration-200"
+                  style={{ minHeight: `${minRowHeight}px` }}
+                >
+                  <div className="w-48 shrink-0 border-r border-slate-200 p-2 text-sm text-slate-700 font-medium flex items-center gap-2 sticky left-0 bg-white group-hover:bg-blue-50/20 z-10">
+                    <div
+                      className="w-3 h-3 rounded-full shadow-sm"
+                      style={{ backgroundColor: calendar.calendarcolor }}
+                    ></div>
+                    <span className="truncate">{calendar.defined_name || calendar.share_href || calendar.displayname}</span>
+                  </div>
+                  {daysToDisplay.map((day) => {
+                    const dayTasks = tasks.filter(
+                      (task) =>
+                        task.calendar_source_id === calendar.id &&
+                        isSameDay(new Date(task.start_date), day),
+                    );
+                    const cellDate = new Date(day);
+                    cellDate.setHours(0, 0, 0, 0);
+
+                    return (
+                      <DroppableCell
+                        key={day.toString()}
+                        id={`${format(day, "yyyy-MM-dd")}-${calendar.id}`}
+                        date={cellDate}
+                        className={`${cellWidth} shrink-0 p-1 border-r border-slate-200 cursor-pointer h-full`}
+                      >
+                        <div className="space-y-1">
+                          {dayTasks.map((task) => (
+                            <Draggable key={task.id} task={task} type="week" />
+                          ))}
+                        </div>
+                      </DroppableCell>
+                    );
+                  })}
+                </div>
+              ))}
+            </div>
+          ))}
         </div>
       </div>
     );
